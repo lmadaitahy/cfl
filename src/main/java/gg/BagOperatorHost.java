@@ -7,6 +7,8 @@ import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.ArrayDeque;
@@ -26,9 +28,18 @@ import java.util.Queue;
 //    - nagy adattal, hogy a mutable bag-et be tudjuk mutatni
 //  - bonyolult control flow, ld. doc
 
+
+//todo:
+// kell egy olyan source, ami DataStream-bol csinal bag-et.
+//  - azaz minden partitionje emittal eloszor egy start-ot, aztan amikor a vegere ert a DataStream akkor utana egy end-et
+//  - es igy a szokasos Flink DataStream-es source-okkal fogok tudni olvasni
+
+
 public class BagOperatorHost<IN, OUT>
 		extends AbstractStreamOperator<ElementOrEvent<OUT>>
 		implements OneInputStreamOperator<ElementOrEvent<IN>,ElementOrEvent<OUT>>, Serializable {
+
+	protected static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
 
 	private BagOperator<IN,OUT> op;
 	private int bbId;
@@ -46,7 +57,7 @@ public class BagOperatorHost<IN, OUT>
 
 	private MyCollector outCollector;
 
-	private static HashMap<BagOperator, Integer> instanceNums = new HashMap<>();
+	//private static HashMap<BagOperator, Integer> instanceNums = new HashMap<>();
 
 	// ----------------------
 
@@ -56,14 +67,14 @@ public class BagOperatorHost<IN, OUT>
 	private int finishedSubpartitionCounter = -1; // always -1 when not working on an output bag
 
 
-	public BagOperatorHost(BagOperator op, int bbId, int inputBbId) {
+	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId) {
 		this.op = op;
 		this.bbId = bbId;
 		this.inputBbId = inputBbId;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
-	public BagOperatorHost(BagOperator op, int bbId, int inputBbId, int inputParallelism) {
+	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId, int inputParallelism) {
 		this(op,bbId,inputBbId);
 		this.inputParallelism = inputParallelism;
 	}
@@ -72,14 +83,9 @@ public class BagOperatorHost<IN, OUT>
 	public void setup(StreamTask<?, ?> containingTask, StreamConfig config, Output<StreamRecord<ElementOrEvent<OUT>>> output) {
 		super.setup(containingTask, config, output);
 
-		if(!instanceNums.containsKey(op)) {
-			this.subpartitionId = (byte)(CFLManager.tmId * CFLManager.numTaskSlotsPerTm);
-			instanceNums.put(op, 1);
-		} else {
-			this.subpartitionId = (byte)(CFLManager.tmId * CFLManager.numTaskSlotsPerTm + instanceNums.get(op));
-			instanceNums.put(op, instanceNums.get(op) + 1);
-			assert instanceNums.get(op) <= CFLManager.numTaskSlotsPerTm;
-		}
+		//LOG.info("BagOperatorHost.setup");
+
+		this.subpartitionId = (byte)getRuntimeContext().getIndexOfThisSubtask();
 
 		if (inputParallelism == -1) {
 			inputParallelism = CFLManager.numAllSlots;
@@ -247,7 +253,7 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
-	class MyCFLCallback implements CFLCallback {
+	private class MyCFLCallback implements CFLCallback {
 		public void notify(List<Integer> cfl) {
 			synchronized (BagOperatorHost.this) {
 				latestCFL = cfl;

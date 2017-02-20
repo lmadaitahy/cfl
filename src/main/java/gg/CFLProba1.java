@@ -11,6 +11,8 @@ public class CFLProba1 {
 
 		//String[] words = new String[]{"alma", "korte", "alma", "b", "b", "b", "c", "d", "d"};
 
+		//env.readTextFile("~/Dropbox/cfl-data/wordcount.txt");
+
 		DataStream<ElementOrEvent<String>> input = env.fromElements(
 				new ElementOrEvent<String>((byte)0, new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, 1)),
 				new ElementOrEvent<String>((byte)0, "alma"),

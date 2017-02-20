@@ -35,3 +35,4 @@ out/
 *.iws
 tools/flink
 tools/flink-*
+log.txt
