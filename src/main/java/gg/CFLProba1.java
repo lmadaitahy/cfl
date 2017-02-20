@@ -35,8 +35,8 @@ public class CFLProba1 {
 
 		DataStream<ElementOrEvent<String>> output = input
 				.setConnectionType(new gg.partitioners.RoundRobin<String>())
-				.transform("id-map",input.getType(),
-				new BagOperatorHost<>(new BagIdMap<>(), 0, 0, 4));
+				.bt("id-map",input.getType(),
+				new BagOperatorHost<>(new BagIdMap<>(), 0, 0));
 
 		output.print();
 		env.execute();

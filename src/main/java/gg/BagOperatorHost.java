@@ -1,6 +1,7 @@
 package gg;
 
 
+import org.apache.flink.streaming.api.datastream.InputParaSettable;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
@@ -34,7 +35,9 @@ import java.util.Queue;
 
 public class BagOperatorHost<IN, OUT>
 		extends AbstractStreamOperator<ElementOrEvent<OUT>>
-		implements OneInputStreamOperator<ElementOrEvent<IN>,ElementOrEvent<OUT>>, Serializable {
+		implements OneInputStreamOperator<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
+			InputParaSettable<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
+			Serializable {
 
 	protected static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
 
@@ -71,9 +74,9 @@ public class BagOperatorHost<IN, OUT>
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
-	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId, int inputParallelism) {
-		this(op,bbId,inputBbId);
-		this.inputParallelism = inputParallelism;
+	@Override
+	public void setInputPara(int p) {
+		this.inputParallelism = p;
 	}
 
 	@Override
@@ -85,7 +88,8 @@ public class BagOperatorHost<IN, OUT>
 		this.subpartitionId = (byte)getRuntimeContext().getIndexOfThisSubtask();
 
 		if (inputParallelism == -1) {
-			inputParallelism = CFLManager.numAllSlots;
+			//inputParallelism = CFLManager.numAllSlots;
+			throw new RuntimeException("inputParallelism is not set. Use bt instead of transform!");
 		}
 		inputSubpartitions = new InputSubpartition[inputParallelism];
 		for(int i=0; i<inputSubpartitions.length; i++){
