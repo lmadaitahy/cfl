@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
 
@@ -30,9 +29,7 @@ import java.util.Queue;
 
 
 //todo:
-// kell egy olyan source, ami DataStream-bol csinal bag-et.
-//  - azaz minden partitionje emittal eloszor egy start-ot, aztan amikor a vegere ert a DataStream akkor utana egy end-et
-//  - es igy a szokasos Flink DataStream-es source-okkal fogok tudni olvasni
+
 
 
 public class BagOperatorHost<IN, OUT>
@@ -101,13 +98,14 @@ public class BagOperatorHost<IN, OUT>
 		op.giveOutputCollector(outCollector);
 
 		man = CFLManager.getSing();
-		cb = new MyCFLCallback();
-		man.subscribe(cb);
 	}
 
 	@Override
 	public void open() throws Exception {
 		super.open();
+
+		cb = new MyCFLCallback();
+		man.subscribe(cb);
 	}
 
 	@Override
@@ -174,16 +172,16 @@ public class BagOperatorHost<IN, OUT>
 		@Override
 		public void collectElement(OUT e) {
 			output.collect(
-					new StreamRecord<ElementOrEvent<OUT>>(
-							new ElementOrEvent<OUT>(subpartitionId, e), 0));
+					new StreamRecord<>(
+							new ElementOrEvent<>(subpartitionId, e), 0));
 		}
 
 		@Override
 		public void closeBag() {
 			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, outCFLSizes.peek());
 			output.collect(
-					new StreamRecord<ElementOrEvent<OUT>>(
-							new ElementOrEvent<OUT>(subpartitionId, event), 0));
+					new StreamRecord<>(
+							new ElementOrEvent<>(subpartitionId, event), 0));
 
 			outCFLSizes.poll();
 			if(outCFLSizes.size()>0) {
@@ -228,6 +226,9 @@ public class BagOperatorHost<IN, OUT>
 
 		assert finishedSubpartitionCounter == -1;
 		finishedSubpartitionCounter = 0;
+
+		ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, cflSize);
+		output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event), 0));
 
 		op.OpenInBag();
 
