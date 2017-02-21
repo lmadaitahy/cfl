@@ -30,7 +30,7 @@ public class Bagify<T>
 
     @Override
     public void processElement(StreamRecord<T> streamRecord) throws Exception {
-        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, streamRecord.getValue()), 0));
+        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, streamRecord.getValue(), (byte)-1), 0));
     }
 
 
@@ -39,7 +39,7 @@ public class Bagify<T>
         super.open();
 
         ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, outCflSize);
-        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event), 0));
+        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte)-1), 0));
     }
 
     @Override
@@ -47,6 +47,6 @@ public class Bagify<T>
         super.close();
 
         ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, outCflSize);
-        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event), 0));
+        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte)-1), 0));
     }
 }

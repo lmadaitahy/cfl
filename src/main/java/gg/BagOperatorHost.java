@@ -32,7 +32,6 @@ import java.util.Queue;
 //todo:
 
 
-
 public class BagOperatorHost<IN, OUT>
 		extends AbstractStreamOperator<ElementOrEvent<OUT>>
 		implements OneInputStreamOperator<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
@@ -66,6 +65,7 @@ public class BagOperatorHost<IN, OUT>
 	private int inputCFLSize = -1; // always -1 when not working on an output bag
 	private int finishedSubpartitionCounter = -1; // always -1 when not working on an output bag
 
+	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId) {
 		this.op = op;
@@ -175,20 +175,43 @@ public class BagOperatorHost<IN, OUT>
 	private class MyCollector implements BagOperatorOutputCollector<OUT> {
 		@Override
 		public void collectElement(OUT e) {
-			output.collect(
-					new StreamRecord<>(
-							new ElementOrEvent<>(subpartitionId, e), 0));
+			for(Out o: outs) {
+				assert o.state == OutState.FORWARDING || o.state == OutState.DAMMING;
+				if(o.state == OutState.FORWARDING) {
+					o.sendElement(e);
+				} else {
+					o.buffer.add(e);
+				}
+			}
 		}
 
 		@Override
 		public void closeBag() {
-			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, outCFLSizes.peek());
-			output.collect(
-					new StreamRecord<>(
-							new ElementOrEvent<>(subpartitionId, event), 0));
+			for(Out o: outs) {
+				switch (o.state) {
+					case IDLE:
+						assert false;
+						break;
+					case DAMMING:
+						o.state = OutState.WAITING;
+						break;
+					case WAITING:
+						assert false;
+						break;
+					case FORWARDING:
+						if (o.buffer != null) {
+							for(OUT e: o.buffer) {
+								o.sendElement(e);
+							}
+						}
+						o.sendEnd(outCFLSizes.peek());
+						break;
+				}
+			}
 
 			outCFLSizes.poll();
 			if(outCFLSizes.size()>0) {
+				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
 				startOutBag();
 			}
 		}
@@ -223,6 +246,8 @@ public class BagOperatorHost<IN, OUT>
 		// figure out the input bag ID
 		{
 			int i;
+			// We include the current BB in the search. This is OK, because a back-edge can only target a phi-node,
+			// which won't have to do this.
 			for (i = cflSize - 1; latestCFL.get(i) != inputBbId; i--) {}
 			assert inputCFLSize == -1;
 			inputCFLSize = i + 1;
@@ -231,9 +256,26 @@ public class BagOperatorHost<IN, OUT>
 		assert finishedSubpartitionCounter == -1;
 		finishedSubpartitionCounter = 0;
 
-		ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, cflSize);
-		output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event), 0));
+		assert latestCFL.get(cflSize - 1) == bbId;
 
+		// Treat outputs
+		for(Out o: outs) {
+			boolean targetReached = false;
+			for (int i=cflSize; i<latestCFL.size(); i++) {
+				if(latestCFL.get(i) == o.targetBbId) {
+					targetReached = true;
+				}
+			}
+			if(!targetReached && !o.normal){
+				o.state = OutState.DAMMING;
+				o.buffer = new ArrayList<>();
+			} else {
+				o.sendStart(cflSize);
+				o.state = OutState.FORWARDING;
+			}
+		}
+
+		// Tell the BagOperator that we are opening a new bag
 		op.OpenInBag();
 
 		// Tell the input subpartitions what to do:
@@ -262,15 +304,97 @@ public class BagOperatorHost<IN, OUT>
 		public void notify(List<Integer> cfl) {
 			synchronized (BagOperatorHost.this) {
 				latestCFL = cfl;
-				if (cfl.get(cfl.size() - 1) == bbId) {
-					outCFLSizes.add(cfl.size());
-					if (outCFLSizes.size() == 1) { // jelenleg nem dolgozunk epp, mert ures volt
-						startOutBag();
+
+				// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
+				// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
+
+				for(Out o: outs) {
+					switch (o.state) {
+						case IDLE:
+							assert false;
+							break;
+						case DAMMING:
+							o.sendStart(outCFLSizes.peek());
+							o.state = OutState.FORWARDING;
+							break;
+						case WAITING:
+							if (o.buffer != null) {
+								for(OUT e: o.buffer) {
+									o.sendElement(e);
+								}
+							}
+							o.sendEnd(outCFLSizes.peek());
+							o.state = OutState.IDLE;
+							break;
+						case FORWARDING:
+							assert false;
+							break;
 					}
 				}
 
-				//todo: conditional outputs
+				if (cfl.get(cfl.size() - 1) == bbId) {
+					outCFLSizes.add(cfl.size());
+					if (outCFLSizes.size() == 1) { // jelenleg nem dolgozunk epp (ezt onnan tudjuk, hogy ures volt az outCFLSizes)
+						startOutBag();
+					}
+				}
 			}
+		}
+	}
+
+	BagOperatorHost<IN, OUT> out(Out out) {
+		outs.add(out);
+		return this;
+	}
+
+	enum OutState {IDLE, DAMMING, WAITING, FORWARDING}
+
+	public final class Out {
+
+		// Egyelore nem csinalunk kulon BB elerese altal kivaltott discardot. (Amugy ha uj out bag van, akkor eldobodik a reginek a buffere igy is.)
+
+		// 4 esetben tortenik valami:
+		//  - startOutBag:
+		//    - ha nem erte el a targetet, akkor DAMMING, es new Buffer
+		//    - ha elerte a targetet vagy normal, akkor sendStart es FORWARDING
+		//  - elem jon a BagOperatorbol
+		//    - assert DAMMING or FORWARDING, es aztan tesszuk a megfelelot
+		//  - vege van a BagOperatorbol jovo bagnek
+		//    - IDLE nem lehet
+		//    - ha DAMMING, akkor WAITING-re valtunk
+		//    - WAITING nem lehet
+		//    - ha FORWARDING, akkor megnezzuk, hogy van-e buffer, es ha igen, akkor kuldjuk, es IDLE-re valtunk (ugye ekkor kozben volt D->F valtas)
+		//  - a CFL eleri a targetet
+		//    - IDLE nem lehet
+		//    - ha DAMMING, akkor sendStart es FORWARDING-ra valtunk
+		//    - ha WAITING, akkor elkuldjuk a buffert, es IDLE-re valtunk
+		//    - FORWARDING nem lehet
+
+		private byte splitId = -1;
+		int targetBbId = -1;
+		boolean normal = false; // jelzi ha nem conditional
+
+		ArrayList<OUT> buffer = null;
+		OutState state = OutState.IDLE;
+
+		public Out(byte splitId, int targetBbId, int discardBbId, boolean normal) {
+			this.splitId = splitId;
+			this.targetBbId = targetBbId;
+			this.normal = normal;
+		}
+
+		void sendElement(OUT e) {
+			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId), 0));
+		}
+
+		void sendStart(int cflSize) {
+			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, cflSize);
+			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId), 0));
+		}
+
+		void sendEnd(int cflSize) {
+			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, cflSize);
+			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId), 0));
 		}
 	}
 }

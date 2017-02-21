@@ -8,16 +8,18 @@ public class ElementOrEvent<T> {
 	public T element;
 	public Event event;
 
-	public byte splitId; // A 0 a normal (nem-cond) output!
+	public byte splitId; // Ementen kell majd splittelni a conditional outputokhoz
 
-	public ElementOrEvent(byte subPartitionId, T element) {
+	public ElementOrEvent(byte subPartitionId, T element, byte splitId) {
 		this.subPartitionId = subPartitionId;
 		this.element = element;
+		this.splitId = splitId;
 	}
 
-	public ElementOrEvent(byte subPartitionId, Event event) {
+	public ElementOrEvent(byte subPartitionId, Event event, byte splitId) {
 		this.subPartitionId = subPartitionId;
 		this.event = event;
+		this.splitId = splitId;
 	}
 
 	// Bag start or end
