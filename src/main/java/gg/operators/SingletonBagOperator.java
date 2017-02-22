@@ -30,5 +30,6 @@ public abstract class SingletonBagOperator<IN, OUT> implements BagOperator<IN, O
 	public void closeInBag() {
 		assert c == 1; // Each of our input bags should contain exactly one element.
 		c = -1;
+		collector.closeBag();
 	}
 }

@@ -19,6 +19,14 @@ import scala.xml.Elem;
 
 import java.util.Arrays;
 
+/**
+ * i = 1
+ * do {
+ *     i = i + 1
+ * } while (i < 10)
+ * print(i)
+ */
+
 public class CFLProbaSimpleCF {
 
 	public static void main(String[] args) throws Exception {
@@ -32,15 +40,15 @@ public class CFLProbaSimpleCF {
 						.transform("bagify",
 								Util.tpe(), new Bagify<>());
 
-		IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(5000); //todo: majd nagyra allitani miutan van sajat termination
+		IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(500000); //todo: majd nagyra allitani miutan van sajat termination
 
 		SplitStream<ElementOrEvent<Integer>> incedSplit = it
 				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("inc-map",inputBag.getType(),
 						new BagOperatorHost<>(new IncMap(), 0, 0)
-								.out(0,1,false)
-								.out(1,0,false)
-								.out(2,0,true))
+								.out(0,1,false) // back-edge
+								.out(1,0,false) // out of the loop
+								.out(2,0,true)) // to exit condition
 				.split(new CondOutputSelector<>());
 
 		it.closeWith(incedSplit.select("0"));

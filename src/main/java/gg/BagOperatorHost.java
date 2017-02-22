@@ -238,9 +238,9 @@ public class BagOperatorHost<IN, OUT>
 	synchronized private void incAndCheckFinishedSubpartitionCounter() {
 		finishedSubpartitionCounter++;
 		if(finishedSubpartitionCounter == inputParallelism) {
-			op.closeInBag();
 			inputCFLSize = -1;
 			finishedSubpartitionCounter = -1;
+			op.closeInBag();
 		}
 	}
 
@@ -311,31 +311,34 @@ public class BagOperatorHost<IN, OUT>
 			synchronized (BagOperatorHost.this) {
 				latestCFL = cfl;
 
+				LOG.info("CFL notification: " + latestCFL);
+
 				// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
 				// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
 
 				for(Out o: outs) {
-					switch (o.state) {
-						case IDLE:
-							break;
-						case DAMMING:
-							assert outCFLSizes.size() > 0;
-							assert o.cflSize == outCFLSizes.peek();
-							o.sendStart(o.cflSize);
-							o.state = OutState.FORWARDING;
-							break;
-						case WAITING:
-							if (o.buffer != null) {
-								for(OUT e: o.buffer) {
-									o.sendElement(e);
+					if (cfl.get(cfl.size() - 1) == o.targetBbId) {
+						switch (o.state) {
+							case IDLE:
+								break;
+							case DAMMING:
+								assert outCFLSizes.size() > 0;
+								assert o.cflSize == outCFLSizes.peek();
+								o.sendStart(o.cflSize);
+								o.state = OutState.FORWARDING;
+								break;
+							case WAITING:
+								if (o.buffer != null) {
+									for (OUT e : o.buffer) {
+										o.sendElement(e);
+									}
 								}
-							}
-							o.sendEnd(o.cflSize);
-							o.state = OutState.IDLE;
-							break;
-						case FORWARDING:
-							assert false;
-							break;
+								o.sendEnd(o.cflSize);
+								o.state = OutState.IDLE;
+								break;
+							case FORWARDING:
+								break;
+						}
 					}
 				}
 
@@ -372,10 +375,10 @@ public class BagOperatorHost<IN, OUT>
 		//    - WAITING nem lehet
 		//    - ha FORWARDING, akkor megnezzuk, hogy van-e buffer, es ha igen, akkor kuldjuk, es IDLE-re valtunk (ugye ekkor kozben volt D->F valtas)
 		//  - a CFL eleri a targetet
-		//    - IDLE nem lehet
+		//    - IDLE akkor semmi
 		//    - ha DAMMING, akkor sendStart es FORWARDING-ra valtunk
 		//    - ha WAITING, akkor elkuldjuk a buffert, es IDLE-re valtunk
-		//    - FORWARDING nem lehet
+		//    - FORWARDING akkor semmi
 
 		private byte splitId = -1;
 		int targetBbId = -1;
