@@ -13,7 +13,7 @@ public class ConditionNode extends SingletonBagOperator<Boolean, Unit> implement
 	private int trueBranchBbId;
 	private int falseBranchBbId;
 
-	public ConditionNode(int trueBranchBbId, int falseBranchBbId) {
+	public ConditionNode(int trueBranchBbId, int falseBranchBbId) { //todo: ezeknek ugyebar tomboknek kene lenniuk
 		this.trueBranchBbId = trueBranchBbId;
 		this.falseBranchBbId = falseBranchBbId;
 	}

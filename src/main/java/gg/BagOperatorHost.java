@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 
@@ -30,7 +32,9 @@ import java.util.Queue;
 //  - bonyolult control flow, ld. doc
 
 
-//todo:
+//TODO: Muszaj normalisan megcsinalni a phi-node-okat:
+// - azt is tudniuk kell, hogy ha egyszerre jonnek elemek a ket unionozott inputbol, akkor egymas utanra rakja oket
+// - meg akkor mar majd vissza lehet csinalni ezt, hogy most egy tomb az inputCFL
 
 
 public class BagOperatorHost<IN, OUT>
@@ -43,7 +47,7 @@ public class BagOperatorHost<IN, OUT>
 
 	private BagOperator<IN,OUT> op;
 	private int bbId;
-	private int inputBbId;
+	private HashSet<Integer> inputBbIds;
 	private int inputParallelism = -1;
 	private boolean inputInSameBlock;
 
@@ -67,10 +71,10 @@ public class BagOperatorHost<IN, OUT>
 
 	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
-	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId, boolean inputInSameBlock) {
+	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, Integer[] inputBbIds, boolean inputInSameBlock) {
 		this.op = op;
 		this.bbId = bbId;
-		this.inputBbId = inputBbId;
+		this.inputBbIds = new HashSet<>(Arrays.asList(inputBbIds));
 		this.inputInSameBlock = inputInSameBlock;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
@@ -258,7 +262,7 @@ public class BagOperatorHost<IN, OUT>
 			inputCFLSize = cflSize;
 		} else {
 			int i;
-			for (i = cflSize - 1; latestCFL.get(i) != inputBbId; i--) {
+			for (i = cflSize - 2; !inputBbIds.contains(latestCFL.get(i)); i--) {
 			}
 			inputCFLSize = i + 1;
 		}

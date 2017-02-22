@@ -1,13 +1,16 @@
 package gg.jobs;
 
 import gg.BagOperatorHost;
+import gg.CFLManager;
 import gg.ElementOrEvent;
+import gg.KickoffSource;
 import gg.operators.IdMap;
 import gg.operators.Bagify;
 import gg.util.Util;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 
 import java.util.Arrays;
 
@@ -15,6 +18,8 @@ public class CFLProba1 {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+		env.addSource(new KickoffSource(0)).addSink(new DiscardingSink<>());
 
 		String[] words = new String[]{"alma", "korte", "alma", "b", "b", "b", "c", "d", "d"};
 
@@ -35,7 +40,7 @@ public class CFLProba1 {
 				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("id-map",input.getType(),
 				new BagOperatorHost<String, String>(
-						new IdMap<>(), 0, 0, true).out(0,0,true));
+						new IdMap<>(), 0, new Integer[]{0}, true).out(0,0,true));
 
 		output.print();
 		env.execute();
