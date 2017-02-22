@@ -45,6 +45,7 @@ public class BagOperatorHost<IN, OUT>
 	private int bbId;
 	private int inputBbId;
 	private int inputParallelism = -1;
+	private boolean inputInSameBlock;
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
@@ -66,10 +67,11 @@ public class BagOperatorHost<IN, OUT>
 
 	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
-	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId) {
+	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId, boolean inputInSameBlock) {
 		this.op = op;
 		this.bbId = bbId;
 		this.inputBbId = inputBbId;
+		this.inputInSameBlock = inputInSameBlock;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
@@ -249,14 +251,18 @@ public class BagOperatorHost<IN, OUT>
 		Integer cflSize = outCFLSizes.peek();
 
 		// figure out the input bag ID
-		{
+		assert inputCFLSize == -1;
+		// We include the current BB in the search. This is OK, because a back-edge can only target a phi-node,
+		// which won't have to do this.
+		if(inputInSameBlock) {
+			inputCFLSize = cflSize;
+		} else {
 			int i;
-			// We include the current BB in the search. This is OK, because a back-edge can only target a phi-node,
-			// which won't have to do this.
-			for (i = cflSize - 1; latestCFL.get(i) != inputBbId; i--) {}
-			assert inputCFLSize == -1;
+			for (i = cflSize - 1; latestCFL.get(i) != inputBbId; i--) {
+			}
 			inputCFLSize = i + 1;
 		}
+
 
 		assert finishedSubpartitionCounter == -1;
 		finishedSubpartitionCounter = 0;

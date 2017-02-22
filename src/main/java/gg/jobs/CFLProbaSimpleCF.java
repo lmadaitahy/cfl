@@ -40,12 +40,13 @@ public class CFLProbaSimpleCF {
 						.transform("bagify",
 								Util.tpe(), new Bagify<>());
 
-		IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(500000); //todo: majd nagyra allitani miutan van sajat termination
+		IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(1000000000);
 
 		SplitStream<ElementOrEvent<Integer>> incedSplit = it
 				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("inc-map",inputBag.getType(),
-						new BagOperatorHost<>(new IncMap(), 0, 0)
+						new BagOperatorHost<>(
+								new IncMap(), 0, 0, false)
 								.out(0,1,false) // back-edge
 								.out(1,0,false) // out of the loop
 								.out(2,0,true)) // to exit condition
@@ -56,13 +57,15 @@ public class CFLProbaSimpleCF {
 		DataStream<ElementOrEvent<Boolean>> smallerThan = incedSplit.select("2")
 				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("smaller-than",Util.tpe(),
-						new BagOperatorHost<>(new SmallerThan(10), 0, 0)
+						new BagOperatorHost<>(
+								new SmallerThan(10), 0, 0, true)
 								.out(0,0,true));
 
 		DataStream<ElementOrEvent<Unit>> exitCond = smallerThan
 				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("exit-cond",Util.tpe(),
-						new BagOperatorHost<Boolean, Unit>(new ConditionNode(0,1), 0, 0));
+						new BagOperatorHost<Boolean, Unit>(
+								new ConditionNode(0,1), 0, 0, true));
 
 		// Edge going out of the loop
 		DataStream<ElementOrEvent<Integer>> output = incedSplit.select("1");
