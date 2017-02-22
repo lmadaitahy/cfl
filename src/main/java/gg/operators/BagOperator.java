@@ -1,4 +1,6 @@
-package gg;
+package gg.operators;
+
+import gg.BagOperatorOutputCollector;
 
 public interface BagOperator<IN, OUT> {
 

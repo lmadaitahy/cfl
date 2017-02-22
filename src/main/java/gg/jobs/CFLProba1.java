@@ -1,15 +1,15 @@
-package gg;
+package gg.jobs;
 
-import gg.operators.BagIdMap;
+import gg.BagOperatorHost;
+import gg.ElementOrEvent;
+import gg.operators.IdMap;
 import gg.operators.Bagify;
+import gg.util.Util;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
 
 public class CFLProba1 {
 
@@ -17,8 +17,6 @@ public class CFLProba1 {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
 		String[] words = new String[]{"alma", "korte", "alma", "b", "b", "b", "c", "d", "d"};
-
-		//env.readTextFile("~/Dropbox/cfl-data/wordcount.txt");
 
 //		DataStream<ElementOrEvent<String>> input = env.fromElements(
 //				new ElementOrEvent<String>((byte)0, new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, 1)),
@@ -29,14 +27,14 @@ public class CFLProba1 {
 
 		DataStream<ElementOrEvent<String>> input =
 				env.fromCollection(Arrays.asList(words))
-						.transform("bagify", TypeInformation.of((Class<ElementOrEvent<String>>)(Class)ElementOrEvent.class), new Bagify<>());
+						.transform("bagify", Util.tpe(), new Bagify<>());
 
 		//System.out.println(input.getParallelism());
 
 		DataStream<ElementOrEvent<String>> output = input
-				.setConnectionType(new gg.partitioners.RoundRobin<String>())
+				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("id-map",input.getType(),
-				new BagOperatorHost<>(new BagIdMap<>(), 0, 0));
+				new BagOperatorHost<String, String>(new IdMap<>(), 0, 0).out(0,0,true));
 
 		output.print();
 		env.execute();

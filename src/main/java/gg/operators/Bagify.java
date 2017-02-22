@@ -12,6 +12,7 @@ import java.io.Serializable;
 
 /**
  * Create a bag from a DataStream, at the beginning of the program execution.
+ * It prepends a start event and appends an end event.
  */
 public class Bagify<T>
         extends AbstractStreamOperator<ElementOrEvent<T>>

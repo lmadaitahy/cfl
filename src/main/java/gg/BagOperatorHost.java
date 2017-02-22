@@ -1,6 +1,7 @@
 package gg;
 
 
+import gg.operators.BagOperator;
 import org.apache.flink.streaming.api.datastream.InputParaSettable;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -49,14 +50,12 @@ public class BagOperatorHost<IN, OUT>
 
 	private byte subpartitionId;
 
-	private CFLManager man;
+	private CFLManager cflMan;
 	private MyCFLCallback cb;
 
 	private InputSubpartition<IN>[] inputSubpartitions;
 
 	private MyCollector outCollector;
-
-	//private static HashMap<BagOperator, Integer> instanceNums = new HashMap<>();
 
 	// ----------------------
 
@@ -101,7 +100,7 @@ public class BagOperatorHost<IN, OUT>
 		outCollector = new MyCollector();
 		op.giveOutputCollector(outCollector);
 
-		man = CFLManager.getSing();
+		cflMan = CFLManager.getSing();
 	}
 
 	@Override
@@ -109,7 +108,7 @@ public class BagOperatorHost<IN, OUT>
 		super.open();
 
 		cb = new MyCFLCallback();
-		man.subscribe(cb);
+		cflMan.subscribe(cb);
 	}
 
 	@Override
@@ -204,7 +203,8 @@ public class BagOperatorHost<IN, OUT>
 								o.sendElement(e);
 							}
 						}
-						o.sendEnd(outCFLSizes.peek());
+						assert o.cflSize == outCFLSizes.peek();
+						o.sendEnd(o.cflSize);
 						break;
 				}
 			}
@@ -214,6 +214,11 @@ public class BagOperatorHost<IN, OUT>
 				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
 				startOutBag();
 			}
+		}
+
+		@Override
+		public void appendToCfl(int bbId) {
+			cflMan.appendToCFL(bbId);
 		}
 	}
 
@@ -266,6 +271,7 @@ public class BagOperatorHost<IN, OUT>
 					targetReached = true;
 				}
 			}
+			o.cflSize = cflSize;
 			if(!targetReached && !o.normal){
 				o.state = OutState.DAMMING;
 				o.buffer = new ArrayList<>();
@@ -311,10 +317,11 @@ public class BagOperatorHost<IN, OUT>
 				for(Out o: outs) {
 					switch (o.state) {
 						case IDLE:
-							assert false;
 							break;
 						case DAMMING:
-							o.sendStart(outCFLSizes.peek());
+							assert outCFLSizes.size() > 0;
+							assert o.cflSize == outCFLSizes.peek();
+							o.sendStart(o.cflSize);
 							o.state = OutState.FORWARDING;
 							break;
 						case WAITING:
@@ -323,7 +330,7 @@ public class BagOperatorHost<IN, OUT>
 									o.sendElement(e);
 								}
 							}
-							o.sendEnd(outCFLSizes.peek());
+							o.sendEnd(o.cflSize);
 							o.state = OutState.IDLE;
 							break;
 						case FORWARDING:
@@ -342,14 +349,14 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
-	BagOperatorHost<IN, OUT> out(Out out) {
-		outs.add(out);
+	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal) {
+		outs.add(new Out((byte)splitId, targetBbId, normal));
 		return this;
 	}
 
 	enum OutState {IDLE, DAMMING, WAITING, FORWARDING}
 
-	public final class Out {
+	public final class Out implements Serializable {
 
 		// Egyelore nem csinalunk kulon BB elerese altal kivaltott discardot. (Amugy ha uj out bag van, akkor eldobodik a reginek a buffere igy is.)
 
@@ -376,8 +383,9 @@ public class BagOperatorHost<IN, OUT>
 
 		ArrayList<OUT> buffer = null;
 		OutState state = OutState.IDLE;
+		int cflSize = -1; // The CFL that is being emitted. We need this, because cflSizes becomes empty when we become waiting.
 
-		public Out(byte splitId, int targetBbId, int discardBbId, boolean normal) {
+		public Out(byte splitId, int targetBbId, boolean normal) {
 			this.splitId = splitId;
 			this.targetBbId = targetBbId;
 			this.normal = normal;

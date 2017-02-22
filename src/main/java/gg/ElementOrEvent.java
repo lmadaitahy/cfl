@@ -1,6 +1,6 @@
 package gg;
 
-import java.util.List;
+//TODO: check what serializer is being used. If Kryo, then I should provide a custom one instead.
 
 public class ElementOrEvent<T> {
 

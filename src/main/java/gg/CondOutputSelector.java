@@ -7,12 +7,10 @@ import java.util.List;
 
 public class CondOutputSelector<T> implements OutputSelector<ElementOrEvent<T>> {
 
-	private static final int maxSplit = 8;
+	private static final int maxSplit = 4;
+	private static final List<String>[] cache = new List[maxSplit];
 
-	List<String>[] cache;
-
-	public CondOutputSelector() {
-		cache = new List[maxSplit];
+	{
 		for(Integer i=0; i<maxSplit; i++){
 			cache[i] = Collections.singletonList(i.toString());
 		}

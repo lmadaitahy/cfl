@@ -1,11 +1,10 @@
 package gg.operators;
 
-import gg.BagOperator;
 import gg.BagOperatorOutputCollector;
 
 import java.io.Serializable;
 
-public abstract class BagMap<IN,OUT> implements BagOperator<IN,OUT>, Serializable {
+public abstract class Map<IN,OUT> implements BagOperator<IN,OUT>, Serializable {
 
 	BagOperatorOutputCollector<OUT> out;
 
