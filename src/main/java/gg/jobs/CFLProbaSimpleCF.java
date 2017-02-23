@@ -31,7 +31,7 @@ public class CFLProbaSimpleCF {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		env.getConfig().setParallelism(1); //todo: majd kiprobalni 1-nel nagyobb para-val, meg aztan a clusteren is
+		//env.getConfig().setParallelism(1); //todo: majd kiprobalni 1-nel nagyobb para-val, meg aztan a clusteren is
 
 		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
 
@@ -85,13 +85,13 @@ public class CFLProbaSimpleCF {
 				.bt("smaller-than",Util.tpe(),
 						new BagOperatorHost<>(
 								new SmallerThan(10), 1, 1, true)
-								.out(0,1,true));
+								.out(0,1,true)).setParallelism(1);
 
 		DataStream<ElementOrEvent<Unit>> exitCond = smallerThan
 				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
-								new ConditionNode(1,2), 1, 1, true));
+								new ConditionNode(1,2), 1, 1, true)).setParallelism(1);
 
 		// Edge going out of the loop
 		DataStream<ElementOrEvent<Integer>> output = incedSplit.select("1");
