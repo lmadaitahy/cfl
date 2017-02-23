@@ -10,6 +10,10 @@ public class ElementOrEvent<T> {
 
 	public byte splitId; // Ementen kell majd splittelni a conditional outputokhoz
 
+	public byte logicalInputId = -1;
+
+	public ElementOrEvent() {}
+
 	public ElementOrEvent(byte subPartitionId, T element, byte splitId) {
 		this.subPartitionId = subPartitionId;
 		this.element = element;
@@ -29,6 +33,8 @@ public class ElementOrEvent<T> {
 
 		public Type type;
 		public int cflSize;
+
+		public Event() {}
 
 		public Event(Type type, int cflSize) {
 			this.type = type;
@@ -51,6 +57,7 @@ public class ElementOrEvent<T> {
 				", element=" + element +
 				", event=" + event +
 				", splitId=" + splitId +
+				", logicalInputId=" + logicalInputId +
 				'}';
 	}
 }

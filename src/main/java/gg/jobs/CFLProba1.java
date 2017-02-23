@@ -40,7 +40,7 @@ public class CFLProba1 {
 				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("id-map",input.getType(),
 				new BagOperatorHost<String, String>(
-						new IdMap<>(), 0, new Integer[]{0}, true).out(0,0,true));
+						new IdMap<>(), 0, 0, true).out(0,0,true));
 
 		output.print();
 		env.execute();

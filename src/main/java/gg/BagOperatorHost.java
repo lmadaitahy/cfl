@@ -15,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 
@@ -32,11 +30,6 @@ import java.util.Queue;
 //  - bonyolult control flow, ld. doc
 
 
-//TODO: Muszaj normalisan megcsinalni a phi-node-okat:
-// - azt is tudniuk kell, hogy ha egyszerre jonnek elemek a ket unionozott inputbol, akkor egymas utanra rakja oket
-// - meg akkor mar majd vissza lehet csinalni ezt, hogy most egy tomb az inputCFL
-
-
 public class BagOperatorHost<IN, OUT>
 		extends AbstractStreamOperator<ElementOrEvent<OUT>>
 		implements OneInputStreamOperator<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
@@ -47,9 +40,9 @@ public class BagOperatorHost<IN, OUT>
 
 	private BagOperator<IN,OUT> op;
 	private int bbId;
-	private HashSet<Integer> inputBbIds;
+	private int inputBbId;
 	private int inputParallelism = -1;
-	private boolean inputInSameBlock;
+	private boolean inputInSameBlock; // marmint ugy ertve, hogy a kodban elotte (szoval ha utana van ugyanabban a blockban, akkor ez false)
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
@@ -71,10 +64,10 @@ public class BagOperatorHost<IN, OUT>
 
 	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
-	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, Integer[] inputBbIds, boolean inputInSameBlock) {
+	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId, boolean inputInSameBlock) {
 		this.op = op;
 		this.bbId = bbId;
-		this.inputBbIds = new HashSet<>(Arrays.asList(inputBbIds));
+		this.inputBbId = inputBbId;
 		this.inputInSameBlock = inputInSameBlock;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
@@ -121,8 +114,7 @@ public class BagOperatorHost<IN, OUT>
 	synchronized public void processElement(StreamRecord<ElementOrEvent<IN>> streamRecord) throws Exception {
 
 		ElementOrEvent<IN> eleOrEvent = streamRecord.getValue();
-		int spId = eleOrEvent.subPartitionId;
-		InputSubpartition<IN> sp = inputSubpartitions[spId];
+		InputSubpartition<IN> sp = inputSubpartitions[eleOrEvent.subPartitionId];
 
 		if (eleOrEvent.element != null) {
 
@@ -256,14 +248,11 @@ public class BagOperatorHost<IN, OUT>
 
 		// figure out the input bag ID
 		assert inputCFLSize == -1;
-		// We include the current BB in the search. This is OK, because a back-edge can only target a phi-node,
-		// which won't have to do this.
 		if(inputInSameBlock) {
 			inputCFLSize = cflSize;
 		} else {
 			int i;
-			for (i = cflSize - 2; !inputBbIds.contains(latestCFL.get(i)); i--) {
-			}
+			for (i = cflSize - 2; inputBbId == latestCFL.get(i); i--) {}
 			inputCFLSize = i + 1;
 		}
 
@@ -338,6 +327,7 @@ public class BagOperatorHost<IN, OUT>
 								o.state = OutState.FORWARDING;
 								break;
 							case WAITING:
+								o.sendStart(o.cflSize);
 								if (o.buffer != null) {
 									for (OUT e : o.buffer) {
 										o.sendElement(e);
@@ -363,6 +353,7 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal) {
+		assert splitId == outs.size();
 		outs.add(new Out((byte)splitId, targetBbId, normal));
 		return this;
 	}
