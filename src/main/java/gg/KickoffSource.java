@@ -14,6 +14,9 @@ public class KickoffSource implements SourceFunction<Unit> {
 	@Override
 	public void run(SourceContext sourceContext) throws Exception {
 		CFLManager cflManager = CFLManager.getSing();
+
+		cflManager.resetCFL();
+
 		for(int bb: kickoffBBs) {
 			cflManager.appendToCFL(bb);
 		}
