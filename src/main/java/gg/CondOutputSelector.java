@@ -10,7 +10,7 @@ public class CondOutputSelector<T> implements OutputSelector<ElementOrEvent<T>> 
 	private static final int maxSplit = 4;
 	private static final List<String>[] cache = new List[maxSplit];
 
-	{
+	static {
 		for(Integer i=0; i<maxSplit; i++){
 			cache[i] = Collections.singletonList(i.toString());
 		}
