@@ -31,7 +31,7 @@ public class CFLProbaSimpleCF {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		//env.getConfig().setParallelism(1); //todo: majd kiprobalni 1-nel nagyobb para-val, meg aztan a clusteren is
+		//env.getConfig().setParallelism(1);
 
 		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
 
