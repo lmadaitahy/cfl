@@ -29,7 +29,7 @@ public class PhiNode<T>
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
-	private byte subpartitionId;
+	private short subpartitionId;
 
 	private CFLManager cflMan;
 	private MyCFLCallback cb;
@@ -66,7 +66,7 @@ public class PhiNode<T>
 
 		//LOG.info("BagOperatorHost.setup");
 
-		this.subpartitionId = (byte)getRuntimeContext().getIndexOfThisSubtask();
+		this.subpartitionId = (short)getRuntimeContext().getIndexOfThisSubtask();
 
 		if (inputParallelism == -1) {
 			//inputParallelism = CFLManager.numAllSlots;
@@ -98,7 +98,8 @@ public class PhiNode<T>
 
 		ElementOrEvent<T> eleOrEvent = streamRecord.getValue();
 		assert eleOrEvent.logicalInputId != -1; // (kell egy extra map, ami kitolti)
-		InputSubpartition<T> sp = inputs.get(eleOrEvent.logicalInputId).inputSubpartitions[eleOrEvent.subPartitionId];
+		Input input = inputs.get(eleOrEvent.logicalInputId);
+		InputSubpartition<T> sp = input.inputSubpartitions[eleOrEvent.subPartitionId];
 
 		if (eleOrEvent.element != null) {
 

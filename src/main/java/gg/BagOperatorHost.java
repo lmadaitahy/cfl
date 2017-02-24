@@ -46,7 +46,7 @@ public class BagOperatorHost<IN, OUT>
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
-	private byte subpartitionId;
+	private short subpartitionId;
 
 	private CFLManager cflMan;
 	private MyCFLCallback cb;
@@ -83,7 +83,7 @@ public class BagOperatorHost<IN, OUT>
 
 		//LOG.info("BagOperatorHost.setup");
 
-		this.subpartitionId = (byte)getRuntimeContext().getIndexOfThisSubtask();
+		this.subpartitionId = (short)getRuntimeContext().getIndexOfThisSubtask();
 
 		if (inputParallelism == -1) {
 			//inputParallelism = CFLManager.numAllSlots;
@@ -105,6 +105,8 @@ public class BagOperatorHost<IN, OUT>
 	@Override
 	public void open() throws Exception {
 		super.open();
+
+		Thread.sleep(100); // this is a workaround for the buffer pool destroyed error
 
 		cb = new MyCFLCallback();
 		cflMan.subscribe(cb);

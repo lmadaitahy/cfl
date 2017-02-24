@@ -18,7 +18,7 @@ public class Bagify<T>
         extends AbstractStreamOperator<ElementOrEvent<T>>
         implements OneInputStreamOperator<T, ElementOrEvent<T>>, Serializable {
 
-    private byte subpartitionId;
+    private short subpartitionId;
 
     private final static int outCflSize = 1; // always 1, because this happens in the first basic block at the beginning of the program
 
@@ -26,7 +26,7 @@ public class Bagify<T>
     public void setup(StreamTask<?, ?> containingTask, StreamConfig config, Output<StreamRecord<ElementOrEvent<T>>> output) {
         super.setup(containingTask, config, output);
 
-        subpartitionId = (byte)getRuntimeContext().getIndexOfThisSubtask();
+        subpartitionId = (short)getRuntimeContext().getIndexOfThisSubtask();
     }
 
     @Override

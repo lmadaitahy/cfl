@@ -4,7 +4,7 @@ package gg;
 
 public class ElementOrEvent<T> {
 
-	public byte subPartitionId; // az input operator melyik physical instance-erol jott
+	public short subPartitionId; // az input operator melyik physical instance-erol jott
 	public T element;
 	public Event event;
 
@@ -14,13 +14,13 @@ public class ElementOrEvent<T> {
 
 	public ElementOrEvent() {}
 
-	public ElementOrEvent(byte subPartitionId, T element, byte splitId) {
+	public ElementOrEvent(short subPartitionId, T element, byte splitId) {
 		this.subPartitionId = subPartitionId;
 		this.element = element;
 		this.splitId = splitId;
 	}
 
-	public ElementOrEvent(byte subPartitionId, Event event, byte splitId) {
+	public ElementOrEvent(short subPartitionId, Event event, byte splitId) {
 		this.subPartitionId = subPartitionId;
 		this.event = event;
 		this.splitId = splitId;
