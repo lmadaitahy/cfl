@@ -38,6 +38,11 @@ public class CFLProbaSimpleCF {
 		env.setBufferTimeout(bufferTimeout); // ez a lenyeg!
 
 		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
+//		env.addSource(new KickoffSource(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+//				, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+//				, 1, 2)).addSink(new DiscardingSink<>());
+
+
 
 		Integer[] input = new Integer[]{1};
 
