@@ -43,6 +43,7 @@ public class BagOperatorHost<IN, OUT>
 	private int inputBbId;
 	private int inputParallelism = -1;
 	private boolean inputInSameBlock; // marmint ugy ertve, hogy a kodban elotte (szoval ha utana van ugyanabban a blockban, akkor ez false)
+	private int terminalBBId = -2;
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
@@ -64,11 +65,15 @@ public class BagOperatorHost<IN, OUT>
 
 	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
+    private volatile boolean terminalBBReached;
+
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId, boolean inputInSameBlock) {
 		this.op = op;
 		this.bbId = bbId;
 		this.inputBbId = inputBbId;
 		this.inputInSameBlock = inputInSameBlock;
+		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
+		assert this.terminalBBId >= 0;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
@@ -96,10 +101,14 @@ public class BagOperatorHost<IN, OUT>
 
 		outCFLSizes = new ArrayDeque<>();
 
+        terminalBBReached = false;
+
 		outCollector = new MyCollector();
 		op.giveOutputCollector(outCollector);
 
 		cflMan = CFLManager.getSing();
+
+		cflMan.specifyTerminalBB(terminalBBId);
 	}
 
 	@Override
@@ -210,10 +219,14 @@ public class BagOperatorHost<IN, OUT>
 			}
 
 			outCFLSizes.poll();
-			if(outCFLSizes.size()>0) {
+			if(outCFLSizes.size() > 0) { // ha van jelenleg varakozo munka
 				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
 				startOutBag();
-			}
+			} else {
+                if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
+                    cflMan.unsubscribe(cb);
+                }
+            }
 		}
 
 		@Override
@@ -308,6 +321,7 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	private class MyCFLCallback implements CFLCallback {
+
 		public void notify(List<Integer> cfl) {
 			synchronized (BagOperatorHost.this) {
 				latestCFL = cfl;
@@ -352,7 +366,15 @@ public class BagOperatorHost<IN, OUT>
 				}
 			}
 		}
-	}
+
+        @Override
+        public void notifyTerminalBB() {
+            terminalBBReached = true;
+			if (outCFLSizes.isEmpty()) {
+				cflMan.unsubscribe(cb);
+			}
+        }
+    }
 
 	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal) {
 		assert splitId == outs.size();

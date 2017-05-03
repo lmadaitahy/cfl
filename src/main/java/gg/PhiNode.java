@@ -43,6 +43,8 @@ public class PhiNode<T>
 
 	private ArrayList<Input> inputs;
 
+	private boolean terminalBBReached;
+
 	public PhiNode(int bbId) {
 		this.bbId = bbId;
 		this.inputs = new ArrayList<>();
@@ -81,6 +83,8 @@ public class PhiNode<T>
 		}
 
 		outCFLSizes = new ArrayDeque<>();
+
+		terminalBBReached = false;
 
 		cflMan = CFLManager.getSing();
 	}
@@ -179,8 +183,10 @@ public class PhiNode<T>
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte)-1), 0));
 
 			outCFLSizes.poll();
-			if(outCFLSizes.size()>0) {
+			if(outCFLSizes.size() > 0) { // ha van jelenleg varakozo munka
 				startOutBag();
+			} else if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
+				cflMan.unsubscribe(cb);
 			}
 		}
 	}
@@ -259,6 +265,7 @@ public class PhiNode<T>
 	}
 
 	private class MyCFLCallback implements CFLCallback {
+
 		public void notify(List<Integer> cfl) {
 			synchronized (PhiNode.this) {
 				latestCFL = cfl;
@@ -271,6 +278,14 @@ public class PhiNode<T>
 						startOutBag();
 					}
 				}
+			}
+		}
+
+		@Override
+		public void notifyTerminalBB() {
+			terminalBBReached = true;
+			if (outCFLSizes.isEmpty()) {
+				cflMan.unsubscribe(cb);
 			}
 		}
 	}

@@ -2,28 +2,28 @@ package gg.jobs;
 
 import gg.*;
 import gg.operators.ConditionNode;
-import gg.operators.IdMap;
 import gg.operators.Bagify;
 import gg.operators.IncMap;
 import gg.operators.SmallerThan;
 import gg.util.Unit;
 import gg.util.Util;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
-import scala.xml.Elem;
 
 import java.util.Arrays;
 
 /**
+ * // BB 0
  * i = 1
  * do {
+ *     // BB 1
  *     i = i + 1
  * } while (i < 10)
+ * // BB 2
  * print(i)
  */
 
@@ -37,11 +37,11 @@ public class CFLProbaSimpleCF {
 
 		env.setBufferTimeout(bufferTimeout); // ez a lenyeg!
 
+		CFLConfig.getInstance().terminalBBId = 2;
 		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
 //		env.addSource(new KickoffSource(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 //				, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 //				, 1, 2)).addSink(new DiscardingSink<>());
-
 
 
 		Integer[] input = new Integer[]{1};

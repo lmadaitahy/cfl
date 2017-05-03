@@ -1,9 +1,6 @@
 package gg.jobs;
 
-import gg.BagOperatorHost;
-import gg.CFLManager;
-import gg.ElementOrEvent;
-import gg.KickoffSource;
+import gg.*;
 import gg.operators.IdMap;
 import gg.operators.Bagify;
 import gg.util.Util;
@@ -19,6 +16,7 @@ public class CFLProba1 {
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+		CFLConfig.getInstance().terminalBBId = 0;
 		env.addSource(new KickoffSource(0)).addSink(new DiscardingSink<>());
 
 		String[] words = new String[]{"alma", "korte", "alma", "b", "b", "b", "c", "d", "d"};
