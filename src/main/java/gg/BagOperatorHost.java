@@ -36,7 +36,7 @@ public class BagOperatorHost<IN, OUT>
 			InputParaSettable<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
 			Serializable {
 
-	protected static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
+	private static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
 
 	private BagOperator<IN,OUT> op;
 	private int bbId;
@@ -53,8 +53,6 @@ public class BagOperatorHost<IN, OUT>
 	private MyCFLCallback cb;
 
 	private InputSubpartition<IN>[] inputSubpartitions;
-
-	private MyCollector outCollector;
 
 	// ----------------------
 
@@ -83,6 +81,7 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public void setup(StreamTask<?, ?> containingTask, StreamConfig config, Output<StreamRecord<ElementOrEvent<OUT>>> output) {
 		super.setup(containingTask, config, output);
 
@@ -103,8 +102,7 @@ public class BagOperatorHost<IN, OUT>
 
         terminalBBReached = false;
 
-		outCollector = new MyCollector();
-		op.giveOutputCollector(outCollector);
+		op.giveOutputCollector(new MyCollector());
 
 		cflMan = CFLManager.getSing();
 
@@ -382,9 +380,9 @@ public class BagOperatorHost<IN, OUT>
 		return this;
 	}
 
-	enum OutState {IDLE, DAMMING, WAITING, FORWARDING}
+	private enum OutState {IDLE, DAMMING, WAITING, FORWARDING}
 
-	public final class Out implements Serializable {
+	private final class Out implements Serializable {
 
 		// Egyelore nem csinalunk kulon BB elerese altal kivaltott discardot. (Amugy ha uj out bag van, akkor eldobodik a reginek a buffere igy is.)
 
@@ -413,7 +411,7 @@ public class BagOperatorHost<IN, OUT>
 		OutState state = OutState.IDLE;
 		int cflSize = -1; // The CFL that is being emitted. We need this, because cflSizes becomes empty when we become waiting.
 
-		public Out(byte splitId, int targetBbId, boolean normal) {
+		Out(byte splitId, int targetBbId, boolean normal) {
 			this.splitId = splitId;
 			this.targetBbId = targetBbId;
 			this.normal = normal;

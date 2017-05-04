@@ -7,8 +7,8 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
 // that these calls to the CFLManager happen a on the TMs.
 public class KickoffSource implements SourceFunction<Unit> {
 
-	int[] kickoffBBs;
-	int terminalBBId = -2;
+	private final int[] kickoffBBs;
+	private int terminalBBId = -2;
 
 	public KickoffSource(int... kickoffBBs) {
 		this.kickoffBBs = kickoffBBs;
