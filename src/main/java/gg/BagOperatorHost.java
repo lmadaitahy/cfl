@@ -23,12 +23,6 @@ import java.util.Queue;
 //  - pl. amikor megvaltozik a parallelism
 //  - keyBy helyett is partitionCustom fog kelleni
 
-// kiserletek:
-//  - ConnectedComponents
-//    - kis adattal, pl. egy hosszu linearis graffal
-//    - nagy adattal, hogy a mutable bag-et be tudjuk mutatni
-//  - bonyolult control flow, ld. doc
-
 
 public class BagOperatorHost<IN, OUT>
 		extends AbstractStreamOperator<ElementOrEvent<OUT>>
@@ -367,6 +361,7 @@ public class BagOperatorHost<IN, OUT>
 
         @Override
         public void notifyTerminalBB() {
+			LOG.info("CFL notifyTerminalBB");
             terminalBBReached = true;
 			if (outCFLSizes.isEmpty()) {
 				cflMan.unsubscribe(cb);
