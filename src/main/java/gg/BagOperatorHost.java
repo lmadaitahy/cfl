@@ -34,9 +34,7 @@ public class BagOperatorHost<IN, OUT>
 
 	private BagOperator<IN,OUT> op;
 	private int bbId;
-	private int inputBbId;
 	private int inputParallelism = -1;
-	private boolean inputInSameBlock; // marmint ugy ertve, hogy a kodban elotte (szoval ha utana van ugyanabban a blockban, akkor ez false)
 	private int terminalBBId = -2;
 
 	// ---------------------- Initialized in setup (i.e., on TM):
@@ -46,27 +44,30 @@ public class BagOperatorHost<IN, OUT>
 	private CFLManager cflMan;
 	private MyCFLCallback cb;
 
-	private InputSubpartition<IN>[] inputSubpartitions;
+	private ArrayList<Input> inputs;
 
 	// ----------------------
 
 	private List<Integer> latestCFL; //majd vigyazni, hogy ez valszeg ugyanaz az objektumpeldany, mint ami a CFLManagerben van
 	private Queue<Integer> outCFLSizes; // ha nem ures, akkor epp az elson dolgozunk; ha ures, akkor nem dolgozunk
-	private int inputCFLSize = -1; // always -1 when not working on an output bag
-	private int finishedSubpartitionCounter = -1; // always -1 when not working on an output bag
 
 	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
     private volatile boolean terminalBBReached;
 
-	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int inputBbId, boolean inputInSameBlock) {
+	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId) {
 		this.op = op;
 		this.bbId = bbId;
-		this.inputBbId = inputBbId;
-		this.inputInSameBlock = inputInSameBlock;
+		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
 		assert this.terminalBBId >= 0;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
+	}
+
+	public BagOperatorHost<IN,OUT> addInput(int id, int bbId, boolean inputInSameBlock) {
+		assert id == inputs.size();
+		inputs.add(new Input(id, bbId, inputInSameBlock));
+		return this;
 	}
 
 	@Override
@@ -87,9 +88,12 @@ public class BagOperatorHost<IN, OUT>
 			//inputParallelism = CFLManager.numAllSlots;
 			throw new RuntimeException("inputParallelism is not set. Use bt instead of transform!");
 		}
-		inputSubpartitions = new InputSubpartition[inputParallelism];
-		for(int i=0; i<inputSubpartitions.length; i++){
-			inputSubpartitions[i] = new InputSubpartition<>();
+
+		for(Input inp: inputs) {
+			inp.inputSubpartitions = new InputSubpartition[inputParallelism];
+			for (int i = 0; i < inp.inputSubpartitions.length; i++) {
+				inp.inputSubpartitions[i] = new InputSubpartition<>();
+			}
 		}
 
 		outCFLSizes = new ArrayDeque<>();
@@ -117,7 +121,13 @@ public class BagOperatorHost<IN, OUT>
 	synchronized public void processElement(StreamRecord<ElementOrEvent<IN>> streamRecord) throws Exception {
 
 		ElementOrEvent<IN> eleOrEvent = streamRecord.getValue();
-		InputSubpartition<IN> sp = inputSubpartitions[eleOrEvent.subPartitionId];
+		if (inputs.size() == 1) {
+			assert eleOrEvent.logicalInputId == -1;
+			eleOrEvent.logicalInputId = 0; // This is to avoid having to have an extra map to set this for even one-input operators
+		}
+		assert eleOrEvent.logicalInputId != -1; // (kell egy extra map, ami kitolti (ha nem egyinputos))
+		Input input = inputs.get(eleOrEvent.logicalInputId);
+		InputSubpartition<IN> sp = input.inputSubpartitions[eleOrEvent.subPartitionId];
 
 		if (eleOrEvent.element != null) {
 
@@ -136,8 +146,8 @@ public class BagOperatorHost<IN, OUT>
 				case START:
 					assert sp.status == InputSubpartition.Status.CLOSED;
 					sp.status = InputSubpartition.Status.OPEN;
-					if(inputCFLSize != -1) {
-						if(inputCFLSize == ev.cflSize){ // It is just what we need for the current out bag
+					if(input.inputCFLSize != -1) {
+						if(input.inputCFLSize == ev.cflSize){ // It is just what we need for the current out bag
 							sp.damming = false;
 						} else { // It doesn't match our current out bag
 							sp.damming = true;
@@ -153,14 +163,14 @@ public class BagOperatorHost<IN, OUT>
 				case END:
 					assert sp.status == InputSubpartition.Status.OPEN;
 					sp.status = InputSubpartition.Status.CLOSED;
-					if(!sp.damming && !sp.buffers.isEmpty() && sp.cflSizes.get(sp.cflSizes.size()-1) == inputCFLSize){
+					if(!sp.damming && !sp.buffers.isEmpty() && sp.cflSizes.get(sp.cflSizes.size()-1) == input.inputCFLSize){
 						// ez ugyebar az az eset amikor kozben valtott a damming false-ra
-						giveBufferToBagOperator(sp, sp.cflSizes.size()-1);
+						giveBufferToBagOperator(sp, sp.cflSizes.size() - 1, eleOrEvent.logicalInputId);
 					} else {
 						assert !sp.damming || !sp.buffers.isEmpty();
 						if(!sp.damming) {
 							// ez az az eset, amikor egyaltalan nem volt dammelve
-							incAndCheckFinishedSubpartitionCounter();
+							incAndCheckFinishedSubpartitionCounter(eleOrEvent.logicalInputId);
 						}
 					}
 					break;
@@ -228,7 +238,7 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	// i: buffer index in inputSubpartitions
-	synchronized private void giveBufferToBagOperator(InputSubpartition<IN> sp, int i) {
+	synchronized private void giveBufferToBagOperator(InputSubpartition<IN> sp, int i, int logicalInputId) {
 		// Note: We get here only after all the elements for this bag from this input subpartition have arrived
 
 		for(IN e: sp.buffers.get(i)) {
@@ -237,52 +247,39 @@ public class BagOperatorHost<IN, OUT>
 
 		// todo: remove buffer if bonyolult CFG-s condition
 
-		incAndCheckFinishedSubpartitionCounter();
+		incAndCheckFinishedSubpartitionCounter(logicalInputId);
 	}
 
-	synchronized private void incAndCheckFinishedSubpartitionCounter() {
-		finishedSubpartitionCounter++;
-		if(finishedSubpartitionCounter == inputParallelism) {
-			inputCFLSize = -1;
-			finishedSubpartitionCounter = -1;
-			op.closeInBag();
+	synchronized private void incAndCheckFinishedSubpartitionCounter(int inputId) {
+		Input input = inputs.get(inputId);
+		input.finishedSubpartitionCounter++;
+		if (input.finishedSubpartitionCounter == inputParallelism) {
+			input.inputCFLSize = -1;
+			input.finishedSubpartitionCounter = -1;
+			op.closeInBag(inputId);
 		}
 	}
 
 	synchronized private void startOutBag() {
 		assert !outCFLSizes.isEmpty();
-		Integer cflSize = outCFLSizes.peek();
+		Integer outCFLSize = outCFLSizes.peek();
 
-		// figure out the input bag ID
-		assert inputCFLSize == -1;
-		if(inputInSameBlock) {
-			inputCFLSize = cflSize;
-		} else {
-			int i;
-			for (i = cflSize - 2; inputBbId == latestCFL.get(i); i--) {}
-			inputCFLSize = i + 1;
-		}
-
-
-		assert finishedSubpartitionCounter == -1;
-		finishedSubpartitionCounter = 0;
-
-		assert latestCFL.get(cflSize - 1) == bbId;
+		assert latestCFL.get(outCFLSize - 1) == bbId;
 
 		// Treat outputs
 		for(Out o: outs) {
 			boolean targetReached = false;
-			for (int i=cflSize; i<latestCFL.size(); i++) {
+			for (int i = outCFLSize; i < latestCFL.size(); i++) {
 				if(latestCFL.get(i) == o.targetBbId) {
 					targetReached = true;
 				}
 			}
-			o.cflSize = cflSize;
+			o.cflSize = outCFLSize;
 			if(!targetReached && !o.normal){
 				o.state = OutState.DAMMING;
 				o.buffer = new ArrayList<>();
 			} else {
-				o.sendStart(cflSize);
+				o.sendStart(outCFLSize);
 				o.state = OutState.FORWARDING;
 			}
 		}
@@ -290,21 +287,51 @@ public class BagOperatorHost<IN, OUT>
 		// Tell the BagOperator that we are opening a new bag
 		op.OpenInBag();
 
+		for (Input input: inputs) {
+			assert input.finishedSubpartitionCounter == -1;
+			input.finishedSubpartitionCounter = 0;
+
+			for (InputSubpartition<IN> sp : input.inputSubpartitions) {
+				sp.damming = true; // ezek kozul ugyebar nemelyiket majd false-ra allitja az activateLogicalInput mindjart
+			}
+		}
+
+		chooseLogicalInputs(outCFLSize);
+	}
+
+	protected void chooseLogicalInputs(int outCFLSize) {
+		// figure out the input bag ID
+		for (Input input: inputs) {
+			assert input.inputCFLSize == -1;
+			if (input.inputInSameBlock) {
+				input.inputCFLSize = outCFLSize;
+			} else {
+				int i;
+				for (i = outCFLSize - 2; input.bbId == latestCFL.get(i); i--) {}
+				input.inputCFLSize = i + 1;
+			}
+
+			activateLogicalInput(input.id);
+		}
+	}
+
+	private void activateLogicalInput(int id) {
 		// Tell the input subpartitions what to do:
 		//  - Find a buffer that has the appropriate id
 		//    - If it is a finished buffer, then give all the elements to the BagOperator
 		//    - If it is the last buffer and not finished, then remove the dam
 		//  - If there is no appropriate buffer, then we do nothing for now
-		for(InputSubpartition<IN> sp: inputSubpartitions) {
+		Input input = inputs.get(id);
+		for(InputSubpartition<IN> sp: input.inputSubpartitions) {
 			assert sp.cflSizes.size() == sp.buffers.size();
 			int i;
 			for(i=0; i<sp.cflSizes.size(); i++) {
-				if(sp.cflSizes.get(i) == inputCFLSize)
+				if(sp.cflSizes.get(i) == input.inputCFLSize)
 					break;
 			}
 			if(i<sp.cflSizes.size()) { // we have found an appropriate buffer
 				if(i<sp.cflSizes.size()-1 || sp.status == InputSubpartition.Status.CLOSED) { // it's finished
-					giveBufferToBagOperator(sp, i);
+					giveBufferToBagOperator(sp, i, id);
 				} else { // it's the last one and not finished
 					sp.damming = false;
 				}
@@ -424,6 +451,23 @@ public class BagOperatorHost<IN, OUT>
 		void sendEnd(int cflSize) {
 			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, cflSize);
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId), 0));
+		}
+	}
+
+	// Logical input
+	private final class Input implements Serializable {
+
+		int id; // marmint sorszam az inputs tombben
+		int bbId;
+		boolean inputInSameBlock; // marmint ugy ertve, hogy a kodban elotte (szoval ha utana van ugyanabban a blockban, akkor ez false)
+		InputSubpartition<IN>[] inputSubpartitions;
+		int finishedSubpartitionCounter = -1; // always -1 when not working on an output bag or when we are not participating in the computation of the current out bag
+		int inputCFLSize = -1; // always -1 when not working on an output bag
+
+		public Input(int id, int bbId, boolean inputInSameBlock) {
+			this.id = id;
+			this.bbId = bbId;
+			this.inputInSameBlock = inputInSameBlock;
 		}
 	}
 }

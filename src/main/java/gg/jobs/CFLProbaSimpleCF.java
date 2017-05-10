@@ -22,7 +22,7 @@ import java.util.Arrays;
  * do {
  *     // BB 1
  *     i = i + 1
- * } while (i < 10)
+ * } while (i < 100)
  * // BB 2
  * print(i)
  */
@@ -35,7 +35,7 @@ public class CFLProbaSimpleCF {
 
 		final int bufferTimeout = 0;
 
-		env.setBufferTimeout(bufferTimeout); // ez a lenyeg!
+		env.setBufferTimeout(bufferTimeout); // ez a lenyeg, a tobbi setBufferTimeout asszem nem is kene
 
 		CFLConfig.getInstance().terminalBBId = 2;
 		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
@@ -74,7 +74,8 @@ public class CFLProbaSimpleCF {
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("inc-map",inputBag.getType(),
 						new BagOperatorHost<>(
-								new IncMap(), 1, 1, true)
+								new IncMap(), 1)
+								.addInput(0, 1, true)
 								.out(0,1,false) // back edge
 								.out(1,2,false) // out of the loop
 								.out(2,1,true)) // to exit condition
@@ -94,14 +95,15 @@ public class CFLProbaSimpleCF {
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("smaller-than",Util.tpe(),
 						new BagOperatorHost<>(
-								new SmallerThan(100), 1, 1, true)
+								new SmallerThan(100), 1)
+								.addInput(0, 1, true)
 								.out(0,1,true)).setParallelism(1).setBufferTimeout(bufferTimeout);
 
 		DataStream<ElementOrEvent<Unit>> exitCond = smallerThan
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
-								new ConditionNode(1,2), 1, 1, true)).setParallelism(1).setBufferTimeout(bufferTimeout);
+								new ConditionNode(1,2), 1).addInput(0, 1, true)).setParallelism(1).setBufferTimeout(bufferTimeout);
 
 		// Edge going out of the loop
 		DataStream<ElementOrEvent<Integer>> output = incedSplit.select("1");

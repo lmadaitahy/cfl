@@ -27,7 +27,7 @@ public abstract class SingletonBagOperator<IN, OUT> implements BagOperator<IN, O
 	}
 
 	@Override
-	public void closeInBag() {
+	public void closeInBag(int inputId) {
 		assert c == 1; // Each of our input bags should contain exactly one element.  (ez elszurodhat ha pl. nem 1 a parallelismje egy SingletonBagOperatornak)
 		c = -1;
 		collector.closeBag();

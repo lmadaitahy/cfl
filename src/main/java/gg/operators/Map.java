@@ -19,7 +19,7 @@ public abstract class Map<IN,OUT> implements BagOperator<IN,OUT>, Serializable {
 	}
 
 	@Override
-	public void closeInBag() {
+	public void closeInBag(int inputId) {
 		System.out.println("BagMap closeInBag");
 		out.closeBag();
 	}

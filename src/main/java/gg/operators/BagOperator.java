@@ -10,6 +10,6 @@ public interface BagOperator<IN, OUT> {
 
 	void pushInElement(IN e);
 
-	void closeInBag();
+	void closeInBag(int inputId);
 
 }
