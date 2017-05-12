@@ -307,7 +307,7 @@ public class BagOperatorHost<IN, OUT>
 				input.inputCFLSize = outCFLSize;
 			} else {
 				int i;
-				for (i = outCFLSize - 2; input.bbId == latestCFL.get(i); i--) {}
+				for (i = outCFLSize - 2; input.bbId != latestCFL.get(i); i--) {}
 				input.inputCFLSize = i + 1;
 			}
 
@@ -396,6 +396,7 @@ public class BagOperatorHost<IN, OUT>
         }
     }
 
+    // normal means not conditional
 	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal) {
 		assert splitId == outs.size();
 		outs.add(new Out((byte)splitId, targetBbId, normal));

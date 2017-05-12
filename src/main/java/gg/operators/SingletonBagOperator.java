@@ -7,9 +7,11 @@ import gg.BagOperatorOutputCollector;
  */
 public abstract class SingletonBagOperator<IN, OUT> implements BagOperator<IN, OUT> {
 
+	private static final int closedC = -1000000;
+
 	protected BagOperatorOutputCollector<OUT> collector;
 
-	private int c = -1;
+	private int c = closedC;
 
 	@Override
 	public void giveOutputCollector(BagOperatorOutputCollector<OUT> out) {
@@ -18,6 +20,7 @@ public abstract class SingletonBagOperator<IN, OUT> implements BagOperator<IN, O
 
 	@Override
 	public void OpenInBag() {
+		assert c == closedC;
 		c = 0;
 	}
 
@@ -29,7 +32,7 @@ public abstract class SingletonBagOperator<IN, OUT> implements BagOperator<IN, O
 	@Override
 	public void closeInBag(int inputId) {
 		assert c == 1; // Each of our input bags should contain exactly one element.  (ez elszurodhat ha pl. nem 1 a parallelismje egy SingletonBagOperatornak)
-		c = -1;
+		c = closedC;
 		collector.closeBag();
 	}
 }

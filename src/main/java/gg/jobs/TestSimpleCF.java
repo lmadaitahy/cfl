@@ -1,10 +1,7 @@
 package gg.jobs;
 
 import gg.*;
-import gg.operators.ConditionNode;
-import gg.operators.Bagify;
-import gg.operators.IncMap;
-import gg.operators.SmallerThan;
+import gg.operators.*;
 import gg.util.Unit;
 import gg.util.Util;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -13,6 +10,8 @@ import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -24,14 +23,18 @@ import java.util.Arrays;
  *     i = i + 1
  * } while (i < 100)
  * // BB 2
- * print(i)
+ * assert i == 100
  */
 
-public class CFLProbaSimpleCF {
+public class TestSimpleCF {
+
+	private static final Logger LOG = LoggerFactory.getLogger(TestSimpleCF.class);
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		//env.getConfig().setParallelism(1);
+
+		final int n = 100;
 
 		final int bufferTimeout = 0;
 
@@ -95,7 +98,7 @@ public class CFLProbaSimpleCF {
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("smaller-than",Util.tpe(),
 						new BagOperatorHost<>(
-								new SmallerThan(100), 1)
+								new SmallerThan(n), 1)
 								.addInput(0, 1, true)
 								.out(0,1,true)).setParallelism(1).setBufferTimeout(bufferTimeout);
 
@@ -103,12 +106,18 @@ public class CFLProbaSimpleCF {
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
-								new ConditionNode(1,2), 1).addInput(0, 1, true)).setParallelism(1).setBufferTimeout(bufferTimeout);
+								new ConditionNode(1,2), 1)
+								.addInput(0, 1, true)).setParallelism(1).setBufferTimeout(bufferTimeout);
 
 		// Edge going out of the loop
 		DataStream<ElementOrEvent<Integer>> output = incedSplit.select("1");
 
-		output.print();
+		output.bt("Check i == " + n, Util.tpe(),
+				new BagOperatorHost<>(
+						new AssertEquals<>(n), 2)
+						.addInput(0, 1, false)).setParallelism(1);
+
+		output.addSink(new DiscardingSink<>());
 
 		//System.out.println(env.getExecutionPlan());
 		env.execute();

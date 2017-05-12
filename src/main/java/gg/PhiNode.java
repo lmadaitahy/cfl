@@ -26,6 +26,7 @@ public class PhiNode<T>
 
 	private int bbId;
 	private int inputParallelism = -1;
+	private int terminalBBId = -2;
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
@@ -48,6 +49,7 @@ public class PhiNode<T>
 	public PhiNode(int bbId) {
 		this.bbId = bbId;
 		this.inputs = new ArrayList<>();
+		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
@@ -87,6 +89,8 @@ public class PhiNode<T>
 		terminalBBReached = false;
 
 		cflMan = CFLManager.getSing();
+
+		cflMan.specifyTerminalBB(terminalBBId);
 	}
 
 	@Override

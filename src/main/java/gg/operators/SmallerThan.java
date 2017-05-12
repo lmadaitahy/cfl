@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 public class SmallerThan extends SingletonBagOperator<Integer,Boolean> implements Serializable {
 
-	private int x;
+	private final int x;
 
 	public SmallerThan(int x) {
 		this.x = x;
