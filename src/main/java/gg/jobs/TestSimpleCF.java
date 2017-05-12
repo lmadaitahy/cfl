@@ -67,9 +67,13 @@ public class TestSimpleCF {
 		DataStream<ElementOrEvent<Integer>> phi = it
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("phi",inputBag.getType(),
-						new PhiNode<Integer>(1)
-								.addInput(0, 0)
-								.addInput(1, 1));
+//						new PhiNode<Integer>(1)
+//								.addInput(0, 0)
+//								.addInput(1, 1));
+						new PhiNode2<Integer>(1)
+								.addInput(0, 0, false)
+								.addInput(1, 1, false)
+								.out(0, 1, true));
 
 
 		SplitStream<ElementOrEvent<Integer>> incedSplit = phi

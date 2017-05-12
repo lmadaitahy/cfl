@@ -44,11 +44,11 @@ public class BagOperatorHost<IN, OUT>
 	private CFLManager cflMan;
 	private MyCFLCallback cb;
 
-	private ArrayList<Input> inputs;
+	protected ArrayList<Input> inputs;
 
 	// ----------------------
 
-	private List<Integer> latestCFL; //majd vigyazni, hogy ez valszeg ugyanaz az objektumpeldany, mint ami a CFLManagerben van
+	protected List<Integer> latestCFL; //majd vigyazni, hogy ez valszeg ugyanaz az objektumpeldany, mint ami a CFLManagerben van
 	private Queue<Integer> outCFLSizes; // ha nem ures, akkor epp az elson dolgozunk; ha ures, akkor nem dolgozunk
 
 	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
@@ -220,7 +220,7 @@ public class BagOperatorHost<IN, OUT>
 				}
 			}
 
-			outCFLSizes.poll();
+			outCFLSizes.remove();
 			if(outCFLSizes.size() > 0) { // ha van jelenleg varakozo munka
 				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
 				startOutBag();
@@ -252,6 +252,7 @@ public class BagOperatorHost<IN, OUT>
 
 	synchronized private void incAndCheckFinishedSubpartitionCounter(int inputId) {
 		Input input = inputs.get(inputId);
+		assert input.finishedSubpartitionCounter >= 0;
 		input.finishedSubpartitionCounter++;
 		if (input.finishedSubpartitionCounter == inputParallelism) {
 			input.inputCFLSize = -1;
@@ -289,7 +290,6 @@ public class BagOperatorHost<IN, OUT>
 
 		for (Input input: inputs) {
 			assert input.finishedSubpartitionCounter == -1;
-			input.finishedSubpartitionCounter = 0;
 
 			for (InputSubpartition<IN> sp : input.inputSubpartitions) {
 				sp.damming = true; // ezek kozul ugyebar nemelyiket majd false-ra allitja az activateLogicalInput mindjart
@@ -315,13 +315,15 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
-	private void activateLogicalInput(int id) {
+	// Note: inputCFLSize should be set before this
+	protected void activateLogicalInput(int id) {
 		// Tell the input subpartitions what to do:
 		//  - Find a buffer that has the appropriate id
 		//    - If it is a finished buffer, then give all the elements to the BagOperator
 		//    - If it is the last buffer and not finished, then remove the dam
 		//  - If there is no appropriate buffer, then we do nothing for now
 		Input input = inputs.get(id);
+		input.finishedSubpartitionCounter = 0;
 		for(InputSubpartition<IN> sp: input.inputSubpartitions) {
 			assert sp.cflSizes.size() == sp.buffers.size();
 			int i;
@@ -456,7 +458,7 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	// Logical input
-	private final class Input implements Serializable {
+	protected final class Input implements Serializable {
 
 		int id; // marmint sorszam az inputs tombben
 		int bbId;

@@ -10,8 +10,8 @@ public class ConditionNode extends SingletonBagOperator<Boolean, Unit> implement
 
 	protected static final Logger LOG = LoggerFactory.getLogger(ConditionNode.class);
 
-	private int trueBranchBbId;
-	private int falseBranchBbId;
+	private final int trueBranchBbId;
+	private final int falseBranchBbId;
 
 	public ConditionNode(int trueBranchBbId, int falseBranchBbId) { //todo: ezeknek ugyebar tomboknek kene lenniuk
 		this.trueBranchBbId = trueBranchBbId;

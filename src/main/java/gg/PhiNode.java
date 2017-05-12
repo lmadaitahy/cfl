@@ -15,7 +15,7 @@ import java.io.Serializable;
 import java.util.*;
 
 
-
+// Note: This is the old PhiNode. Use PhiNode2 instead!
 public class PhiNode<T>
 		extends AbstractStreamOperator<ElementOrEvent<T>>
 		implements OneInputStreamOperator<ElementOrEvent<T>,ElementOrEvent<T>>,
@@ -47,6 +47,7 @@ public class PhiNode<T>
 	private boolean terminalBBReached;
 
 	public PhiNode(int bbId) {
+		assert false; // Use PhiNode2 instead!
 		this.bbId = bbId;
 		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
