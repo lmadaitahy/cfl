@@ -38,7 +38,7 @@ public class TestSimpleCF {
 
 		final int bufferTimeout = 0;
 
-		env.setBufferTimeout(bufferTimeout); // ez a lenyeg, a tobbi setBufferTimeout asszem nem is kene
+		env.setBufferTimeout(bufferTimeout);
 
 		CFLConfig.getInstance().terminalBBId = 2;
 		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
@@ -60,17 +60,16 @@ public class TestSimpleCF {
 				e.logicalInputId = 0;
 				return e;
 			}
-		}).setBufferTimeout(bufferTimeout);
+		});
 
 		IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(1000000000);
-		it.setBufferTimeout(bufferTimeout);
 
 		DataStream<ElementOrEvent<Integer>> phi = it
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("phi",inputBag.getType(),
 						new PhiNode<Integer>(1)
 								.addInput(0, 0)
-								.addInput(1, 1)).setBufferTimeout(bufferTimeout);
+								.addInput(1, 1));
 
 
 		SplitStream<ElementOrEvent<Integer>> incedSplit = phi
@@ -82,7 +81,7 @@ public class TestSimpleCF {
 								.out(0,1,false) // back edge
 								.out(1,2,false) // out of the loop
 								.out(2,1,true)) // to exit condition
-				.setBufferTimeout(bufferTimeout).split(new CondOutputSelector<>());
+				.split(new CondOutputSelector<>());
 
 		DataStream<ElementOrEvent<Integer>> incedSplitL = incedSplit.select("0").map(new MapFunction<ElementOrEvent<Integer>, ElementOrEvent<Integer>>() {
 			@Override
@@ -90,7 +89,7 @@ public class TestSimpleCF {
 				e.logicalInputId = 1;
 				return e;
 			}
-		}).setBufferTimeout(bufferTimeout);
+		});
 
 		it.closeWith(incedSplitL);
 
@@ -100,14 +99,14 @@ public class TestSimpleCF {
 						new BagOperatorHost<>(
 								new SmallerThan(n), 1)
 								.addInput(0, 1, true)
-								.out(0,1,true)).setParallelism(1).setBufferTimeout(bufferTimeout);
+								.out(0,1,true)).setParallelism(1);
 
 		DataStream<ElementOrEvent<Unit>> exitCond = smallerThan
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
 								new ConditionNode(1,2), 1)
-								.addInput(0, 1, true)).setParallelism(1).setBufferTimeout(bufferTimeout);
+								.addInput(0, 1, true)).setParallelism(1);
 
 		// Edge going out of the loop
 		DataStream<ElementOrEvent<Integer>> output = incedSplit.select("1");
