@@ -5,7 +5,6 @@ import gg.operators.*;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
-import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
@@ -29,7 +28,7 @@ import java.util.Arrays;
 
 public class TestSimpleCF {
 
-	private static final Logger LOG = LoggerFactory.getLogger(TestSimpleCF.class);
+	//private static final Logger LOG = LoggerFactory.getLogger(TestSimpleCF.class);
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();

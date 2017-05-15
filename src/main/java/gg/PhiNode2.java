@@ -1,7 +1,7 @@
 package gg;
 
 
-import gg.operators.Identity;
+import gg.operators.IdMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +13,7 @@ public class PhiNode2<T> extends BagOperatorHost<T,T> implements Serializable {
 	protected static final Logger LOG = LoggerFactory.getLogger(PhiNode2.class);
 
 	public PhiNode2(int bbId) {
-		super(new Identity<T>(), bbId);
+		super(new IdMap<T>(), bbId);
 	}
 
 	@Override

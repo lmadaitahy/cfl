@@ -6,22 +6,22 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 
-public class ConditionNode extends SingletonBagOperator<Boolean, Unit> implements Serializable {
+public class ConditionNode extends SingletonBagOperator<Boolean, Unit> {
 
 	protected static final Logger LOG = LoggerFactory.getLogger(ConditionNode.class);
 
 	private final int trueBranchBbId;
 	private final int falseBranchBbId;
 
-	public ConditionNode(int trueBranchBbId, int falseBranchBbId) { //todo: ezeknek ugyebar tomboknek kene lenniuk
+	public ConditionNode(int trueBranchBbId, int falseBranchBbId) { //todo: ideally, these would be arrays
 		this.trueBranchBbId = trueBranchBbId;
 		this.falseBranchBbId = falseBranchBbId;
 	}
 
 	@Override
-	public void pushInElement(Boolean e) {
-		super.pushInElement(e);
+	public void pushInElement(Boolean e, int logicalInputId) {
+		super.pushInElement(e, logicalInputId);
 		System.out.println("ConditionNode(" + e + ")");
-		collector.appendToCfl(e ? trueBranchBbId : falseBranchBbId);
+		out.appendToCfl(e ? trueBranchBbId : falseBranchBbId);
 	}
 }

@@ -66,6 +66,9 @@ public class PhiNode<T>
 	}
 
 	@Override
+	public void setName(String name) {}
+
+	@Override
 	public void setup(StreamTask<?, ?> containingTask, StreamConfig config, Output<StreamRecord<ElementOrEvent<T>>> output) {
 		super.setup(containingTask, config, output);
 

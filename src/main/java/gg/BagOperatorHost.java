@@ -19,11 +19,6 @@ import java.util.List;
 import java.util.Queue;
 
 
-// ha nem egyszeru forward a communication pattern, akkor kell egy partitionCustom, hogy az eventeket broadcastolni tudjuk
-//  - pl. amikor megvaltozik a parallelism
-//  - keyBy helyett is partitionCustom fog kelleni
-
-
 public class BagOperatorHost<IN, OUT>
 		extends AbstractStreamOperator<ElementOrEvent<OUT>>
 		implements OneInputStreamOperator<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
@@ -35,6 +30,7 @@ public class BagOperatorHost<IN, OUT>
 	private BagOperator<IN,OUT> op;
 	private int bbId;
 	private int inputParallelism = -1;
+	private String name;
 	private int terminalBBId = -2;
 
 	// ---------------------- Initialized in setup (i.e., on TM):
@@ -76,16 +72,18 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	@Override
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public void setup(StreamTask<?, ?> containingTask, StreamConfig config, Output<StreamRecord<ElementOrEvent<OUT>>> output) {
 		super.setup(containingTask, config, output);
 
-		//LOG.info("BagOperatorHost.setup");
-
 		this.subpartitionId = (short)getRuntimeContext().getIndexOfThisSubtask();
 
 		if (inputParallelism == -1) {
-			//inputParallelism = CFLManager.numAllSlots;
 			throw new RuntimeException("inputParallelism is not set. Use bt instead of transform!");
 		}
 
@@ -130,10 +128,9 @@ public class BagOperatorHost<IN, OUT>
 		InputSubpartition<IN> sp = input.inputSubpartitions[eleOrEvent.subPartitionId];
 
 		if (eleOrEvent.element != null) {
-
 			IN ele = eleOrEvent.element;
 			if(!sp.damming) {
-				op.pushInElement(ele);
+				op.pushInElement(ele, eleOrEvent.logicalInputId);
 			} else {
 				sp.buffers.get(sp.buffers.size()-1).add(ele);
 			}
@@ -185,6 +182,7 @@ public class BagOperatorHost<IN, OUT>
 	private class MyCollector implements BagOperatorOutputCollector<OUT> {
 		@Override
 		public void collectElement(OUT e) {
+			assert outs.size() != 0; // If the operator wants to emit an element but there are no outs, then we just probably forgot to call .out()
 			for(Out o: outs) {
 				assert o.state == OutState.FORWARDING || o.state == OutState.DAMMING;
 				if(o.state == OutState.FORWARDING) {
@@ -242,7 +240,7 @@ public class BagOperatorHost<IN, OUT>
 		// Note: We get here only after all the elements for this bag from this input subpartition have arrived
 
 		for(IN e: sp.buffers.get(i)) {
-			op.pushInElement(e);
+			op.pushInElement(e, logicalInputId);
 		}
 
 		// todo: remove buffer if bonyolult CFG-s condition
@@ -286,7 +284,7 @@ public class BagOperatorHost<IN, OUT>
 		}
 
 		// Tell the BagOperator that we are opening a new bag
-		op.OpenInBag();
+		op.openOutBag();
 
 		for (Input input: inputs) {
 			assert input.finishedSubpartitionCounter == -1;
@@ -323,6 +321,7 @@ public class BagOperatorHost<IN, OUT>
 		//    - If it is a finished buffer, then give all the elements to the BagOperator
 		//    - If it is the last buffer and not finished, then remove the dam
 		//  - If there is no appropriate buffer, then we do nothing for now
+		op.openInBag(id);
 		Input input = inputs.get(id);
 		input.finishedSubpartitionCounter = 0;
 		for(InputSubpartition<IN> sp: input.inputSubpartitions) {
@@ -399,7 +398,9 @@ public class BagOperatorHost<IN, OUT>
         }
     }
 
-    // normal means not conditional
+    // `normal` means not conditional.
+	// If `normal` is false, then we set to damming until we reach its BB.
+	// (This means that for example if targetBbId is the same as the operator's BbId, then we wait for the next iteration step.)
 	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal) {
 		assert splitId == outs.size();
 		outs.add(new Out((byte)splitId, targetBbId, normal));

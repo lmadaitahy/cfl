@@ -2,14 +2,32 @@ package gg.operators;
 
 import gg.BagOperatorOutputCollector;
 
-public interface BagOperator<IN, OUT> {
+import java.io.Serializable;
 
-	void giveOutputCollector(BagOperatorOutputCollector<OUT> out);
+public abstract class BagOperator<IN, OUT> implements Serializable {
 
-	void OpenInBag();
+	protected BagOperatorOutputCollector<OUT> out;
 
-	void pushInElement(IN e);
+	private boolean[] open = new boolean[]{false, false};
 
-	void closeInBag(int inputId);
+	public void giveOutputCollector(BagOperatorOutputCollector<OUT> out) {
+		this.out = out;
+	}
+
+	public void openOutBag() {}
+
+	public final void openInBag(int logicalInputId) {
+		assert !open[logicalInputId];
+		open[logicalInputId] = true;
+	}
+
+	public void pushInElement(IN e, int logicalInputId) {
+		assert open[logicalInputId];
+	}
+
+	public void closeInBag(int inputId) {
+		assert open[inputId];
+		open[inputId] = false;
+	}
 
 }

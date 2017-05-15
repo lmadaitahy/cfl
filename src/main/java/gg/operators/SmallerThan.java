@@ -11,9 +11,9 @@ public class SmallerThan extends SingletonBagOperator<Integer,Boolean> implement
 	}
 
 	@Override
-	public void pushInElement(Integer e) {
-		super.pushInElement(e);
+	public void pushInElement(Integer e, int logicalInputId) {
+		super.pushInElement(e, logicalInputId);
 		System.out.println("SmallerThaning");
-		collector.collectElement(e < x);
+		out.collectElement(e < x);
 	}
 }

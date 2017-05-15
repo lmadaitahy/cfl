@@ -5,6 +5,9 @@ import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
+/**
+ * Kb. mindenhova EventBroadcast kell. Konkretan nem lehet ket BagOperatorHost kozott Forward, hacsak nem 1-es a para a targetnel.
+ */
 public abstract class EventBroadcast<T> extends StreamPartitioner<ElementOrEvent<T>> {
 
 	private int[] singArr = new int[1];

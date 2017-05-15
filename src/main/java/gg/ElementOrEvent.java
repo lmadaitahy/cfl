@@ -1,6 +1,7 @@
 package gg;
 
 //TODO: check what serializer is being used. If Kryo, then I should provide a custom one instead.
+// (There might be a problem with the element field being type T)
 
 public class ElementOrEvent<T> {
 
