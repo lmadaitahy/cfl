@@ -122,7 +122,7 @@ public class BagOperatorHost<IN, OUT>
 
 		ElementOrEvent<IN> eleOrEvent = streamRecord.getValue();
 		if (inputs.size() == 1) {
-			assert eleOrEvent.logicalInputId == -1;
+			assert eleOrEvent.logicalInputId == -1 || eleOrEvent.logicalInputId == 0;
 			eleOrEvent.logicalInputId = 0; // This is to avoid having to have an extra map to set this for even one-input operators
 		}
 		assert eleOrEvent.logicalInputId != -1; // (kell egy extra map, ami kitolti (ha nem egyinputos))
@@ -299,6 +299,7 @@ public class BagOperatorHost<IN, OUT>
 		chooseLogicalInputs(outCFLSize);
 	}
 
+	// Note: this activates all the logical inputs. (Cf. the override in PhiNode, which activates only one.)
 	protected void chooseLogicalInputs(int outCFLSize) {
 		// figure out the input bag ID
 		for (Input input: inputs) {

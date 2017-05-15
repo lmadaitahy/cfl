@@ -26,7 +26,18 @@ public class ElementOrEvent<T> {
 		this.splitId = splitId;
 	}
 
+	public ElementOrEvent<T> copy() {
+		ElementOrEvent<T> c = new ElementOrEvent<T>();
+		c.subPartitionId = subPartitionId;
+		c.element = element;
+		c.event = event;
+		c.splitId = splitId;
+		c.logicalInputId = logicalInputId;
+		return c;
+	}
+
 	// Bag start or end
+	// Note: this should be immutable
 	public static class Event {
 
 		public enum Type {START, END}

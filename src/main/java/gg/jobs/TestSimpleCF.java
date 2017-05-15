@@ -2,6 +2,7 @@ package gg.jobs;
 
 import gg.*;
 import gg.operators.*;
+import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -54,13 +55,7 @@ public class TestSimpleCF {
 						.transform("bagify",
 								Util.tpe(), new Bagify<>());
 
-		DataStream<ElementOrEvent<Integer>> inputBag = inputBag0.map(new MapFunction<ElementOrEvent<Integer>, ElementOrEvent<Integer>>() {
-			@Override
-			public ElementOrEvent<Integer> map(ElementOrEvent<Integer> e) throws Exception {
-				e.logicalInputId = 0;
-				return e;
-			}
-		});
+		DataStream<ElementOrEvent<Integer>> inputBag = inputBag0.map(new LogicalInputIdFiller<>(0));
 
 		IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(1000000000);
 
@@ -87,13 +82,7 @@ public class TestSimpleCF {
 								.out(2,1,true)) // to exit condition
 				.split(new CondOutputSelector<>());
 
-		DataStream<ElementOrEvent<Integer>> incedSplitL = incedSplit.select("0").map(new MapFunction<ElementOrEvent<Integer>, ElementOrEvent<Integer>>() {
-			@Override
-			public ElementOrEvent<Integer> map(ElementOrEvent<Integer> e) throws Exception {
-				e.logicalInputId = 1;
-				return e;
-			}
-		});
+		DataStream<ElementOrEvent<Integer>> incedSplitL = incedSplit.select("0").map(new LogicalInputIdFiller<>(1));
 
 		it.closeWith(incedSplitL);
 
