@@ -1,6 +1,7 @@
 package gg.jobs;
 
 import gg.*;
+import gg.operators.AssertBagEquals;
 import gg.operators.IdMap;
 import gg.operators.Bagify;
 import gg.util.Util;
@@ -37,10 +38,15 @@ public class CFLProba1 {
 		DataStream<ElementOrEvent<String>> output = input
 				.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("id-map",input.getType(),
-				new BagOperatorHost<String, String>(
-						new IdMap<>(), 0).addInput(0, 0, true).out(0,0,true));
+				new BagOperatorHost<String, String>(new IdMap<>(), 0)
+						.addInput(0, 0, true)
+						.out(0,0,true));
 
-		output.print();
+		output
+				.setConnectionType(new gg.partitioners.Forward<>())
+				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0)
+						.addInput(0,0,true));
+
 		env.execute();
 	}
 }

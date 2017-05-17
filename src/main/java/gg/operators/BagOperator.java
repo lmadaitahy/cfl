@@ -25,10 +25,10 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 		this.name = name;
 	}
 
-
-	public void giveOutputCollector(BagOperatorOutputCollector<OUT> out) {
+	public final void giveOutputCollector(BagOperatorOutputCollector<OUT> out) {
 		this.out = out;
 	}
+
 
 	public void openOutBag() {
 		LOG.info("openOutBag[" + name + "]");

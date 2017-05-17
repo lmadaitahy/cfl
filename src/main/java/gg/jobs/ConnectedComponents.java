@@ -33,6 +33,7 @@ import java.util.Arrays;
 // } while (!updates.isEmpty)
 // // BB 2
 // labels.write
+// assertBagEquals(labels_2, ...)
 
 
 // SSA
@@ -54,6 +55,7 @@ import java.util.Arrays;
 // } while (nonEmpty)
 // // BB 2
 // labels_2.write
+// assertBagEquals(labels_2, ...)
 
 
 public class ConnectedComponents {
@@ -62,7 +64,7 @@ public class ConnectedComponents {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		env.getConfig().setParallelism(1); ///////////////////////// todo: kicommentezni
+		//env.getConfig().setParallelism(1);
 
 		final int bufferTimeout = 0;
 
@@ -75,7 +77,11 @@ public class ConnectedComponents {
 //		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)};
 		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{
 				Tuple2.of(0,1),
-				Tuple2.of(1,2)
+				Tuple2.of(1,2),
+				Tuple2.of(3,4),
+				Tuple2.of(4,0),
+				Tuple2.of(5,6),
+				Tuple2.of(5,7)
 		};
 
 		// berakjuk megforditva is az eleket
@@ -231,7 +237,20 @@ public class ConnectedComponents {
 		labels_2.select("1")
 				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("print labels_2", Util.tpe(), new BagOperatorHost<Tuple2<Integer, Integer>, Unit>(new Print<>("labels_2"), 2)
-				.addInput(0,1,false));
+						.addInput(0,1,false));
+
+		labels_2.select("1")
+				.bt("AssertBagEquals", Util.tpe(), new BagOperatorHost<Tuple2<Integer, Integer>, Unit>(new AssertBagEquals<Tuple2<Integer, Integer>>(
+						Tuple2.of(0,0),
+						Tuple2.of(1,0),
+						Tuple2.of(2,0),
+						Tuple2.of(3,0),
+						Tuple2.of(4,0),
+						Tuple2.of(5,5),
+						Tuple2.of(6,5),
+						Tuple2.of(7,5)
+				), 2)
+						.addInput(0,1,false)).setParallelism(1);
 
 		//System.out.println(env.getExecutionPlan());
 		env.execute();
