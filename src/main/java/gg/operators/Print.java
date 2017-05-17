@@ -15,12 +15,6 @@ public class Print<T> extends BagOperator<T, Unit> {
     }
 
     @Override
-    public void openOutBag() {
-        super.openOutBag();
-        LOG.info("Print("+name+") openOutBag ");
-    }
-
-    @Override
     public void pushInElement(T e, int logicalInputId) {
         super.pushInElement(e, logicalInputId);
         LOG.info("Print("+name+") element: " + e);
@@ -29,7 +23,6 @@ public class Print<T> extends BagOperator<T, Unit> {
     @Override
     public void closeInBag(int inputId) {
         super.closeInBag(inputId);
-        LOG.info("Print("+name+") CloseInBag ");
         out.closeBag();
     }
 }

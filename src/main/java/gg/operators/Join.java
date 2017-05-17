@@ -11,14 +11,13 @@ public abstract class Join extends BagOperator<Tuple2<Integer,Integer>, Tuple2<I
 
     private static final Logger LOG = LoggerFactory.getLogger(Join.class);
 
-    private HashMap<Integer, Integer> ht;
+    private HashMap<Integer, ArrayList<Tuple2<Integer,Integer>>> ht;
     private ArrayList<Tuple2<Integer, Integer>> probeBuffered;
     private boolean buildDone;
     private boolean probeDone;
 
     @Override
     public void openOutBag() {
-        LOG.info("Join.openOutBag");
         super.openOutBag();
         ht = new HashMap<>();
         probeBuffered = new ArrayList<>();
@@ -28,13 +27,17 @@ public abstract class Join extends BagOperator<Tuple2<Integer,Integer>, Tuple2<I
 
     @Override
     public void pushInElement(Tuple2<Integer, Integer> e, int logicalInputId) {
-        ////
-        LOG.info("Join.pushInElement(" + e + ", " + logicalInputId + ")");
-        ////
         super.pushInElement(e, logicalInputId);
         if (logicalInputId == 0) { // build side
             assert !buildDone;
-            ht.put(e.f0, e.f1);
+            ArrayList<Tuple2<Integer,Integer>> l = ht.get(e.f0);
+            if (l == null) {
+                l = new ArrayList<>();
+                l.add(e);
+                ht.put(e.f0,l);
+            } else {
+                l.add(e);
+            }
         } else { // probe side
             if (!buildDone) {
                 probeBuffered.add(e);
@@ -46,7 +49,6 @@ public abstract class Join extends BagOperator<Tuple2<Integer,Integer>, Tuple2<I
 
     @Override
     public void closeInBag(int inputId) {
-        LOG.info("Join.closeInBag(" + inputId + ")");
         super.closeInBag(inputId);
         if (inputId == 0) { // build side
             assert !buildDone;
@@ -70,9 +72,11 @@ public abstract class Join extends BagOperator<Tuple2<Integer,Integer>, Tuple2<I
     }
 
     private void probe(Tuple2<Integer, Integer> e) {
-        Integer g = ht.get(e.f0);
-        if (g != null) {
-            udf(Tuple2.of(e.f0, g), e);
+        ArrayList<Tuple2<Integer, Integer>> l = ht.get(e.f0);
+        if (l != null) {
+            for (Tuple2<Integer, Integer> b: l) {
+                udf(b, e);
+            }
         }
     }
 

@@ -14,18 +14,12 @@ public class GroupBy0Min1 extends BagOperator<Tuple2<Integer, Integer>, Tuple2<I
 
     @Override
     public void openOutBag() {
-        ////
-        LOG.info("GroupBy0Min1.openOutBag");
-        ////
         super.openOutBag();
         hm = new HashMap<>();
     }
 
     @Override
     public void pushInElement(Tuple2<Integer, Integer> e, int logicalInputId) {
-        ////
-        LOG.info("GroupBy0Min1.pushInElement(" + e + ", " + logicalInputId + ")");
-        ////
         super.pushInElement(e, logicalInputId);
         Integer g = hm.get(e.f0);
         if (g == null) {
@@ -39,9 +33,6 @@ public class GroupBy0Min1 extends BagOperator<Tuple2<Integer, Integer>, Tuple2<I
 
     @Override
     public void closeInBag(int inputId) {
-        ////
-        LOG.info("GroupBy0Min1.closeInBag(" + inputId + ")");
-        ////
         super.closeInBag(inputId);
         for (HashMap.Entry e: hm.entrySet()) {
             out.collectElement(Tuple2.of((Integer)e.getKey(), (Integer)e.getValue()));

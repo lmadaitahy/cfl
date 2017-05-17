@@ -41,11 +41,7 @@ public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Inte
         if (logicalInputId == 0) { // build side
             buildCnt++;
             assert !buildDone;
-
-            ////
-            LOG.info("UpdateJoin ht.pushInElement " + e);
-            ////
-
+            assert ht.get(e.f0) == null; // should be a primary key
             ht.put(e.f0, e.f1);
         } else { // probe side
             probeCnt++;

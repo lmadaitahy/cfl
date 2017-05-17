@@ -21,7 +21,6 @@ public class ConditionNode extends SingletonBagOperator<Boolean, Unit> {
 	@Override
 	public void pushInElement(Boolean e, int logicalInputId) {
 		super.pushInElement(e, logicalInputId);
-		System.out.println("ConditionNode(" + e + ")");
 		out.appendToCfl(e ? trueBranchBbId : falseBranchBbId);
 	}
 }

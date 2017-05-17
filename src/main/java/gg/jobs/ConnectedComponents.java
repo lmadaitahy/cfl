@@ -72,7 +72,7 @@ public class ConnectedComponents {
 		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
 
 		@SuppressWarnings("unchecked")
-		//Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)};
+//		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)};
 		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{
 				Tuple2.of(0,1),
 				Tuple2.of(1,2)

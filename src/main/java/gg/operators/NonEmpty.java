@@ -13,29 +13,29 @@ public class NonEmpty<T> extends BagOperator<T, Boolean> {
     private static final int closedNum = -1000;
 
     private int num = closedNum;
+    private boolean sent = false;
 
     @Override
     public void openOutBag() {
         super.openOutBag();
         assert num == closedNum;
         num = 0;
+        sent = false;
     }
 
     @Override
     public void pushInElement(T e, int logicalInputId) {
         super.pushInElement(e, logicalInputId);
         num++;
-        out.collectElement(true);
+        if (!sent) {
+            out.collectElement(true);
+            sent = true;
+        }
     }
 
     @Override
     public void closeInBag(int inputId) {
         super.closeInBag(inputId);
-
-        ////
-        LOG.info("NonEmpty.closeInBag " + num);
-        ////
-
         if (num == 0) {
             out.collectElement(false);
         }

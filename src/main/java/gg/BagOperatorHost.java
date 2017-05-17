@@ -74,6 +74,7 @@ public class BagOperatorHost<IN, OUT>
 	@Override
 	public void setName(String name) {
 		this.name = name;
+		this.op.setName(name);
 	}
 
 	@Override

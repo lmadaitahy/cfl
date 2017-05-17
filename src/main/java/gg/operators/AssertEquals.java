@@ -17,7 +17,6 @@ public class AssertEquals<IN> extends SingletonBagOperator<IN, Unit> implements 
     @Override
     public void pushInElement(IN e, int logicalInputId) {
         super.pushInElement(e, logicalInputId);
-        System.out.println("AssertEqualsing");
 
         if (!e.equals(x)) {
             throw new TestFailedException("AssertEquals failed: got: " + e + ", expected " + x);
