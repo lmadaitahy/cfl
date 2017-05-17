@@ -158,16 +158,9 @@ public class BagOperatorHost<IN, OUT>
 				case END:
 					assert sp.status == InputSubpartition.Status.OPEN;
 					sp.status = InputSubpartition.Status.CLOSED;
-//					if(!sp.damming && !sp.buffers.isEmpty() && sp.cflSizes.get(sp.cflSizes.size()-1) == input.inputCFLSize){
-//						// ez ugyebar az az eset amikor kozben valtott a damming false-ra
-//						giveBufferToBagOperator(sp, sp.cflSizes.size() - 1, eleOrEvent.logicalInputId);
-//					} else {
-//						assert !sp.damming || !sp.buffers.isEmpty();
-						if(!sp.damming) {
-							// ez az az eset, amikor egyaltalan nem volt dammelve
-							incAndCheckFinishedSubpartitionCounter(eleOrEvent.logicalInputId);
-						}
-//					}
+					if(!sp.damming) {
+						incAndCheckFinishedSubpartitionCounter(eleOrEvent.logicalInputId);
+					}
 					break;
 				default:
 					assert false;
@@ -238,8 +231,6 @@ public class BagOperatorHost<IN, OUT>
 		for(IN e: sp.buffers.get(i)) {
 			op.pushInElement(e, logicalInputId);
 		}
-
-		//incAndCheckFinishedSubpartitionCounter(logicalInputId);
 	}
 
 	synchronized private void incAndCheckFinishedSubpartitionCounter(int inputId) {
@@ -311,17 +302,11 @@ public class BagOperatorHost<IN, OUT>
 
 	// Note: inputCFLSize should be set before this
 	protected void activateLogicalInput(int id) {
-		//OLD:
-//		 Tell the input subpartitions what to do:
-//		  - Find a buffer that has the appropriate id
-//		    - If it is a finished buffer, then give all the elements to the BagOperator
-//		    - If it is the last buffer and not finished, then remove the dam
-//		  - If there is no appropriate buffer, then we do nothing for now
-		//NEW:
 		// Tell the input subpartitions what to do:
 		//  - Find a buffer that has the appropriate id
 		//    - Give all the elements to the BagOperator
-		//    - If it is the last buffer and not finished, then remove the dam
+		//    - If it is finished, then call incAndCheckFinishedSubpartitionCounter
+		//    - If it is not finished, then remove the dam
 		//  - If there is no appropriate buffer, then we do nothing for now
 		op.openInBag(id);
 		Input input = inputs.get(id);
