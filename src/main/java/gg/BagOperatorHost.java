@@ -129,12 +129,10 @@ public class BagOperatorHost<IN, OUT>
 
 		if (eleOrEvent.element != null) {
 			IN ele = eleOrEvent.element;
+			sp.buffers.get(sp.buffers.size()-1).add(ele);
 			if(!sp.damming) {
 				op.pushInElement(ele, eleOrEvent.logicalInputId);
-			} else {
-				sp.buffers.get(sp.buffers.size()-1).add(ele);
 			}
-
 		} else {
 
 			assert eleOrEvent.event != null;
@@ -143,33 +141,32 @@ public class BagOperatorHost<IN, OUT>
 				case START:
 					assert sp.status == InputSubpartition.Status.CLOSED;
 					sp.status = InputSubpartition.Status.OPEN;
+					assert sp.cflSizes.size() == sp.buffers.size(); // egyutt mozognak
+					sp.cflSizes.add(ev.cflSize);
+					sp.buffers.add(new ArrayList<>());
 					if(input.inputCFLSize != -1) {
 						if(input.inputCFLSize == ev.cflSize){ // It is just what we need for the current out bag
 							sp.damming = false;
 						} else { // It doesn't match our current out bag
 							sp.damming = true;
-							sp.cflSizes.add(ev.cflSize);
-							sp.buffers.add(new ArrayList<>());
 						}
 					} else { // We are not working on any out bag at the moment
 						sp.damming = true;
-						sp.cflSizes.add(ev.cflSize);
-						sp.buffers.add(new ArrayList<>());
 					}
 					break;
 				case END:
 					assert sp.status == InputSubpartition.Status.OPEN;
 					sp.status = InputSubpartition.Status.CLOSED;
-					if(!sp.damming && !sp.buffers.isEmpty() && sp.cflSizes.get(sp.cflSizes.size()-1) == input.inputCFLSize){
-						// ez ugyebar az az eset amikor kozben valtott a damming false-ra
-						giveBufferToBagOperator(sp, sp.cflSizes.size() - 1, eleOrEvent.logicalInputId);
-					} else {
-						assert !sp.damming || !sp.buffers.isEmpty();
+//					if(!sp.damming && !sp.buffers.isEmpty() && sp.cflSizes.get(sp.cflSizes.size()-1) == input.inputCFLSize){
+//						// ez ugyebar az az eset amikor kozben valtott a damming false-ra
+//						giveBufferToBagOperator(sp, sp.cflSizes.size() - 1, eleOrEvent.logicalInputId);
+//					} else {
+//						assert !sp.damming || !sp.buffers.isEmpty();
 						if(!sp.damming) {
 							// ez az az eset, amikor egyaltalan nem volt dammelve
 							incAndCheckFinishedSubpartitionCounter(eleOrEvent.logicalInputId);
 						}
-					}
+//					}
 					break;
 				default:
 					assert false;
@@ -237,18 +234,15 @@ public class BagOperatorHost<IN, OUT>
 
 	// i: buffer index in inputSubpartitions
 	synchronized private void giveBufferToBagOperator(InputSubpartition<IN> sp, int i, int logicalInputId) {
-		// Note: We get here only after all the elements for this bag from this input subpartition have arrived
-
 		for(IN e: sp.buffers.get(i)) {
 			op.pushInElement(e, logicalInputId);
 		}
 
-		// todo: remove buffer if bonyolult CFG-s condition
-
-		incAndCheckFinishedSubpartitionCounter(logicalInputId);
+		//incAndCheckFinishedSubpartitionCounter(logicalInputId);
 	}
 
 	synchronized private void incAndCheckFinishedSubpartitionCounter(int inputId) {
+		// todo: remove buffer if bonyolult CFG-s condition
 		Input input = inputs.get(inputId);
 		assert input.finishedSubpartitionCounter >= 0;
 		input.finishedSubpartitionCounter++;
@@ -316,9 +310,16 @@ public class BagOperatorHost<IN, OUT>
 
 	// Note: inputCFLSize should be set before this
 	protected void activateLogicalInput(int id) {
+		//OLD:
+//		 Tell the input subpartitions what to do:
+//		  - Find a buffer that has the appropriate id
+//		    - If it is a finished buffer, then give all the elements to the BagOperator
+//		    - If it is the last buffer and not finished, then remove the dam
+//		  - If there is no appropriate buffer, then we do nothing for now
+		//NEW:
 		// Tell the input subpartitions what to do:
 		//  - Find a buffer that has the appropriate id
-		//    - If it is a finished buffer, then give all the elements to the BagOperator
+		//    - Give all the elements to the BagOperator
 		//    - If it is the last buffer and not finished, then remove the dam
 		//  - If there is no appropriate buffer, then we do nothing for now
 		op.openInBag(id);
@@ -327,15 +328,23 @@ public class BagOperatorHost<IN, OUT>
 		for(InputSubpartition<IN> sp: input.inputSubpartitions) {
 			assert sp.cflSizes.size() == sp.buffers.size();
 			int i;
-			for(i=0; i<sp.cflSizes.size(); i++) {
+			for(i = 0; i < sp.cflSizes.size(); i++) {
 				if(sp.cflSizes.get(i) == input.inputCFLSize)
 					break;
 			}
-			if(i<sp.cflSizes.size()) { // we have found an appropriate buffer
-				if(i<sp.cflSizes.size()-1 || sp.status == InputSubpartition.Status.CLOSED) { // it's finished
-					giveBufferToBagOperator(sp, i, id);
-				} else { // it's the last one and not finished
-					sp.damming = false;
+			if(i < sp.cflSizes.size()) { // we have found an appropriate buffer
+				giveBufferToBagOperator(sp, i, id);
+				if(i < sp.cflSizes.size() - 1) { // not the last one
+					assert sp.status == InputSubpartition.Status.CLOSED; // should be finished
+					incAndCheckFinishedSubpartitionCounter(id);
+				} else { // it's the last one
+					if (sp.status == InputSubpartition.Status.CLOSED) { // and finished
+						incAndCheckFinishedSubpartitionCounter(id);
+					} else { // not finished
+						// Ez az az eset, amikor kozben vesszuk ki a dam-et.
+						// Ujabban ilyenkor rogton odaadjuk a buffer-t, azaz az eddig erkezett elemeket.
+						sp.damming = false;
+					}
 				}
 			}
 		}

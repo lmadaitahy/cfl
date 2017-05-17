@@ -72,7 +72,20 @@ public class ConnectedComponents {
 		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
 
 		@SuppressWarnings("unchecked")
-		Tuple2<Integer, Integer>[] edgesNB = new Tuple2[]{Tuple2.of(0,1), Tuple2.of(1,0)};
+		//Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)};
+		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{
+				Tuple2.of(0,1),
+				Tuple2.of(1,2)
+		};
+
+		// berakjuk megforditva is az eleket
+		@SuppressWarnings("unchecked")
+		Tuple2<Integer, Integer>[] edgesNB = new Tuple2[edgesNB0.length * 2];
+		for (int i=0; i<edgesNB0.length; i++) {
+			edgesNB[i*2] = edgesNB0[i];
+			edgesNB[i*2+1] = Tuple2.of(edgesNB0[i].f1, edgesNB0[i].f0);
+		}
+
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> edges =
 				env.fromCollection(Arrays.asList(edgesNB))
