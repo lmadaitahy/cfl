@@ -152,6 +152,7 @@ public class ConnectedComponents {
 				.out(0,1,true)
 		);
 
+		//     msgs = edges.join(updates_1).on(0).equalTo(0).with( ((u,v), (vid, label)) => (v,label) )
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> msgs = edges
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_1.map(new LogicalInputIdFiller<>(1)))
@@ -159,7 +160,7 @@ public class ConnectedComponents {
 				.bt("msgs", Util.tpe(), new BagOperatorHost<>(new Join(){
 					@Override
 					protected void udf(Tuple2<Integer, Integer> a, Tuple2<Integer, Integer> b) {
-						out.collectElement(Tuple2.of(b.f1, a.f1));
+						out.collectElement(Tuple2.of(a.f1, b.f1));
 					}
 				}, 1)
 				.addInput(0,0,false) // edges
