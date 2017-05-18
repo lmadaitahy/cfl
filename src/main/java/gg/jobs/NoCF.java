@@ -12,7 +12,7 @@ import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 
 import java.util.Arrays;
 
-public class CFLProba1 {
+public class NoCF {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();

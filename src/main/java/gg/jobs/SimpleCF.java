@@ -26,9 +26,9 @@ import java.util.Arrays;
  * assert i == 100
  */
 
-public class TestSimpleCF {
+public class SimpleCF {
 
-	//private static final Logger LOG = LoggerFactory.getLogger(TestSimpleCF.class);
+	//private static final Logger LOG = LoggerFactory.getLogger(SimpleCF.class);
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
