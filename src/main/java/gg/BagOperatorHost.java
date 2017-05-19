@@ -145,6 +145,8 @@ public class BagOperatorHost<IN, OUT>
 					assert sp.cflSizes.size() == sp.buffers.size(); // egyutt mozognak
 					sp.cflSizes.add(ev.cflSize);
 					sp.buffers.add(new ArrayList<>());
+					// Note: Sometimes the buffer is not really needed: we could check some tricky condition on the
+					// control flow graph, but this is not so important for the experiments in the paper.
 					if(input.inputCFLSize != -1) {
 						if(input.inputCFLSize == ev.cflSize){ // It is just what we need for the current out bag
 							sp.damming = false;
@@ -321,7 +323,9 @@ public class BagOperatorHost<IN, OUT>
 			if(i < sp.cflSizes.size()) { // we have found an appropriate buffer
 				giveBufferToBagOperator(sp, i, id);
 				if(i < sp.cflSizes.size() - 1) { // not the last one
-					assert sp.status == InputSubpartition.Status.CLOSED; // should be finished
+					// ezt az assertet azert vettem ki, mert nem mindig igaz, merthogy a closed status a teljes subpartitionre vonatkozik
+					// (azaz az utolso bufferre), es nem erre a bufferre
+					//assert sp.status == InputSubpartition.Status.CLOSED;
 					incAndCheckFinishedSubpartitionCounter(id);
 				} else { // it's the last one
 					if (sp.status == InputSubpartition.Status.CLOSED) { // and finished
