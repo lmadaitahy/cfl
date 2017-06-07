@@ -3,7 +3,9 @@ package gg;
 //TODO: check what serializer is being used. If Kryo, then I should provide a custom one instead.
 // (There might be a problem with the element field being type T)
 
-public class ElementOrEvent<T> {
+import org.apache.flink.streaming.api.CanForceFlush;
+
+public class ElementOrEvent<T> implements CanForceFlush {
 
 	public short subPartitionId; // az input operator melyik physical instance-erol jott
 	public T element;
@@ -35,6 +37,11 @@ public class ElementOrEvent<T> {
 		c.splitId = splitId;
 		c.logicalInputId = logicalInputId;
 		return c;
+	}
+
+	@Override
+	public boolean shouldFlush() {
+		return event != null && event.type == Event.Type.END;
 	}
 
 	// Bag start or end
