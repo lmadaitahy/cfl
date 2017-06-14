@@ -4,6 +4,7 @@ import gg.*;
 import gg.operators.AssertBagEquals;
 import gg.operators.IdMap;
 import gg.operators.Bagify;
+import gg.partitioners2.RoundRobin;
 import gg.util.Util;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -31,7 +32,7 @@ public class NoCF {
 
 		DataStream<ElementOrEvent<String>> input =
 				env.fromCollection(Arrays.asList(words))
-						.transform("bagify", Util.tpe(), new Bagify<>());
+						.transform("bagify", Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism())));
 
 		//System.out.println(input.getParallelism());
 

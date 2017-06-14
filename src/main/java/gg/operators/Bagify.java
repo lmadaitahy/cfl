@@ -1,6 +1,8 @@
 package gg.operators;
 
+import gg.BagOperatorHost;
 import gg.ElementOrEvent;
+import gg.partitioners2.Partitioner;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
@@ -22,16 +24,36 @@ public class Bagify<T>
 
     private final static int outCflSize = 1; // always 1, because this happens in the first basic block at the beginning of the program
 
+    private Partitioner<T> partitioner;
+    private boolean[] sentStart;
+
+    private int opID;
+
+    public Bagify(Partitioner<T> partitioner) {
+        this.partitioner = partitioner;
+        opID = BagOperatorHost.opIDCounter++;
+    }
+
     @Override
     public void setup(StreamTask<?, ?> containingTask, StreamConfig config, Output<StreamRecord<ElementOrEvent<T>>> output) {
         super.setup(containingTask, config, output);
 
         subpartitionId = (short)getRuntimeContext().getIndexOfThisSubtask();
+        sentStart = new boolean[partitioner.targetPara];
     }
 
+
+
     @Override
-    public void processElement(StreamRecord<T> streamRecord) throws Exception {
-        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, streamRecord.getValue(), (byte)-1), 0));
+    public void processElement(StreamRecord<T> e) throws Exception {
+        short part = partitioner.getPart(e.getValue());
+        // (ez a logika ugyanez a BagOperatorHost-ban)
+        if (!sentStart[part]) {
+            sentStart[part] = true;
+            ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, outCflSize, partitioner.targetPara, opID);
+            output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte)-1, part), 0));
+        }
+        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e.getValue(), (byte)-1, part), 0));
     }
 
 
@@ -39,15 +61,19 @@ public class Bagify<T>
     public void open() throws Exception {
         super.open();
 
-        ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, outCflSize);
-        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte)-1), 0));
+        for(int i=0; i<sentStart.length; i++)
+            sentStart[i] = false;
     }
 
     @Override
     public void close() throws Exception {
         super.close();
 
-        ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, outCflSize);
-        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte)-1), 0));
+        for(short i=0; i<sentStart.length; i++) {
+            if (sentStart[i]) {
+                ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, outCflSize, partitioner.targetPara, opID);
+                output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte) -1, i), 0));
+            }
+        }
     }
 }

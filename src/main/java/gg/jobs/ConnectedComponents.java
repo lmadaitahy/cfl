@@ -3,6 +3,7 @@ package gg.jobs;
 import gg.*;
 import gg.operators.*;
 import gg.partitioners.Tuple2by0;
+import gg.partitioners2.RoundRobin;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
@@ -96,7 +97,7 @@ public class ConnectedComponents {
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> edges =
 				env.fromCollection(Arrays.asList(edgesNB))
 						.transform("bagify",
-								Util.tpe(), new Bagify<>());
+								Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism())));
 
 		DataStream<ElementOrEvent<Integer>> vertices0 = edges
 				.setConnectionType(new gg.partitioners.Forward<>())

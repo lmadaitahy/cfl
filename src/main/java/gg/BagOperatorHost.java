@@ -2,6 +2,7 @@ package gg;
 
 
 import gg.operators.BagOperator;
+import gg.partitioners2.Partitioner;
 import org.apache.flink.streaming.api.datastream.InputParaSettable;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -32,6 +33,9 @@ public class BagOperatorHost<IN, OUT>
 	private int inputParallelism = -1;
 	private String name;
 	private int terminalBBId = -2;
+	private Partitioner<OUT> partitioner; //todo: kitolteni
+	private int opID = -1;
+	public static int opIDCounter = 0; // (a Bagify is ezt hasznalja)
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
@@ -57,6 +61,7 @@ public class BagOperatorHost<IN, OUT>
 		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
 		assert this.terminalBBId >= 0;
+		opID = opIDCounter++;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
@@ -140,6 +145,7 @@ public class BagOperatorHost<IN, OUT>
 			ElementOrEvent.Event ev = eleOrEvent.event;
 			switch (eleOrEvent.event.type) {
 				case START:
+					assert eleOrEvent.event.assumedTargetPara == getRuntimeContext().getNumberOfParallelSubtasks();
 					assert sp.status == InputSubpartition.Status.CLOSED;
 					sp.status = InputSubpartition.Status.OPEN;
 					assert sp.cflSizes.size() == sp.buffers.size(); // egyutt mozognak
@@ -158,6 +164,7 @@ public class BagOperatorHost<IN, OUT>
 					}
 					break;
 				case END:
+					assert eleOrEvent.event.assumedTargetPara == getRuntimeContext().getNumberOfParallelSubtasks();
 					assert sp.status == InputSubpartition.Status.OPEN;
 					sp.status = InputSubpartition.Status.CLOSED;
 					if(!sp.damming) {
@@ -206,7 +213,7 @@ public class BagOperatorHost<IN, OUT>
 							}
 						}
 						assert o.cflSize == outCFLSizes.peek();
-						o.sendEnd(o.cflSize);
+						o.endBag();
 						break;
 				}
 			}
@@ -266,7 +273,7 @@ public class BagOperatorHost<IN, OUT>
 				o.state = OutState.DAMMING;
 				o.buffer = new ArrayList<>();
 			} else {
-				o.sendStart(outCFLSize);
+				o.startBag();
 				o.state = OutState.FORWARDING;
 			}
 		}
@@ -359,17 +366,17 @@ public class BagOperatorHost<IN, OUT>
 							case DAMMING:
 								assert outCFLSizes.size() > 0;
 								assert o.cflSize == outCFLSizes.peek();
-								o.sendStart(o.cflSize);
+								o.startBag();
 								o.state = OutState.FORWARDING;
 								break;
 							case WAITING:
-								o.sendStart(o.cflSize);
+								o.startBag();
 								if (o.buffer != null) {
 									for (OUT e : o.buffer) {
 										o.sendElement(e);
 									}
 								}
-								o.sendEnd(o.cflSize);
+								o.endBag();
 								o.state = OutState.IDLE;
 								break;
 							case FORWARDING:
@@ -437,6 +444,8 @@ public class BagOperatorHost<IN, OUT>
 		OutState state = OutState.IDLE;
 		int cflSize = -1; // The CFL that is being emitted. We need this, because cflSizes becomes empty when we become waiting.
 
+		boolean[] sentStart = new boolean[partitioner.targetPara];
+
 		Out(byte splitId, int targetBbId, boolean normal) {
 			this.splitId = splitId;
 			this.targetBbId = targetBbId;
@@ -444,17 +453,28 @@ public class BagOperatorHost<IN, OUT>
 		}
 
 		void sendElement(OUT e) {
-			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId), 0));
+			short part = partitioner.getPart(e);
+			// (Amugy ez a logika meg van duplazva a Bagify-ban is most)
+			if (!sentStart[part]) {
+				sentStart[part] = true;
+				ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, cflSize, partitioner.targetPara, opID);
+				output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, part), 0));
+			}
+			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
 		}
 
-		void sendStart(int cflSize) {
-			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, cflSize);
-			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId), 0));
+		void startBag() {
+			for(int i=0; i<sentStart.length; i++)
+				sentStart[i] = false;
 		}
 
-		void sendEnd(int cflSize) {
-			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, cflSize);
-			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId), 0));
+		void endBag() {
+			for(short i=0; i<sentStart.length; i++) {
+				if (sentStart[i]) {
+					ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, cflSize, partitioner.targetPara, opID);
+					output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, i), 0));
+				}
+			}
 		}
 	}
 

@@ -15,18 +15,22 @@ public class ElementOrEvent<T> implements CanForceFlush {
 
 	public byte logicalInputId = -1;
 
+	public short part; // A FlinkPartitioner ezt adja vissza
+
 	public ElementOrEvent() {}
 
-	public ElementOrEvent(short subPartitionId, T element, byte splitId) {
+	public ElementOrEvent(short subPartitionId, T element, byte splitId, short part) {
 		this.subPartitionId = subPartitionId;
 		this.element = element;
 		this.splitId = splitId;
+		this.part = part;
 	}
 
-	public ElementOrEvent(short subPartitionId, Event event, byte splitId) {
+	public ElementOrEvent(short subPartitionId, Event event, byte splitId, short part) {
 		this.subPartitionId = subPartitionId;
 		this.event = event;
 		this.splitId = splitId;
+		this.part = part;
 	}
 
 	public ElementOrEvent<T> copy() {
@@ -52,12 +56,16 @@ public class ElementOrEvent<T> implements CanForceFlush {
 
 		public Type type;
 		public int cflSize;
+		public short assumedTargetPara;
+		public int opID;
 
 		public Event() {}
 
-		public Event(Type type, int cflSize) {
+		public Event(Type type, int cflSize, short assumedTargetPara, int opID) {
 			this.type = type;
 			this.cflSize = cflSize;
+			this.assumedTargetPara = assumedTargetPara;
+			this.opID = opID;
 		}
 
 		@Override

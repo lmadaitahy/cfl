@@ -2,6 +2,7 @@ package gg.jobs;
 
 import gg.*;
 import gg.operators.*;
+import gg.partitioners2.RoundRobin;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
@@ -52,7 +53,7 @@ public class SimpleCF {
 		DataStream<ElementOrEvent<Integer>> inputBag0 =
 				env.fromCollection(Arrays.asList(input))
 						.transform("bagify",
-								Util.tpe(), new Bagify<>());
+								Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism())));
 
 		DataStream<ElementOrEvent<Integer>> inputBag = inputBag0.map(new LogicalInputIdFiller<>(0));
 
