@@ -1,6 +1,8 @@
 package gg.operators;
 
+import gg.BagID;
 import gg.BagOperatorHost;
+import gg.CFLManager;
 import gg.ElementOrEvent;
 import gg.partitioners2.Partitioner;
 import org.apache.flink.streaming.api.graph.StreamConfig;
@@ -29,6 +31,10 @@ public class Bagify<T>
 
     private int opID;
 
+    private int numElements = -1;
+
+    private CFLManager cflMan;
+
     public Bagify(Partitioner<T> partitioner) {
         this.partitioner = partitioner;
         opID = BagOperatorHost.opIDCounter++;
@@ -40,17 +46,20 @@ public class Bagify<T>
 
         subpartitionId = (short)getRuntimeContext().getIndexOfThisSubtask();
         sentStart = new boolean[partitioner.targetPara];
+
+        cflMan = CFLManager.getSing();
     }
 
 
 
     @Override
     public void processElement(StreamRecord<T> e) throws Exception {
+        numElements++;
         short part = partitioner.getPart(e.getValue());
         // (ez a logika ugyanez a BagOperatorHost-ban)
         if (!sentStart[part]) {
             sentStart[part] = true;
-            ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, outCflSize, partitioner.targetPara, opID);
+            ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, partitioner.targetPara, new BagID(outCflSize, opID));
             output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte)-1, part), 0));
         }
         output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e.getValue(), (byte)-1, part), 0));
@@ -63,15 +72,19 @@ public class Bagify<T>
 
         for(int i=0; i<sentStart.length; i++)
             sentStart[i] = false;
+
+        numElements = 0;
     }
 
     @Override
     public void close() throws Exception {
         super.close();
 
+        cflMan.producedLocal(new BagID(outCflSize, opID), new BagID[]{}, numElements, getRuntimeContext().getNumberOfParallelSubtasks());
+
         for(short i=0; i<sentStart.length; i++) {
             if (sentStart[i]) {
-                ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, outCflSize, partitioner.targetPara, opID);
+                ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, partitioner.targetPara, new BagID(outCflSize, opID));
                 output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte) -1, i), 0));
             }
         }

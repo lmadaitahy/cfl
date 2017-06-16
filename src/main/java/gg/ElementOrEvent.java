@@ -55,24 +55,23 @@ public class ElementOrEvent<T> implements CanForceFlush {
 		public enum Type {START, END}
 
 		public Type type;
-		public int cflSize;
 		public short assumedTargetPara;
-		public int opID;
+		public BagID bagID;
 
 		public Event() {}
 
-		public Event(Type type, int cflSize, short assumedTargetPara, int opID) {
+		public Event(Type type, short assumedTargetPara, BagID bagID) {
 			this.type = type;
-			this.cflSize = cflSize;
 			this.assumedTargetPara = assumedTargetPara;
-			this.opID = opID;
+			this.bagID = bagID;
 		}
 
 		@Override
 		public String toString() {
 			return "Event{" +
 					"type=" + type +
-					", cflSize=" + cflSize +
+					", assumedTargetPara=" + assumedTargetPara +
+					", bagID=" + bagID +
 					'}';
 		}
 	}

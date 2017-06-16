@@ -20,6 +20,7 @@ public class NoCF {
 
 		CFLConfig.getInstance().terminalBBId = 0;
 		env.addSource(new KickoffSource(0)).addSink(new DiscardingSink<>());
+        final int para = env.getParallelism();
 
 		String[] words = new String[]{"alma", "korte", "alma", "b", "b", "b", "c", "d", "d"};
 
@@ -32,21 +33,24 @@ public class NoCF {
 
 		DataStream<ElementOrEvent<String>> input =
 				env.fromCollection(Arrays.asList(words))
-						.transform("bagify", Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism())));
+						.transform("bagify", Util.tpe(), new Bagify<>(new RoundRobin<>(para)))
+                        .setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
 
 		//System.out.println(input.getParallelism());
 
 		DataStream<ElementOrEvent<String>> output = input
-				.setConnectionType(new gg.partitioners.Forward<>())
+				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("id-map",input.getType(),
 				new BagOperatorHost<String, String>(new IdMap<>(), 0)
+                        .setPartitioner(new gg.partitioners2.Forward<>(1))
 						.addInput(0, 0, true)
-						.out(0,0,true));
+						.out(0,0,true)).setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
 
 		output
-				.setConnectionType(new gg.partitioners.Forward<>())
+				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0)
-						.addInput(0,0,true));
+						.addInput(0,0,true))
+				.setParallelism(1);
 
 		env.execute();
 	}

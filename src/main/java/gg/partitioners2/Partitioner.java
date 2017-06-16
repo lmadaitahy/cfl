@@ -1,6 +1,8 @@
 package gg.partitioners2;
 
-public abstract class Partitioner<T> {
+import java.io.Serializable;
+
+public abstract class Partitioner<T> implements Serializable {
 
     public short targetPara = 0;
 
@@ -9,6 +11,10 @@ public abstract class Partitioner<T> {
      */
     public Partitioner(short targetPara) {
         this.targetPara = targetPara;
+    }
+
+    public Partitioner(int targetPara) {
+        this.targetPara = (short)targetPara;
     }
 
     public abstract short getPart(T e);
