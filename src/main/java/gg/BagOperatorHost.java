@@ -185,7 +185,7 @@ public class BagOperatorHost<IN, OUT>
 					assert sp.status == InputSubpartition.Status.OPEN;
 					sp.status = InputSubpartition.Status.CLOSED;
 					InputSubpartition.Buffer lastBuffer = sp.buffers.get(sp.buffers.size()-1);
-					cflMan.consumedLocal(lastBuffer.bagID,lastBuffer.elements.size(),cb,subpartitionId);
+					cflMan.consumedLocal(lastBuffer.bagID,lastBuffer.elements.size(),subpartitionId,opID);
 //					if(!sp.damming) {
 //						incAndCheckFinishedSubpartitionCounter(eleOrEvent.logicalInputId);
 //					}
@@ -257,7 +257,7 @@ public class BagOperatorHost<IN, OUT>
 			}
 
 			if (numElements > 0) {
-				cflMan.producedLocal(new BagID(outCFLSizes.peek(), opID), inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks(), subpartitionId);
+				cflMan.producedLocal(new BagID(outCFLSizes.peek(), opID), inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks(), subpartitionId, opID);
 			}
 
 			numElements = 0;
@@ -462,14 +462,16 @@ public class BagOperatorHost<IN, OUT>
         }
 
 		@Override
-		public void notifyCloseInput(BagID bagID) {
-			assert !notifyCloseInputs.contains(bagID);
-			notifyCloseInputs.add(bagID);
+		public void notifyCloseInput(BagID bagID, int opID) {
+			if (opID == BagOperatorHost.this.opID) {
+				assert !notifyCloseInputs.contains(bagID);
+				notifyCloseInputs.add(bagID);
 
-			for (Input inp: inputs) {
-				//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
-				if (bagID.equals(inp.currentBagID)) {
-					inp.closeCurrentInBag();
+				for (Input inp : inputs) {
+					//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
+					if (bagID.equals(inp.currentBagID)) {
+						inp.closeCurrentInBag();
+					}
 				}
 			}
 		}
