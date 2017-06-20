@@ -29,15 +29,21 @@ public class Bagify<T>
     private Partitioner<T> partitioner;
     private boolean[] sentStart;
 
-    private int opID;
+    private int opID = -1;
 
     private int numElements = -1;
 
     private CFLManager cflMan;
 
+    // deprecated, use the other ctor
     public Bagify(Partitioner<T> partitioner) {
         this.partitioner = partitioner;
-        opID = BagOperatorHost.opIDCounter++;
+        opID = BagOperatorHost.opIDCounter++;  assert false; // use the other ctor
+    }
+
+    public Bagify(Partitioner<T> partitioner, int opID) {
+        this.partitioner = partitioner;
+        this.opID = opID;
     }
 
     @Override

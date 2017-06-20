@@ -62,13 +62,29 @@ public class BagOperatorHost<IN, OUT>
 		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
 		assert this.terminalBBId >= 0;
-		opID = opIDCounter++;
+		opID = opIDCounter++;  assert false;  // use the other ctor
+		// warning: this runs in the driver, so we shouldn't access CFLManager here
+	}
+
+	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID) {
+		this.op = op;
+		this.bbId = bbId;
+		this.inputs = new ArrayList<>();
+		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
+		assert this.terminalBBId >= 0;
+		this.opID = opID;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
 	public BagOperatorHost<IN,OUT> addInput(int id, int bbId, boolean inputInSameBlock) {
 		assert id == inputs.size();
 		inputs.add(new Input(id, bbId, inputInSameBlock));
+		return this;
+	}
+
+	public BagOperatorHost<IN,OUT> addInput(int id, int bbId, boolean inputInSameBlock, int opID) {
+		assert id == inputs.size();
+		inputs.add(new Input(id, bbId, inputInSameBlock, opID));
 		return this;
 	}
 
@@ -156,6 +172,7 @@ public class BagOperatorHost<IN, OUT>
 					assert sp.status == InputSubpartition.Status.CLOSED;
 					sp.status = InputSubpartition.Status.OPEN;
 					sp.addNewBuffer(ev.bagID);
+					assert input.opID == ev.bagID.opID;
 					//assert input.currentBagID == null || input.currentBagID.equals(ev.bagID); // ezt azert kellett kicommentezni, mert a null-ra allitast kivettem, mert rossz helyen volt
 					input.currentBagID = ev.bagID;
 					// Note: Sometimes the buffer is not really needed: we could check some tricky condition on the
@@ -350,7 +367,7 @@ public class BagOperatorHost<IN, OUT>
 		op.openInBag(id);
 		Input input = inputs.get(id);
 		//assert input.currentBagID == null;
-		input.currentBagID = null;
+		input.currentBagID = new BagID(input.inputCFLSize, input.opID);
 		for(InputSubpartition<IN> sp: input.inputSubpartitions) {
 			int i;
 			for(i = 0; i < sp.buffers.size(); i++) {
@@ -358,7 +375,8 @@ public class BagOperatorHost<IN, OUT>
 					break;
 			}
 			if(i < sp.buffers.size()) { // we have found an appropriate buffer
-				input.currentBagID = sp.buffers.get(i).bagID;
+				//input.currentBagID = sp.buffers.get(i).bagID;
+				assert input.currentBagID == sp.buffers.get(i).bagID;
 				giveBufferToBagOperator(sp, i, id);
 //				if(i < sp.buffers.size() - 1) { // not the last one
 ////					// ezt az assertet azert vettem ki, mert nem mindig igaz, merthogy a closed status a teljes subpartitionre vonatkozik
@@ -380,7 +398,8 @@ public class BagOperatorHost<IN, OUT>
 			}
 		}
 
-		if (input.currentBagID != null && notifyCloseInputs.contains(input.currentBagID)) {
+		//if (input.currentBagID != null && notifyCloseInputs.contains(input.currentBagID)) {
+		if (notifyCloseInputs.contains(input.currentBagID)) {
 			input.closeCurrentInBag();
 		}
 
@@ -449,7 +468,7 @@ public class BagOperatorHost<IN, OUT>
 			notifyCloseInputs.add(bagID);
 
 			for (Input inp: inputs) {
-				assert inp.currentBagID != null;
+				//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
 				if (bagID.equals(inp.currentBagID)) {
 					inp.closeCurrentInBag();
 				}
@@ -540,11 +559,20 @@ public class BagOperatorHost<IN, OUT>
 		InputSubpartition<IN>[] inputSubpartitions;
 		int inputCFLSize = -1; // always -1 when not working on an output bag or when we are not taking part in the computation of the current out bag (PhiNode)
 		BagID currentBagID = null; // marmint ugy current, hogy amibol epp dolgozunk
+		int opID = -1;
 
+		// Deprecated, use the other
 		Input(int id, int bbId, boolean inputInSameBlock) {
 			this.id = id;
 			this.bbId = bbId;
 			this.inputInSameBlock = inputInSameBlock;
+		}
+
+		Input(int id, int bbId, boolean inputInSameBlock, int opID) {
+			this.id = id;
+			this.bbId = bbId;
+			this.inputInSameBlock = inputInSameBlock;
+			this.opID = opID;
 		}
 
 		void closeCurrentInBag() {
