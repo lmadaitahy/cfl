@@ -42,9 +42,9 @@ public class NoCF {
 				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("id-map",input.getType(),
 				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1)
-                        .setPartitioner(new gg.partitioners2.Forward<>(1))
 						.addInput(0, 0, true, 0)
-						.out(0,0,true)).setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+						.out(0,0,true, new gg.partitioners2.Forward<>(1)))
+				.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
 
 		output
 				//.setConnectionType(new gg.partitioners.Forward<>())

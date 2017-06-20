@@ -14,6 +14,11 @@ public class PhiNode2<T> extends BagOperatorHost<T,T> implements Serializable {
 
 	public PhiNode2(int bbId) {
 		super(new IdMap<T>(), bbId);
+		assert false;  // use the other ctor
+	}
+
+	public PhiNode2(int bbId, int opID) {
+		super(new IdMap<T>(), bbId, opID);
 	}
 
 	@Override

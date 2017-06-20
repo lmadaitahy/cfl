@@ -32,7 +32,6 @@ public class BagOperatorHost<IN, OUT>
 	private int inputParallelism = -1;
 	private String name;
 	private int terminalBBId = -2;
-	private Partitioner<OUT> partitioner; //todo: kitolteni
 	private int opID = -1;
 	public static int opIDCounter = 0; // (a Bagify is ezt hasznalja)
 
@@ -85,12 +84,6 @@ public class BagOperatorHost<IN, OUT>
 	public BagOperatorHost<IN,OUT> addInput(int id, int bbId, boolean inputInSameBlock, int opID) {
 		assert id == inputs.size();
 		inputs.add(new Input(id, bbId, inputInSameBlock, opID));
-		return this;
-	}
-
-	public BagOperatorHost<IN,OUT> setPartitioner(Partitioner<OUT> partitioner) {
-		assert this.partitioner == null;
-		this.partitioner = partitioner;
 		return this;
 	}
 
@@ -252,8 +245,10 @@ public class BagOperatorHost<IN, OUT>
 			for (Input inp: inputs) {
 				// a kov. assert akkor mondjuk elromolhat, ha ilyen short-circuit-es jellegu az operator, hogy van, hogy mar akkor
 				// lezarja az output bag-et, amikor meg nem kezdodott el minden inputon az input bag, de kesobb meg fog onnan jonni.
-				assert inp.currentBagID != null;
-				inputBagIDs.add(inp.currentBagID);
+				//assert inp.currentBagID != null; // PhiNode-nal nem fasza
+				if (inp.currentBagID != null) {
+					inputBagIDs.add(inp.currentBagID);
+				}
 			}
 			BagID[] inputBagIDsArr = new BagID[inputBagIDs.size()];
 			int i = 0;
@@ -483,7 +478,14 @@ public class BagOperatorHost<IN, OUT>
     // `normal` means not conditional.
 	// If `normal` is false, then we set to damming until we reach its BB.
 	// (This means that for example if targetBbId is the same as the operator's BbId, then we wait for the next iteration step.)
+	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
+		assert splitId == outs.size();
+		outs.add(new Out((byte)splitId, targetBbId, normal, partitioner));
+		return this;
+	}
+
 	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal) {
+		assert false; // use the other overload
 		assert splitId == outs.size();
 		outs.add(new Out((byte)splitId, targetBbId, normal));
 		return this;
@@ -515,17 +517,28 @@ public class BagOperatorHost<IN, OUT>
 		private byte splitId = -1;
 		int targetBbId = -1;
 		boolean normal = false; // jelzi ha nem conditional
+		private final Partitioner<OUT> partitioner;
 
 		ArrayList<OUT> buffer = null;
 		OutState state = OutState.IDLE;
 		int cflSize = -1; // The CFL that is being emitted. We need this, because cflSizes becomes empty when we become waiting.
 
-		boolean[] sentStart = new boolean[partitioner.targetPara];
+		boolean[] sentStart;
 
 		Out(byte splitId, int targetBbId, boolean normal) {
 			this.splitId = splitId;
 			this.targetBbId = targetBbId;
 			this.normal = normal;
+			this.partitioner = null;
+			assert false;  // use the other ctor
+		}
+
+		Out(byte splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
+			this.splitId = splitId;
+			this.targetBbId = targetBbId;
+			this.normal = normal;
+			this.partitioner = partitioner;
+			this.sentStart = new boolean[partitioner.targetPara];
 		}
 
 		void sendElement(OUT e) {
