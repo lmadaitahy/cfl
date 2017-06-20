@@ -8,6 +8,7 @@ import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.Output;
+import org.apache.flink.streaming.runtime.gg.NoAutoClose;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ public class BagOperatorHost<IN, OUT>
 		extends AbstractStreamOperator<ElementOrEvent<OUT>>
 		implements OneInputStreamOperator<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
 			InputParaSettable<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
+			NoAutoClose,
 			Serializable {
 
 	private static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
@@ -154,7 +156,7 @@ public class BagOperatorHost<IN, OUT>
 					assert sp.status == InputSubpartition.Status.CLOSED;
 					sp.status = InputSubpartition.Status.OPEN;
 					sp.addNewBuffer(ev.bagID);
-					assert input.currentBagID == null || input.currentBagID.equals(ev.bagID);
+					//assert input.currentBagID == null || input.currentBagID.equals(ev.bagID); // ezt azert kellett kicommentezni, mert a null-ra allitast kivettem, mert rossz helyen volt
 					input.currentBagID = ev.bagID;
 					// Note: Sometimes the buffer is not really needed: we could check some tricky condition on the
 					// control flow graph, but this is not so important for the experiments in the paper.
@@ -236,7 +238,12 @@ public class BagOperatorHost<IN, OUT>
 				assert inp.currentBagID != null;
 				inputBagIDs.add(inp.currentBagID);
 			}
-			cflMan.producedLocal(new BagID(outCFLSizes.peek(), opID), (BagID[])inputBagIDs.toArray(), numElements, getRuntimeContext().getNumberOfParallelSubtasks());
+			BagID[] inputBagIDsArr = new BagID[inputBagIDs.size()];
+			int i = 0;
+			for (BagID b: inputBagIDs) {
+				inputBagIDsArr[i++] = b;
+			}
+			cflMan.producedLocal(new BagID(outCFLSizes.peek(), opID), inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks());
 			numElements = 0;
 
 			outCFLSizes.remove();
@@ -342,7 +349,8 @@ public class BagOperatorHost<IN, OUT>
 		//  - If we already have a notification that input bag is closed, then we tell this to the operator
 		op.openInBag(id);
 		Input input = inputs.get(id);
-		assert input.currentBagID == null;
+		//assert input.currentBagID == null;
+		input.currentBagID = null;
 		for(InputSubpartition<IN> sp: input.inputSubpartitions) {
 			int i;
 			for(i = 0; i < sp.buffers.size(); i++) {
@@ -541,7 +549,7 @@ public class BagOperatorHost<IN, OUT>
 
 		void closeCurrentInBag() {
 			inputCFLSize = -1;
-			currentBagID = null;
+			//currentBagID = null;
 			op.closeInBag(id);
 		}
 	}
