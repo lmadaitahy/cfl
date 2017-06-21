@@ -17,6 +17,7 @@ public class NoCF {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		//env.getConfig().setParallelism(1);
 
 		CFLConfig.getInstance().terminalBBId = 0;
 		env.addSource(new KickoffSource(0)).addSink(new DiscardingSink<>());

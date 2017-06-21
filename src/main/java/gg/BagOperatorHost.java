@@ -249,7 +249,8 @@ public class BagOperatorHost<IN, OUT>
 				// a kov. assert akkor mondjuk elromolhat, ha ilyen short-circuit-es jellegu az operator, hogy van, hogy mar akkor
 				// lezarja az output bag-et, amikor meg nem kezdodott el minden inputon az input bag, de kesobb meg fog onnan jonni.
 				//assert inp.currentBagID != null; // PhiNode-nal nem fasza
-				if (inp.currentBagID != null) {
+				if (inp.activeFor.contains(outCFLSizes.peek())) {
+					assert inp.currentBagID != null;
 					inputBagIDs.add(inp.currentBagID);
 				}
 			}
@@ -342,7 +343,7 @@ public class BagOperatorHost<IN, OUT>
 
 	// Note: this activates all the logical inputs. (Cf. the override in PhiNode, which activates only one.)
 	protected void chooseLogicalInputs(int outCFLSize) {
-		// figure out the input bag ID
+		// figure out the input bag IDs
 		for (Input input: inputs) {
 			assert input.inputCFLSize == -1;
 			if (input.inputInSameBlock) {
@@ -353,13 +354,13 @@ public class BagOperatorHost<IN, OUT>
 				input.inputCFLSize = i + 1;
 			}
 
-			activateLogicalInput(input.id);
+			activateLogicalInput(input.id, outCFLSize);
 		}
 	}
 
 	// Note: inputCFLSize should be set before this
 	// Note: Also called from PhiNode2
-	void activateLogicalInput(int id) {
+	void activateLogicalInput(int id, int outCFLSize) {
 		//  - For each subpartition, we tell it what to do:
 		//    - Find a buffer that has the appropriate id
 		//      - Give all the elements to the BagOperator
@@ -368,6 +369,7 @@ public class BagOperatorHost<IN, OUT>
 		//  - If we already have a notification that input bag is closed, then we tell this to the operator
 		op.openInBag(id);
 		Input input = inputs.get(id);
+		input.activeFor.add(outCFLSize);
 		//assert input.currentBagID == null;
 		input.currentBagID = new BagID(input.inputCFLSize, input.opID);
 		for(InputSubpartition<IN> sp: input.inputSubpartitions) {
@@ -582,6 +584,7 @@ public class BagOperatorHost<IN, OUT>
 		int inputCFLSize = -1; // always -1 when not working on an output bag or when we are not taking part in the computation of the current out bag (PhiNode)
 		BagID currentBagID = null; // marmint ugy current, hogy amibol epp dolgozunk
 		int opID = -1;
+		Set<Integer> activeFor = new HashSet<>(); // outCFLSizes for which this Input is active
 
 		// Deprecated, use the other
 		Input(int id, int bbId, boolean inputInSameBlock) {

@@ -34,7 +34,7 @@ public class PhiNode2<T> extends BagOperatorHost<T,T> implements Serializable {
 					assert !brk; // because two logical inputs can't have the same basic block id
 					assert inp.inputCFLSize == -1;
 					inp.inputCFLSize = i + 1;
-					activateLogicalInput(j);
+					activateLogicalInput(j, outCFLSize);
 					brk = true;
 				}
 				j++;
