@@ -17,6 +17,7 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 	private String name;
 
 	public final void openInBag(int logicalInputId) {
+		LOG.info("openInBag[" + name + "]: logicalInputId: " + logicalInputId);
 		assert !open[logicalInputId];
 		open[logicalInputId] = true;
 	}
@@ -35,14 +36,14 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 	}
 
 	public void pushInElement(IN e, int logicalInputId) {
-		assert open[logicalInputId];
 		LOG.info("pushInElement[" + name + "]: e: " + e + " logicalInputId: " + logicalInputId);
+		assert open[logicalInputId];
 	}
 
 	public void closeInBag(int inputId) {
+		LOG.info("closeInBag[" + name + "]: inputId: " + inputId);
 		assert open[inputId];
 		open[inputId] = false;
-		LOG.info("closeInBag[" + name + "]: inputId: " + inputId);
 	}
 
 }

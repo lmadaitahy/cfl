@@ -167,7 +167,10 @@ public class BagOperatorHost<IN, OUT>
 					sp.addNewBuffer(ev.bagID);
 					assert input.opID == ev.bagID.opID;
 					//assert input.currentBagID == null || input.currentBagID.equals(ev.bagID); // ezt azert kellett kicommentezni, mert a null-ra allitast kivettem, mert rossz helyen volt
-					input.currentBagID = ev.bagID;
+					//assert input.currentBagID.equals(ev.bagID); // Ez meg azert nem igaz, mert van, hogy az activateLogicalInput meg nem fut le, amikor a start mar megerkezik
+					// A kov ertekadas azert nem jo, mert igy a notifyCloseInput azt hinne, hogy mar aktivalva lett.
+					// De lehet, hogy csak kesobb lesz aktivalva (es akkor majd persze megnezzuk, hogy kaptunk-e mar notifyCloseInput-ot ra).
+					//input.currentBagID = ev.bagID;
 					// Note: Sometimes the buffer is not really needed: we could check some tricky condition on the
 					// control flow graph, but this is not so important for the experiments in the paper.
 					if(input.inputCFLSize != -1) {
@@ -375,7 +378,7 @@ public class BagOperatorHost<IN, OUT>
 			}
 			if(i < sp.buffers.size()) { // we have found an appropriate buffer
 				//input.currentBagID = sp.buffers.get(i).bagID;
-				assert input.currentBagID == sp.buffers.get(i).bagID;
+				assert input.currentBagID.equals(sp.buffers.get(i).bagID);
 				giveBufferToBagOperator(sp, i, id);
 //				if(i < sp.buffers.size() - 1) { // not the last one
 ////					// ezt az assertet azert vettem ki, mert nem mindig igaz, merthogy a closed status a teljes subpartitionre vonatkozik

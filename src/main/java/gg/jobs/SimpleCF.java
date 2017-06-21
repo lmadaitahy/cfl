@@ -34,7 +34,7 @@ public class SimpleCF {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		//env.getConfig().setParallelism(1);
+		env.getConfig().setParallelism(1); ///////////////////////////////////////////////////////////
 
 		final int n = 100;
 
