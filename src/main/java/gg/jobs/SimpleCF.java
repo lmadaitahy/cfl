@@ -7,6 +7,8 @@ import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
 import gg.partitioners2.Random;
+import org.apache.flink.api.java.LocalEnvironment;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
@@ -34,9 +36,14 @@ public class SimpleCF {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+//		Configuration cfg = new Configuration();
+//		cfg.setLong("taskmanager.network.numberOfBuffers", 16384);
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(40, cfg);
+
 		//env.getConfig().setParallelism(1);
 
-		final int n = 1000;
+		final int n = 100;
 
 		final int bufferTimeout = 0;
 

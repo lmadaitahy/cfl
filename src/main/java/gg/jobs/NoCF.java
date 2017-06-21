@@ -7,6 +7,7 @@ import gg.operators.Bagify;
 import gg.partitioners2.RoundRobin;
 import gg.util.Util;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
@@ -17,6 +18,11 @@ public class NoCF {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+//		Configuration cfg = new Configuration();
+//		cfg.setLong("taskmanager.network.numberOfBuffers", 16384);
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(100, cfg);
+
 		//env.getConfig().setParallelism(1);
 
 		CFLConfig.getInstance().terminalBBId = 0;

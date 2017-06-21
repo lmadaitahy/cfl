@@ -268,9 +268,11 @@ public class BagOperatorHost<IN, OUT>
 
 			outCFLSizes.remove();
 			if(outCFLSizes.size() > 0) { // ha van jelenleg varakozo munka
+				LOG.info("Out.closeBag starting a new out bag {" + name + "}");
 				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
 				startOutBag();
 			} else {
+				LOG.info("Out.closeBag not starting a new out bag {" + name + "}");
                 if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
                     cflMan.unsubscribe(cb);
                 }
@@ -416,7 +418,7 @@ public class BagOperatorHost<IN, OUT>
 			synchronized (BagOperatorHost.this) {
 				latestCFL = cfl;
 
-				LOG.info("CFL notification: " + latestCFL);
+				LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
 
 				// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
 				// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
@@ -452,6 +454,8 @@ public class BagOperatorHost<IN, OUT>
 					outCFLSizes.add(cfl.size());
 					if (outCFLSizes.size() == 1) { // jelenleg nem dolgozunk epp (ezt onnan tudjuk, hogy ures volt az outCFLSizes)
 						startOutBag();
+					} else {
+						LOG.info("CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
 					}
 				}
 			}
@@ -460,22 +464,26 @@ public class BagOperatorHost<IN, OUT>
         @Override
         public void notifyTerminalBB() {
 			LOG.info("CFL notifyTerminalBB");
-            terminalBBReached = true;
-			if (outCFLSizes.isEmpty()) {
-				cflMan.unsubscribe(cb);
+			synchronized (BagOperatorHost.this) {
+				terminalBBReached = true;
+				if (outCFLSizes.isEmpty()) {
+					cflMan.unsubscribe(cb);
+				}
 			}
         }
 
 		@Override
 		public void notifyCloseInput(BagID bagID, int opID) {
-			if (opID == BagOperatorHost.this.opID) {
-				assert !notifyCloseInputs.contains(bagID);
-				notifyCloseInputs.add(bagID);
+			synchronized (BagOperatorHost.this) {
+				if (opID == BagOperatorHost.this.opID) {
+					assert !notifyCloseInputs.contains(bagID);
+					notifyCloseInputs.add(bagID);
 
-				for (Input inp : inputs) {
-					//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
-					if (bagID.equals(inp.currentBagID)) {
-						inp.closeCurrentInBag();
+					for (Input inp : inputs) {
+						//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
+						if (bagID.equals(inp.currentBagID)) {
+							inp.closeCurrentInBag();
+						}
 					}
 				}
 			}
