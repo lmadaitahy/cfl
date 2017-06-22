@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // Note: We couldn't directly tell the CFLManager from the driver, because it is important
-// that these calls to the CFLManager happen a on the TMs.
+// that these calls to the CFLManager happen on the TMs.
 public class KickoffSource implements SourceFunction<Unit> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(KickoffSource.class);
@@ -25,7 +25,7 @@ public class KickoffSource implements SourceFunction<Unit> {
 		LOG.info("KickoffSource kicking off");
 		CFLManager cflManager = CFLManager.getSing();
 
-		cflManager.resetCFL();
+		//cflManager.resetCFL(); // Ezt atmozgattam a TaskManager.scala-ba
 		cflManager.specifyTerminalBB(terminalBBId);
 
 		for(int bb: kickoffBBs) {
