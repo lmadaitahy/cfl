@@ -1,6 +1,7 @@
 package gg.operators;
 
 import gg.BagOperatorOutputCollector;
+import gg.CFLConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +18,7 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 	private String name;
 
 	public final void openInBag(int logicalInputId) {
-		LOG.info("openInBag[" + name + "]: logicalInputId: " + logicalInputId);
+		if (CFLConfig.vlog) LOG.info("openInBag[" + name + "]: logicalInputId: " + logicalInputId);
 		assert !open[logicalInputId];
 		open[logicalInputId] = true;
 	}
@@ -32,16 +33,16 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 
 
 	public void openOutBag() {
-		LOG.info("openOutBag[" + name + "]");
+		if (CFLConfig.vlog) LOG.info("openOutBag[" + name + "]");
 	}
 
 	public void pushInElement(IN e, int logicalInputId) {
-		LOG.info("pushInElement[" + name + "]: e: " + e + " logicalInputId: " + logicalInputId);
+		if (CFLConfig.vlog) LOG.info("pushInElement[" + name + "]: e: " + e + " logicalInputId: " + logicalInputId);
 		assert open[logicalInputId];
 	}
 
 	public void closeInBag(int inputId) {
-		LOG.info("closeInBag[" + name + "]: inputId: " + inputId);
+		if (CFLConfig.vlog) LOG.info("closeInBag[" + name + "]: inputId: " + inputId);
 		assert open[inputId];
 		open[inputId] = false;
 	}

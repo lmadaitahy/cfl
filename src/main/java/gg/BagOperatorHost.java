@@ -268,11 +268,11 @@ public class BagOperatorHost<IN, OUT>
 
 			outCFLSizes.remove();
 			if(outCFLSizes.size() > 0) { // ha van jelenleg varakozo munka
-				LOG.info("Out.closeBag starting a new out bag {" + name + "}");
+				if (CFLConfig.vlog) LOG.info("Out.closeBag starting a new out bag {" + name + "}");
 				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
 				startOutBag();
 			} else {
-				LOG.info("Out.closeBag not starting a new out bag {" + name + "}");
+				if (CFLConfig.vlog) LOG.info("Out.closeBag not starting a new out bag {" + name + "}");
                 if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
                     cflMan.unsubscribe(cb);
                 }
@@ -418,7 +418,7 @@ public class BagOperatorHost<IN, OUT>
 			synchronized (BagOperatorHost.this) {
 				latestCFL = cfl;
 
-				LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
+				if (CFLConfig.vlog) LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
 
 				// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
 				// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
@@ -455,7 +455,7 @@ public class BagOperatorHost<IN, OUT>
 					if (outCFLSizes.size() == 1) { // jelenleg nem dolgozunk epp (ezt onnan tudjuk, hogy ures volt az outCFLSizes)
 						startOutBag();
 					} else {
-						LOG.info("CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
+						if (CFLConfig.vlog) LOG.info("CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
 					}
 				}
 			}

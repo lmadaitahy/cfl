@@ -14,4 +14,10 @@ public class CFLConfig {
     // Tovabba a job elindulasakor mar ennek be kell lennie allitva (vagyis nem lehetne a KickoffSource setupjaban bealltani ezt itt),
     // mert a BagOperatorHost setupjaban szukseg van ra, es a setupok sorrendje nem determinisztikus.
     public int terminalBBId = -1;
+
+
+
+
+
+    public static final boolean vlog = false;
 }
