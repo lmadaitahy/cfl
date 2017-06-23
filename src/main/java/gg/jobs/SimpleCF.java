@@ -43,7 +43,7 @@ public class SimpleCF {
 
 		//env.getConfig().setParallelism(1);
 
-		final int n = 1000;
+		final int n = Integer.parseInt(args[0]);
 
 		final int bufferTimeout = 0;
 
