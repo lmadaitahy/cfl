@@ -48,14 +48,8 @@ import java.util.Arrays;
 
 public class SimpleCFFlinkNative {
 
-	//private static final Logger LOG = LoggerFactory.getLogger(SimpleCF.class);
-
 	public static void main(String[] args) throws Exception {
 		ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
-
-//		Configuration cfg = new Configuration();
-//		cfg.setLong("taskmanager.network.numberOfBuffers", 16384);
-//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(40, cfg);
 
 		//env.getConfig().setParallelism(1);
 
@@ -77,7 +71,6 @@ public class SimpleCFFlinkNative {
 
 		DataSet<Integer> res = it.closeWith(inced);
 
-		//res.map(new RichFlatMapFunction<>()).setParallelism(1);
 		res.flatMap(new RichFlatMapFunction<Integer, Object>() {
 
 			int cnt = -10;
@@ -103,7 +96,7 @@ public class SimpleCFFlinkNative {
 			}
 		}).setParallelism(1).output(new DiscardingOutputFormat<>());
 
-		//System.out.println(env.getExecutionPlan());
+		System.out.println(env.getExecutionPlan());
 		env.execute();
 	}
 }
