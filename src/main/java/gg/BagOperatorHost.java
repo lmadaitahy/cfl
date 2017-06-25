@@ -324,6 +324,7 @@ public class BagOperatorHost<IN, OUT>
 				o.buffer = new ArrayList<>();
 			} else {
 				o.startBag();
+				o.buffer = null; // Ez azert kell, mert vannak ilyen buffer != null checkek, es azok elkuldenek a regit
 				o.state = OutState.FORWARDING;
 			}
 		}
@@ -455,7 +456,7 @@ public class BagOperatorHost<IN, OUT>
 					if (outCFLSizes.size() == 1) { // jelenleg nem dolgozunk epp (ezt onnan tudjuk, hogy ures volt az outCFLSizes)
 						startOutBag();
 					} else {
-						if (CFLConfig.vlog) LOG.info("CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
+						if (CFLConfig.vlog) LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
 					}
 				}
 			}
