@@ -36,3 +36,4 @@ out/
 tools/flink
 tools/flink-*
 log.txt
+*.ods#
