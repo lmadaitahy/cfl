@@ -13,7 +13,7 @@ public class CFLITCase {
 
     @Test(expected=JobCancellationException.class)
     public void testSimpleCF() throws Exception {
-        SimpleCF.main(null);
+        SimpleCF.main(new String[]{"100"});
     }
 
     @Test(expected=JobCancellationException.class)
