@@ -50,7 +50,8 @@ public class SimpleCF {
 		env.setBufferTimeout(bufferTimeout);
 
 		CFLConfig.getInstance().terminalBBId = 2;
-		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
+		KickoffSource kickoffSrc = new KickoffSource(0,1);
+		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
 //		env.addSource(new KickoffSource(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 //				, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 //				, 1, 2)).addSink(new DiscardingSink<>());
@@ -122,6 +123,8 @@ public class SimpleCF {
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert nincs output
 
 		output.addSink(new DiscardingSink<>());
+
+		kickoffSrc.setNumToSubscribe();
 
 		//System.out.println(env.getExecutionPlan());
 		env.execute();

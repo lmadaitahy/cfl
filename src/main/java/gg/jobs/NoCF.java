@@ -26,7 +26,8 @@ public class NoCF {
 		//env.getConfig().setParallelism(1);
 
 		CFLConfig.getInstance().terminalBBId = 0;
-		env.addSource(new KickoffSource(0)).addSink(new DiscardingSink<>());
+		KickoffSource kickoffSrc = new KickoffSource(0);
+		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
         final int para = env.getParallelism();
 
 		String[] words = new String[]{"alma", "korte", "alma", "b", "b", "b", "c", "d", "d"};
@@ -58,6 +59,8 @@ public class NoCF {
 				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0, 2)
 						.addInput(0, 0, true, 1))
 				.setParallelism(1);
+
+		kickoffSrc.setNumToSubscribe();
 
 		env.execute();
 	}

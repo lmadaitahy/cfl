@@ -1,6 +1,7 @@
 package gg;
 
 import gg.util.Unit;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ public class KickoffSource implements SourceFunction<Unit> {
 
 	private final int[] kickoffBBs;
 	private int terminalBBId = -2;
+	private int numToSubscribe = -10;
 
 	public KickoffSource(int... kickoffBBs) {
 		this.kickoffBBs = kickoffBBs;
@@ -27,6 +29,8 @@ public class KickoffSource implements SourceFunction<Unit> {
 
 		//cflManager.resetCFL(); // Ezt atmozgattam a TaskManager.scala-ba
 		cflManager.specifyTerminalBB(terminalBBId);
+		assert numToSubscribe != -10;
+		cflManager.specifyNumToSubscribe(numToSubscribe);
 
 		for(int bb: kickoffBBs) {
 			cflManager.appendToCFL(bb);
@@ -36,5 +40,14 @@ public class KickoffSource implements SourceFunction<Unit> {
 	@Override
 	public void cancel() {
 
+	}
+
+	public void setNumToSubscribe() {
+		int totalPara = 0;
+		for (DataStream<?> ds: DataStream.btStreams) {
+			totalPara += ds.getParallelism();
+		}
+		this.numToSubscribe = totalPara;
+		DataStream.btStreams.clear();
 	}
 }

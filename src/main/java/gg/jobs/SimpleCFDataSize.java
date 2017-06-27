@@ -48,8 +48,8 @@ public class SimpleCFDataSize {
 		//StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
 		Configuration cfg = new Configuration();
-		cfg.setLong("taskmanager.network.numberOfBuffers", 16384);
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(40, cfg);
+		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(40, cfg); //40
 
 		//env.getConfig().setParallelism(1);
 
@@ -61,7 +61,8 @@ public class SimpleCFDataSize {
 		env.setBufferTimeout(bufferTimeout); // todo: atgondolni (ugy tunik vmiert lassabb lesz, ha kiveszem. ki kene talalni, hogy miert. Meg meg kene nezni, hogy mi van az alap SimpleCF-nel!!!)
 
 		CFLConfig.getInstance().terminalBBId = 2;
-		env.addSource(new KickoffSource(0,1)).addSink(new DiscardingSink<>());
+		KickoffSource kickoffSrc = new KickoffSource(0,1);
+		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
 //		env.addSource(new KickoffSource(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 //				, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 //				, 1, 2)).addSink(new DiscardingSink<>());
@@ -184,6 +185,8 @@ public class SimpleCFDataSize {
 		output_i.addSink(new DiscardingSink<>()).setParallelism(1);
 
 		//output_d.addSink(new DiscardingSink<>()).setParallelism(1);
+
+		kickoffSrc.setNumToSubscribe();   // todo: berakni a tobbi jobba is
 
 		//System.out.println(env.getExecutionPlan());
 		env.execute();
