@@ -19,5 +19,5 @@ public class CFLConfig {
 
 
 
-    public static final boolean vlog = false;
+    public static final boolean vlog = true;
 }

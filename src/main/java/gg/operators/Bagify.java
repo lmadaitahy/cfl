@@ -35,11 +35,11 @@ public class Bagify<T>
 
     private CFLManager cflMan;
 
-    // deprecated, use the other ctor
-    public Bagify(Partitioner<T> partitioner) {
-        this.partitioner = partitioner;
-        opID = BagOperatorHost.opIDCounter++;  assert false; // use the other ctor
-    }
+//    // deprecated, use the other ctor
+//    public Bagify(Partitioner<T> partitioner) {
+//        this.partitioner = partitioner;
+//        opID = BagOperatorHost.opIDCounter++;  assert false; // use the other ctor
+//    }
 
     public Bagify(Partitioner<T> partitioner, int opID) {
         this.partitioner = partitioner;

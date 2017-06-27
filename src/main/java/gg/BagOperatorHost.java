@@ -55,15 +55,15 @@ public class BagOperatorHost<IN, OUT>
 
 	private HashSet<BagID> notifyCloseInputs = new HashSet<>();
 
-	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId) {
-		this.op = op;
-		this.bbId = bbId;
-		this.inputs = new ArrayList<>();
-		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
-		assert this.terminalBBId >= 0;
-		opID = opIDCounter++;  assert false;  // use the other ctor
-		// warning: this runs in the driver, so we shouldn't access CFLManager here
-	}
+//	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId) {
+//		this.op = op;
+//		this.bbId = bbId;
+//		this.inputs = new ArrayList<>();
+//		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
+//		assert this.terminalBBId >= 0;
+//		opID = opIDCounter++;  assert false;  // use the other ctor
+//		// warning: this runs in the driver, so we shouldn't access CFLManager here
+//	}
 
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID) {
 		this.op = op;
@@ -75,11 +75,11 @@ public class BagOperatorHost<IN, OUT>
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
-	public BagOperatorHost<IN,OUT> addInput(int id, int bbId, boolean inputInSameBlock) {
-		assert id == inputs.size();
-		inputs.add(new Input(id, bbId, inputInSameBlock));
-		return this;
-	}
+//	public BagOperatorHost<IN,OUT> addInput(int id, int bbId, boolean inputInSameBlock) {
+//		assert id == inputs.size();
+//		inputs.add(new Input(id, bbId, inputInSameBlock));
+//		return this;
+//	}
 
 	public BagOperatorHost<IN,OUT> addInput(int id, int bbId, boolean inputInSameBlock, int opID) {
 		assert id == inputs.size();
@@ -500,12 +500,12 @@ public class BagOperatorHost<IN, OUT>
 		return this;
 	}
 
-	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal) {
-		assert false; // use the other overload
-		assert splitId == outs.size();
-		outs.add(new Out((byte)splitId, targetBbId, normal));
-		return this;
-	}
+//	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal) {
+//		assert false; // use the other overload
+//		assert splitId == outs.size();
+//		outs.add(new Out((byte)splitId, targetBbId, normal));
+//		return this;
+//	}
 
 	private enum OutState {IDLE, DAMMING, WAITING, FORWARDING}
 
@@ -561,25 +561,33 @@ public class BagOperatorHost<IN, OUT>
 			short part = partitioner.getPart(e);
 			// (Amugy ez a logika meg van duplazva a Bagify-ban is most)
 			if (!sentStart[part]) {
-				sentStart[part] = true;
-				ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, partitioner.targetPara, new BagID(cflSize, opID));
-				output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, part), 0));
+				sendStart(part);
 			}
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
 		}
 
 		void startBag() {
-			for(int i=0; i<sentStart.length; i++)
+			for (int i=0; i<sentStart.length; i++)
 				sentStart[i] = false;
 		}
 
 		void endBag() {
-			for(short i=0; i<sentStart.length; i++) {
+			for (short i=0; i<sentStart.length; i++) {
 				if (sentStart[i]) {
-					ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, partitioner.targetPara, new BagID(cflSize, opID));
-					output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, i), 0));
+					sendEnd(i);
 				}
 			}
+		}
+
+		private void sendStart(short part) {
+			sentStart[part] = true;
+			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, partitioner.targetPara, new BagID(cflSize, opID));
+			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, part), 0));
+		}
+
+		private void sendEnd(short part) {
+			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, partitioner.targetPara, new BagID(cflSize, opID));
+			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, part), 0));
 		}
 	}
 
