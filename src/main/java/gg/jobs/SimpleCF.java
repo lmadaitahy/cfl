@@ -7,6 +7,9 @@ import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
 import gg.partitioners2.Random;
+import org.apache.flink.api.common.typeinfo.TypeHint;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.LocalEnvironment;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -63,6 +66,7 @@ public class SimpleCF {
 				env.fromCollection(Arrays.asList(input))
 						.transform("bagify",
 								Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism()), 0))
+						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
 						.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> inputBag = inputBag0.map(new LogicalInputIdFiller<>(0));
@@ -102,6 +106,7 @@ public class SimpleCF {
 								new SmallerThan(n), 1, 3)
 								.addInput(0, 1, true, 2)
 								.out(0,1,true, new Random<>(1)))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
 				.setParallelism(1);
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert 1->1
 

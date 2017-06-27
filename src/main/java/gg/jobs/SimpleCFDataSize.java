@@ -17,6 +17,8 @@ import gg.partitioners2.RoundRobin;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
+import org.apache.flink.api.common.typeinfo.TypeHint;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
@@ -77,12 +79,14 @@ public class SimpleCFDataSize {
 				env.fromCollection(Arrays.asList(input_i))
 						.transform("bagify_i",
 								Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism()), 0))
+						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
 						.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> inputBag0_d =
 				env.fromCollection(Arrays.asList(input_d))
 						.transform("bagify_d",
 								Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism()), 6))
+						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
 						.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> inputBag_i = inputBag0_i.map(new LogicalInputIdFiller<>(0));
@@ -147,6 +151,7 @@ public class SimpleCFDataSize {
 								new SmallerThan(n), 1, 3)
 								.addInput(0, 1, true, 2)
 								.out(0,1,true, new Random<>(1)))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
 				.setParallelism(1);
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert 1->1
 
