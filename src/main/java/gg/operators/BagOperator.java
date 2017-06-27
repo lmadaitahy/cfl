@@ -15,7 +15,7 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 
 	private boolean[] open = new boolean[]{false, false};
 
-	private String name;
+	protected String name;
 
 	public final void openInBag(int logicalInputId) {
 		if (CFLConfig.vlog) LOG.info("openInBag[" + name + "]: logicalInputId: " + logicalInputId);

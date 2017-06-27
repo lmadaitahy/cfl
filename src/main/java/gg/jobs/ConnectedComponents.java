@@ -67,7 +67,8 @@ public class ConnectedComponents {
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		env.getConfig().setParallelism(1);
+		//env.getConfig().setParallelism(1);
+		env.getConfig().setParallelism(2);
 
 		int para = env.getParallelism();
 

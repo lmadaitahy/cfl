@@ -55,6 +55,8 @@ public class BagOperatorHost<IN, OUT>
 
 	private HashSet<BagID> notifyCloseInputs = new HashSet<>();
 
+	private boolean consumed = false;
+
 //	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId) {
 //		this.op = op;
 //		this.bbId = bbId;
@@ -153,6 +155,7 @@ public class BagOperatorHost<IN, OUT>
 			IN ele = eleOrEvent.element;
 			sp.buffers.get(sp.buffers.size()-1).elements.add(ele);
 			if(!sp.damming) {
+				consumed = true;
 				op.pushInElement(ele, eleOrEvent.logicalInputId);
 			}
 		} else {
@@ -260,8 +263,9 @@ public class BagOperatorHost<IN, OUT>
 				inputBagIDsArr[i++] = b;
 			}
 
-			if (numElements > 0) {
-				cflMan.producedLocal(new BagID(outCFLSizes.peek(), opID), inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks(), subpartitionId, opID);
+			BagID outBagID = new BagID(outCFLSizes.peek(), opID);
+			if (numElements > 0 || consumed) {
+				cflMan.producedLocal(outBagID, inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks(), subpartitionId, opID);
 			}
 
 			numElements = 0;
@@ -287,6 +291,7 @@ public class BagOperatorHost<IN, OUT>
 
 	// i: buffer index in inputSubpartitions
 	synchronized private void giveBufferToBagOperator(InputSubpartition<IN> sp, int i, int logicalInputId) {
+		consumed = true;
 		for(IN e: sp.buffers.get(i).elements) {
 			op.pushInElement(e, logicalInputId);
 		}
@@ -309,6 +314,8 @@ public class BagOperatorHost<IN, OUT>
 		Integer outCFLSize = outCFLSizes.peek();
 
 		assert latestCFL.get(outCFLSize - 1) == bbId;
+
+		consumed = false;
 
 		// Treat outputs
 		for(Out o: outs) {
@@ -476,7 +483,7 @@ public class BagOperatorHost<IN, OUT>
 		@Override
 		public void notifyCloseInput(BagID bagID, int opID) {
 			synchronized (BagOperatorHost.this) {
-				if (opID == BagOperatorHost.this.opID) {
+				if (opID == BagOperatorHost.this.opID || opID == CFLManager.CloseInputBag.broadcast) {
 					assert !notifyCloseInputs.contains(bagID);
 					notifyCloseInputs.add(bagID);
 
