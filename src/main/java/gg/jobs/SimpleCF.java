@@ -47,7 +47,7 @@ public class SimpleCF {
 
 		final int bufferTimeout = 0;
 
-		env.setBufferTimeout(bufferTimeout);
+		//env.setBufferTimeout(bufferTimeout); // TODO: ujrafuttatni igy a clusteren, mert lehet, hogy gyorsabb lett. (Lokalisan nem merheto kulonbseg.)
 
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
@@ -106,7 +106,6 @@ public class SimpleCF {
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert 1->1
 
 		DataStream<ElementOrEvent<Unit>> exitCond = smallerThan
-				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
 								new ConditionNode(1,2), 1, 4)

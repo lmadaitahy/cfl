@@ -17,6 +17,11 @@ public class CFLITCase {
     }
 
     @Test(expected=JobCancellationException.class)
+    public void testSimpleCFDataSize() throws Exception {
+        SimpleCFDataSize.main(new String[]{"100", "1000"});
+    }
+
+    @Test(expected=JobCancellationException.class)
     public void testConnectedComponents() throws Exception {
         ConnectedComponents.main(null);
     }

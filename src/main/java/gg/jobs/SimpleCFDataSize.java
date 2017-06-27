@@ -45,11 +45,11 @@ public class SimpleCFDataSize {
 	//private static final Logger LOG = LoggerFactory.getLogger(SimpleCF.class);
 
 	public static void main(String[] args) throws Exception {
-		//StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		Configuration cfg = new Configuration();
-		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(40, cfg); //40
+//		Configuration cfg = new Configuration();
+//		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(40, cfg); //40
 
 		//env.getConfig().setParallelism(1);
 
@@ -57,8 +57,6 @@ public class SimpleCFDataSize {
 		final int s = Integer.parseInt(args[1]);
 
 		final int bufferTimeout = 0;
-
-		env.setBufferTimeout(bufferTimeout); // todo: atgondolni (ugy tunik vmiert lassabb lesz, ha kiveszem. ki kene talalni, hogy miert. Meg meg kene nezni, hogy mi van az alap SimpleCF-nel!!!)
 
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
@@ -153,7 +151,6 @@ public class SimpleCFDataSize {
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert 1->1
 
 		DataStream<ElementOrEvent<Unit>> exitCond = smallerThan
-				.setConnectionType(new gg.partitioners.Random<>())
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
 								new ConditionNode(1,2), 1, 4)
