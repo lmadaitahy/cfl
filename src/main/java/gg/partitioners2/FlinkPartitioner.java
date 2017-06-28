@@ -19,7 +19,7 @@ public class FlinkPartitioner<T> extends StreamPartitioner<ElementOrEvent<T>> {
 
     @Override
     public int[] selectChannels(SerializationDelegate<StreamRecord<ElementOrEvent<T>>> record, int numChannels) {
-        arr[0] = record.getInstance().getValue().part;
+        arr[0] = record.getInstance().getValue().targetPart;
         return arr;
     }
 

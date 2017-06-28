@@ -10,6 +10,7 @@ import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
@@ -66,9 +67,13 @@ public class ConnectedComponents {
 	private static final Logger LOG = LoggerFactory.getLogger(ConnectedComponents.class);
 
 	public static void main(String[] args) throws Exception {
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		//StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+		Configuration cfg = new Configuration();
+		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20
+
 		//env.getConfig().setParallelism(1);
-		env.getConfig().setParallelism(2);
 
 		int para = env.getParallelism();
 
@@ -79,15 +84,15 @@ public class ConnectedComponents {
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
 
 		@SuppressWarnings("unchecked")
-		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)}; ///////
-//		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{
-//				Tuple2.of(0,1),
-//				Tuple2.of(1,2),
-//				Tuple2.of(3,4),
-//				Tuple2.of(4,0),
-//				Tuple2.of(5,6),
-//				Tuple2.of(5,7)
-//		};
+		//Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)}; ///////
+		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{
+				Tuple2.of(0,1),
+				Tuple2.of(1,2),
+				Tuple2.of(3,4),
+				Tuple2.of(4,0),
+				Tuple2.of(5,6),
+				Tuple2.of(5,7)
+		};
 
 		// berakjuk megforditva is az eleket
 		@SuppressWarnings("unchecked")
@@ -173,6 +178,7 @@ public class ConnectedComponents {
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> msgs = edges
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_1.map(new LogicalInputIdFiller<>(1)))
+				.setConnectionType(new FlinkPartitioner<>())
 				//.setConnectionType(new Tuple2by0())
 				.bt("msgs", Util.tpe(), new BagOperatorHost<>(new Join(){
 					@Override
@@ -197,6 +203,7 @@ public class ConnectedComponents {
 		SplitStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_2 = labels_1
 				.map(new LogicalInputIdFiller<>(0))
 				.union(minMsgs.map(new LogicalInputIdFiller<>(1)))
+				.setConnectionType(new FlinkPartitioner<>())
 				//.setConnectionType(new Tuple2by0())
 				.bt("updates_2", Util.tpe(), new BagOperatorHost<>(new Join(){
 					@Override
@@ -218,6 +225,7 @@ public class ConnectedComponents {
 		SplitStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_2 = labels_1
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_2.select("0").map(new LogicalInputIdFiller<>(1)))
+				.setConnectionType(new FlinkPartitioner<>())
 				//.setConnectionType(new Tuple2by0())
 				.bt("labels_2",Util.tpe(),new BagOperatorHost<>(new UpdateJoin(),1,9)
 								.addInput(0,1,true,4) // labels_1
@@ -269,7 +277,7 @@ public class ConnectedComponents {
 
 		kickoffSrc.setNumToSubscribe();
 
-		//System.out.println(env.getExecutionPlan());
+		System.out.println(env.getExecutionPlan());
 		env.execute();
 	}
 }

@@ -15,22 +15,24 @@ public class ElementOrEvent<T> implements CanForceFlush {
 
 	public byte logicalInputId = -1;
 
-	public short part; // A FlinkPartitioner ezt adja vissza
+	public short targetPart; // A FlinkPartitioner ezt hasznalja
+
+	// ! Vigyazni, hogy ha ide folveszek vmi field-et, akkor azt beirjam a copy-ba is !
 
 	public ElementOrEvent() {}
 
-	public ElementOrEvent(short subPartitionId, T element, byte splitId, short part) {
+	public ElementOrEvent(short subPartitionId, T element, byte splitId, short targetPart) {
 		this.subPartitionId = subPartitionId;
 		this.element = element;
 		this.splitId = splitId;
-		this.part = part;
+		this.targetPart = targetPart;
 	}
 
-	public ElementOrEvent(short subPartitionId, Event event, byte splitId, short part) {
+	public ElementOrEvent(short subPartitionId, Event event, byte splitId, short targetPart) {
 		this.subPartitionId = subPartitionId;
 		this.event = event;
 		this.splitId = splitId;
-		this.part = part;
+		this.targetPart = targetPart;
 	}
 
 	public ElementOrEvent<T> copy() {
@@ -40,6 +42,7 @@ public class ElementOrEvent<T> implements CanForceFlush {
 		c.event = event;
 		c.splitId = splitId;
 		c.logicalInputId = logicalInputId;
+		c.targetPart = targetPart;
 		return c;
 	}
 
@@ -84,6 +87,7 @@ public class ElementOrEvent<T> implements CanForceFlush {
 				", event=" + event +
 				", splitId=" + splitId +
 				", logicalInputId=" + logicalInputId +
+				", targetPart=" + targetPart +
 				'}';
 	}
 }
