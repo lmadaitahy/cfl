@@ -60,7 +60,7 @@ public class AssertBagEquals<IN> extends BagOperator<IN, Unit> {
         }
 
         for (HashMap.Entry<IN, Integer> e: expected.entrySet()) {
-            if (expected.get(e.getKey()) == null) {
+            if (counts.get(e.getKey()) == null) {
                 throw new TestFailedException("AssertBagEquals failed: expected element " + e.getKey() + " did not appear");
             }
         }
