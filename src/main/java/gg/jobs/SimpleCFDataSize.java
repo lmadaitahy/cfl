@@ -58,8 +58,6 @@ public class SimpleCFDataSize {
 		final int n = Integer.parseInt(args[0]);
 		final int s = Integer.parseInt(args[1]);
 
-		final int bufferTimeout = 0;
-
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());

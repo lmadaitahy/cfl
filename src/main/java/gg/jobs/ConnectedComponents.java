@@ -9,6 +9,7 @@ import gg.partitioners2.RoundRobin;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -67,11 +68,11 @@ public class ConnectedComponents {
 	private static final Logger LOG = LoggerFactory.getLogger(ConnectedComponents.class);
 
 	public static void main(String[] args) throws Exception {
-		//StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-		Configuration cfg = new Configuration();
-		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20
+//		Configuration cfg = new Configuration();
+//		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20
 
 		//env.getConfig().setParallelism(1);
 
@@ -107,12 +108,12 @@ public class ConnectedComponents {
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> edges =
 				env.fromCollection(Arrays.asList(edgesNB))
 						.transform("bagify",
-								Util.tpe(), new Bagify<>(new RoundRobin<>(para), 14))
+								Util.tpe(), new Bagify<>(new Tuple2by0(para), 14))
 				.setConnectionType(new FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> vertices0 = edges
 				//.setConnectionType(new gg.partitioners.Forward<>())
-				.bt("edges.map((x,y) => x)", Util.tpe(), new BagOperatorHost<>(new FlatMap<Tuple2<Integer, Integer>, Integer>(){
+				.bt("vertices0", Util.tpe(), new BagOperatorHost<>(new FlatMap<Tuple2<Integer, Integer>, Integer>(){
 			@Override
 			public void pushInElement(Tuple2<Integer, Integer> e, int logicalInputId) {
 				super.pushInElement(e, logicalInputId);
@@ -125,7 +126,7 @@ public class ConnectedComponents {
 
 		DataStream<ElementOrEvent<Integer>> vertices = vertices0
 				//.setConnectionType(new gg.partitioners.Forward<>())
-				.bt("vertices0.distinct", Util.tpe(),
+				.bt("vertices", Util.tpe(),
 				new BagOperatorHost<Integer, Integer>(new Distinct<>(), 0, 1)
 						.addInput(0,0,true, 0)
 						.out(0,0,true, new Forward<>(para)))
@@ -133,7 +134,7 @@ public class ConnectedComponents {
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_0 = vertices
 				//.setConnectionType(new gg.partitioners.Forward<>())
-				.bt("x => (x,x)", Util.tpe(), new BagOperatorHost<>(new FlatMap<Integer,Tuple2<Integer,Integer>>(){
+				.bt("labels_0", Util.tpe(), new BagOperatorHost<>(new FlatMap<Integer,Tuple2<Integer,Integer>>(){
 			@Override
 			public void pushInElement(Integer e, int logicalInputId) {
 				super.pushInElement(e, logicalInputId);
@@ -146,7 +147,7 @@ public class ConnectedComponents {
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_0 = labels_0
 				//.setConnectionType(new gg.partitioners.Forward<>())
-				.bt("Id", Util.tpe(), new BagOperatorHost<>(new IdMap<Tuple2<Integer, Integer>>(), 0, 3)
+				.bt("updates_0", Util.tpe(), new BagOperatorHost<>(new IdMap<Tuple2<Integer, Integer>>(), 0, 3)
 				.addInput(0,0,true,2)
 				.out(0,0,true, new Forward<>(para)))
 				.setConnectionType(new FlinkPartitioner<>());
@@ -277,7 +278,7 @@ public class ConnectedComponents {
 
 		kickoffSrc.setNumToSubscribe();
 
-		System.out.println(env.getExecutionPlan());
+		//System.out.println(env.getExecutionPlan());
 		env.execute();
 	}
 }

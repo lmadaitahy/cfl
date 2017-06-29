@@ -579,6 +579,7 @@ public class BagOperatorHost<IN, OUT>
 			if (!sentStart[part]) {
 				sendStart(part);
 			}
+			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending element to " + part + ": " + new ElementOrEvent<>(subpartitionId, e, splitId, part));
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
 		}
 
