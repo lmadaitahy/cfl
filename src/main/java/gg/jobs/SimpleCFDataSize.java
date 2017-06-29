@@ -12,8 +12,8 @@ import gg.operators.Bagify;
 import gg.operators.ConditionNode;
 import gg.operators.IncMap;
 import gg.operators.SmallerThan;
-import gg.partitioners2.Random;
-import gg.partitioners2.RoundRobin;
+import gg.partitioners.Random;
+import gg.partitioners.RoundRobin;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
@@ -24,7 +24,6 @@ import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
-import org.apache.flink.configuration.Configuration;
 
 import java.util.Arrays;
 
@@ -78,14 +77,14 @@ public class SimpleCFDataSize {
 						.transform("bagify_i",
 								Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism()), 0))
 						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-						.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+						.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> inputBag0_d =
 				env.fromCollection(Arrays.asList(input_d))
 						.transform("bagify_d",
 								Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism()), 6))
 						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-						.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+						.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> inputBag_i = inputBag0_i.map(new LogicalInputIdFiller<>(0));
 
@@ -101,7 +100,7 @@ public class SimpleCFDataSize {
 								.addInput(0, 0, false, 0)
 								.addInput(1, 1, false, 2)
 								.out(0, 1, true, new Random<>(env.getParallelism())))
-				.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> phi_d = it_d
 				.bt("phi_d",inputBag_d.getType(),
@@ -109,7 +108,7 @@ public class SimpleCFDataSize {
 								.addInput(0, 0, false, 6)
 								.addInput(1, 1, false, 8)
 								.out(0, 1, true, new Random<>(env.getParallelism())))
-				.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 
 		SplitStream<ElementOrEvent<Integer>> incedSplit_i = phi_i
@@ -120,7 +119,7 @@ public class SimpleCFDataSize {
 								.out(0,1,false, new Random<>(env.getParallelism())) // back edge
 								.out(1,2,false, new Random<>(1)) // out of the loop
 								.out(2,1,true, new Random<>(1))) // to exit condition
-				.setConnectionType(new gg.partitioners2.FlinkPartitioner<>())
+				.setConnectionType(new gg.partitioners.FlinkPartitioner<>())
 				.split(new CondOutputSelector<>());
 
 		SplitStream<ElementOrEvent<Integer>> incedSplit_d = phi_d
@@ -130,7 +129,7 @@ public class SimpleCFDataSize {
 								.addInput(0, 1, true, 7)
 								.out(0,1,false, new Random<>(env.getParallelism())) // back edge
 								.out(1,2,false, new Random<>(1))) // out of the loop
-				.setConnectionType(new gg.partitioners2.FlinkPartitioner<>())
+				.setConnectionType(new gg.partitioners.FlinkPartitioner<>())
 				.split(new CondOutputSelector<>());
 
 

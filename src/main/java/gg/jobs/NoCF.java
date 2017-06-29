@@ -4,10 +4,8 @@ import gg.*;
 import gg.operators.AssertBagEquals;
 import gg.operators.IdMap;
 import gg.operators.Bagify;
-import gg.partitioners2.RoundRobin;
+import gg.partitioners.RoundRobin;
 import gg.util.Util;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
@@ -42,7 +40,7 @@ public class NoCF {
 		DataStream<ElementOrEvent<String>> input =
 				env.fromCollection(Arrays.asList(words))
 						.transform("bagify", Util.tpe(), new Bagify<>(new RoundRobin<>(para), 0))
-                        .setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+                        .setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		System.out.println(input.getParallelism());
 
@@ -51,8 +49,8 @@ public class NoCF {
 				.bt("id-map",input.getType(),
 				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1)
 						.addInput(0, 0, true, 0)
-						.out(0,0,true, new gg.partitioners2.Forward<>(1)))
-				.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+						.out(0,0,true, new gg.partitioners.Forward<>(1)))
+				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		output
 				//.setConnectionType(new gg.partitioners.Forward<>())

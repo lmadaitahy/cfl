@@ -1,9 +1,13 @@
 package gg.partitioners;
 
-public class Forward<T> extends EventBroadcast<T> {
+public class Forward<T> extends Partitioner<T> {
+
+	public Forward(int targetPara) {
+		super(targetPara);
+	}
 
 	@Override
-	protected int selectForElement(T elem, int numberOfOutputChannels) {
+	public short getPart(T e) {
 		return 0;
 	}
 }

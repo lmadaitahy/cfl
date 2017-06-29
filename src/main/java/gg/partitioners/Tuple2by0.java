@@ -3,11 +3,16 @@ package gg.partitioners;
 import org.apache.flink.api.java.tuple.Tuple2;
 
 /**
- * Partition bag of Tuple2s by f0.
+ * Partition a bag of Tuple2s by f0.
  */
-public class Tuple2by0 extends EventBroadcast<Tuple2<Integer, Integer>> {
+public class Tuple2by0 extends Partitioner<Tuple2<Integer, Integer>> {
+
+    public Tuple2by0(int targetPara) {
+        super(targetPara);
+    }
+
     @Override
-    protected int selectForElement(Tuple2<Integer, Integer> elem, int numberOfOutputChannels) {
-        return elem.f0 % numberOfOutputChannels;
+    public short getPart(Tuple2<Integer, Integer> elem) {
+        return (short)(elem.f0 % targetPara);
     }
 }

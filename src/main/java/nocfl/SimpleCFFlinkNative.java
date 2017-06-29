@@ -1,36 +1,13 @@
 package nocfl;
 
-import gg.BagOperatorHost;
-import gg.CFLConfig;
-import gg.CFLManager;
-import gg.CondOutputSelector;
-import gg.ElementOrEvent;
-import gg.KickoffSource;
-import gg.PhiNode2;
-import gg.operators.AssertEquals;
-import gg.operators.Bagify;
-import gg.operators.ConditionNode;
-import gg.operators.IncMap;
-import gg.operators.SmallerThan;
-import gg.partitioners2.Random;
-import gg.partitioners2.RoundRobin;
-import gg.util.LogicalInputIdFiller;
 import gg.util.TestFailedException;
-import gg.util.Unit;
-import gg.util.Util;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
-import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.io.DiscardingOutputFormat;
 import org.apache.flink.api.java.operators.IterativeDataSet;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.IterativeStream;
-import org.apache.flink.streaming.api.datastream.SplitStream;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 import org.apache.flink.util.Collector;
 
 import java.util.Arrays;

@@ -1,4 +1,4 @@
-package gg.partitioners2;
+package gg.partitioners;
 
 import gg.ElementOrEvent;
 import org.apache.flink.runtime.plugable.SerializationDelegate;

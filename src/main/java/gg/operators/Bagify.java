@@ -1,10 +1,9 @@
 package gg.operators;
 
 import gg.BagID;
-import gg.BagOperatorHost;
 import gg.CFLManager;
 import gg.ElementOrEvent;
-import gg.partitioners2.Partitioner;
+import gg.partitioners.Partitioner;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;

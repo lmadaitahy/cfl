@@ -2,23 +2,18 @@ package gg.jobs;
 
 import gg.*;
 import gg.operators.*;
-import gg.partitioners2.RoundRobin;
+import gg.partitioners.RoundRobin;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
-import gg.partitioners2.Random;
+import gg.partitioners.Random;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeutils.TypeSerializer;
-import org.apache.flink.api.java.LocalEnvironment;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -67,7 +62,7 @@ public class SimpleCF {
 						.transform("bagify",
 								Util.tpe(), new Bagify<>(new RoundRobin<>(env.getParallelism()), 0))
 						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-						.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+						.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> inputBag = inputBag0.map(new LogicalInputIdFiller<>(0));
 
@@ -80,7 +75,7 @@ public class SimpleCF {
 								.addInput(0, 0, false, 0)
 								.addInput(1, 1, false, 2)
 								.out(0, 1, true, new Random<>(env.getParallelism())))
-				.setConnectionType(new gg.partitioners2.FlinkPartitioner<>());
+				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 
 		SplitStream<ElementOrEvent<Integer>> incedSplit = phi
@@ -92,7 +87,7 @@ public class SimpleCF {
 								.out(0,1,false, new Random<>(env.getParallelism())) // back edge
 								.out(1,2,false, new Random<>(1)) // out of the loop
 								.out(2,1,true, new Random<>(1))) // to exit condition
-				.setConnectionType(new gg.partitioners2.FlinkPartitioner<>())
+				.setConnectionType(new gg.partitioners.FlinkPartitioner<>())
 				.split(new CondOutputSelector<>());
 
 		DataStream<ElementOrEvent<Integer>> incedSplitL = incedSplit.select("0").map(new LogicalInputIdFiller<>(1));

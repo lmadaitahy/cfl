@@ -1,15 +1,19 @@
 package gg.partitioners;
 
-public class RoundRobin<T> extends EventBroadcast<T> {
+public class RoundRobin<T> extends Partitioner<T> {
 
-	private int i = 0;
+	private short i = 0;
+
+	public RoundRobin(int targetPara) {
+		super((short)targetPara);
+	}
 
 	@Override
-	protected int selectForElement(T elem, int numberOfOutputChannels) {
-		int ret = i;
+	public short getPart(T elem) {
+		short ret = i;
 		i++;
-		if(i>=numberOfOutputChannels){
-			i=0;
+		if (i >= targetPara){
+			i = 0;
 		}
 		return ret;
 	}
