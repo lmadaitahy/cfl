@@ -51,7 +51,7 @@ public class SimpleCFDataSize {
 
 //		Configuration cfg = new Configuration();
 //		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
-//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(40, cfg); //40
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(60, cfg); //40
 
 		//env.getConfig().setParallelism(1);
 
