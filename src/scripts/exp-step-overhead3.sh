@@ -1,7 +1,11 @@
 #!/bin/bash
 
-# This is for SimpleCF.
-# gg.jobs.SimpleCF
+# This is for the Flink native iteration version of SimpleCF.
+# nocfl.SimpleCFNewjobs
+
+warmupIts=5
+realIts=50
+
 
 
 # Strict mode, see http://redsymbol.net/articles/unofficial-bash-strict-mode/
@@ -40,7 +44,7 @@ echo -n "Stopping any remaining Flink cluster. "
 echo "Done."
 
 
-for numMachines in 25; do  # {7..25}; do
+for numMachines in {1..25}; do
     ok=false
     while [ $ok = false ]; do
       echo -n "$numMachines machines. "
@@ -48,12 +52,18 @@ for numMachines in 25; do  # {7..25}; do
       echo -n "$numMachines ">>$resFile
 
       ./create-conf-para.sh $numMachines
+      echo "cflManDeactivated: true" >>flink-cfl/conf/flink-conf.yaml
+      # See https://issues.apache.org/jira/browse/FLINK-3322
+      sed -i.bak "s/taskmanager.memory.preallocate: false/taskmanager.memory.preallocate: true/" flink-cfl/conf/flink-conf.yaml
+      sed -i.bak "s/taskmanager.heap.mb: 16384/taskmanager.heap.mb: 3000/" flink-cfl/conf/flink-conf.yaml
+
+
 
       ./flink-cfl/bin/start-cluster.sh >$(mktemp /tmp/ggevay/start-cluster.XXXXXX)
       echo -n "Cluster started. "
       
       # give the TMs time to really start up
-      sleep 15
+      sleep 20
 
       # warmup jobs
       echo -n "Warmup jobs"
@@ -61,8 +71,8 @@ for numMachines in 25; do  # {7..25}; do
         tmpOut=$(mktemp /tmp/ggevay/out.XXXXXXXX)
 
         set +e
-        ./flink-cfl/bin/flink run -c gg.jobs.SimpleCF /home/ggevay/cfl-1.0-SNAPSHOT.jar 100 &>$tmpOut
-        ./check-cfl-success.sh $tmpOut
+        ./flink-cfl/bin/flink run -c $1 /home/ggevay/cfl-1.0-SNAPSHOT.jar $warmupIts &>$tmpOut
+        ./check-cfl-success2.sh $tmpOut
         if [ $? != 0 ]; then
             # The Flink job failed. Stop the Flink cluster and try with this numMachines again.
             echo "Flink job failed. Restarting Flink cluster and trying again."
@@ -84,8 +94,8 @@ for numMachines in 25; do  # {7..25}; do
         export rtmarker=ezarealt
 
         set +e
-        /usr/bin/time -f ${rtmarker}%e ./flink-cfl/bin/flink run -c gg.jobs.SimpleCF /home/ggevay/cfl-1.0-SNAPSHOT.jar 10000 &>$tmpOut
-        ./check-cfl-success.sh $tmpOut
+        /usr/bin/time -f ${rtmarker}%e ./flink-cfl/bin/flink run -c $1 /home/ggevay/cfl-1.0-SNAPSHOT.jar $realIts &>$tmpOut
+        ./check-cfl-success2.sh $tmpOut
         if [ $? != 0 ]; then
             # The Flink job failed. Stop the Flink cluster and try with this numMachines again.
             echo "Flink job failed. Restarting Flink cluster and trying again."
