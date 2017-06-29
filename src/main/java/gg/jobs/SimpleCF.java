@@ -128,7 +128,7 @@ public class SimpleCF {
 
 		output.addSink(new DiscardingSink<>());
 
-		kickoffSrc.setNumToSubscribe();
+		CFLConfig.getInstance().setNumToSubscribe();
 
 		//System.out.println(env.getExecutionPlan());
 		env.execute();

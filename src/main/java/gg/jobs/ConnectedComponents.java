@@ -296,7 +296,7 @@ public class ConnectedComponents {
 				), 2, 13)
 						.addInput(0,1,false,9)).setParallelism(1);
 
-		kickoffSrc.setNumToSubscribe();
+		CFLConfig.getInstance().setNumToSubscribe();
 
 		//System.out.println(env.getExecutionPlan());
 		env.execute();

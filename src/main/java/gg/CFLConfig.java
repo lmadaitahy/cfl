@@ -1,6 +1,10 @@
 package gg;
 
-public class CFLConfig {
+import org.apache.flink.streaming.api.datastream.DataStream;
+
+import java.io.Serializable;
+
+public class CFLConfig implements Serializable {
     private static CFLConfig sing = new CFLConfig();
 
     public static CFLConfig getInstance() {
@@ -15,6 +19,16 @@ public class CFLConfig {
     // mert a BagOperatorHost setupjaban szukseg van ra, es a setupok sorrendje nem determinisztikus.
     public int terminalBBId = -1;
 
+    public int numToSubscribe = -1;
+
+    public void setNumToSubscribe() {
+        int totalPara = 0;
+        for (DataStream<?> ds: DataStream.btStreams) {
+            totalPara += ds.getParallelism();
+        }
+        this.numToSubscribe = totalPara;
+        DataStream.btStreams.clear();
+    }
 
 
 

@@ -14,11 +14,12 @@ public class KickoffSource implements SourceFunction<Unit> {
 
 	private final int[] kickoffBBs;
 	private int terminalBBId = -2;
-	private int numToSubscribe = -10;
+	private CFLConfig cflConfig;
 
 	public KickoffSource(int... kickoffBBs) {
 		this.kickoffBBs = kickoffBBs;
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
+		this.cflConfig = CFLConfig.getInstance();
 		assert this.terminalBBId >= 0;
 	}
 
@@ -29,8 +30,9 @@ public class KickoffSource implements SourceFunction<Unit> {
 
 		//cflManager.resetCFL(); // Ezt atmozgattam a TaskManager.scala-ba
 		cflManager.specifyTerminalBB(terminalBBId);
-		assert numToSubscribe != -10;
-		cflManager.specifyNumToSubscribe(numToSubscribe);
+
+		assert cflConfig.numToSubscribe != -10;
+		cflManager.specifyNumToSubscribe(cflConfig.numToSubscribe);
 
 		for(int bb: kickoffBBs) {
 			cflManager.appendToCFL(bb);
@@ -40,14 +42,5 @@ public class KickoffSource implements SourceFunction<Unit> {
 	@Override
 	public void cancel() {
 
-	}
-
-	public void setNumToSubscribe() {
-		int totalPara = 0;
-		for (DataStream<?> ds: DataStream.btStreams) {
-			totalPara += ds.getParallelism();
-		}
-		this.numToSubscribe = totalPara;
-		DataStream.btStreams.clear();
 	}
 }

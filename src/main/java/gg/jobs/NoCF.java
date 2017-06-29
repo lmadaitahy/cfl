@@ -60,7 +60,7 @@ public class NoCF {
 						.addInput(0, 0, true, 1))
 				.setParallelism(1);
 
-		kickoffSrc.setNumToSubscribe();
+		CFLConfig.getInstance().setNumToSubscribe();
 
 		env.execute();
 	}

@@ -186,7 +186,7 @@ public class SimpleCFDataSize {
 
 		//output_d.addSink(new DiscardingSink<>()).setParallelism(1);
 
-		kickoffSrc.setNumToSubscribe();   // todo: berakni a tobbi jobba is
+		CFLConfig.getInstance().setNumToSubscribe();
 
 		//System.out.println(env.getExecutionPlan());
 		env.execute();

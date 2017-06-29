@@ -32,6 +32,7 @@ public class BagOperatorHost<IN, OUT>
 	private int inputParallelism = -1;
 	private String name;
 	private int terminalBBId = -2;
+	private CFLConfig cflConfig;
 	private int opID = -1;
 	public static int opIDCounter = 0; // (a Bagify is ezt hasznalja)
 
@@ -72,6 +73,7 @@ public class BagOperatorHost<IN, OUT>
 		this.bbId = bbId;
 		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
+		this.cflConfig = CFLConfig.getInstance();
 		assert this.terminalBBId >= 0;
 		this.opID = opID;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
@@ -127,6 +129,7 @@ public class BagOperatorHost<IN, OUT>
 		cflMan = CFLManager.getSing();
 
 		cflMan.specifyTerminalBB(terminalBBId);
+		cflMan.specifyNumToSubscribe(cflConfig.numToSubscribe);
 	}
 
 	@Override
