@@ -198,38 +198,14 @@ public class BagOperatorHost<IN, OUT>
 			numElements++;
 			assert outs.size() != 0; // If the operator wants to emit an element but there are no outs, then we just probably forgot to call .out()
 			for(Out o: outs) {
-				assert o.state == OutState.FORWARDING || o.state == OutState.DAMMING;
-				if(o.state == OutState.FORWARDING) {
-					o.sendElement(e);
-				} else {
-					o.buffer.add(e);
-				}
+				o.collectElement(e);
 			}
 		}
 
 		@Override
 		public void closeBag() {
 			for(Out o: outs) {
-				switch (o.state) {
-					case IDLE:
-						assert false;
-						break;
-					case DAMMING:
-						o.state = OutState.WAITING;
-						break;
-					case WAITING:
-						assert false;
-						break;
-					case FORWARDING:
-						if (o.buffer != null) {
-							for(OUT e: o.buffer) {
-								o.sendElement(e);
-							}
-						}
-						assert o.cflSize == outCFLSizes.peek();
-						o.endBag();
-						break;
-				}
+				o.closeBag();
 			}
 
 			ArrayList<BagID> inputBagIDs = new ArrayList<>();
@@ -292,21 +268,7 @@ public class BagOperatorHost<IN, OUT>
 
 		// Treat outputs
 		for(Out o: outs) {
-			boolean targetReached = false;
-			for (int i = outCFLSize; i < latestCFL.size(); i++) {
-				if(latestCFL.get(i) == o.targetBbId) {
-					targetReached = true;
-				}
-			}
-			o.cflSize = outCFLSize;
-			if(!targetReached && !o.normal){
-				o.state = OutState.DAMMING;
-				o.buffer = new ArrayList<>();
-			} else {
-				o.startBag();
-				o.buffer = null; // Ez azert kell, mert vannak ilyen buffer != null checkek, es azok elkuldenek a regit
-				o.state = OutState.FORWARDING;
-			}
+			o.startOutBag(outCFLSize);
 		}
 
 		// Tell the BagOperator that we are opening a new bag
@@ -389,30 +351,7 @@ public class BagOperatorHost<IN, OUT>
 				// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
 
 				for(Out o: outs) {
-					if (cfl.get(cfl.size() - 1) == o.targetBbId) {
-						switch (o.state) {
-							case IDLE:
-								break;
-							case DAMMING:
-								assert outCFLSizes.size() > 0;
-								assert o.cflSize == outCFLSizes.peek();
-								o.startBag();
-								o.state = OutState.FORWARDING;
-								break;
-							case WAITING:
-								o.startBag();
-								if (o.buffer != null) {
-									for (OUT e : o.buffer) {
-										o.sendElement(e);
-									}
-								}
-								o.endBag();
-								o.state = OutState.IDLE;
-								break;
-							case FORWARDING:
-								break;
-						}
-					}
+					o.notifyAppendToCFL(cfl);
 				}
 
 				if (cfl.get(cfl.size() - 1) == bbId) {
@@ -488,15 +427,15 @@ public class BagOperatorHost<IN, OUT>
 		//    - FORWARDING akkor semmi
 
 		private byte splitId = -1;
-		int targetBbId = -1;
-		boolean normal = false; // jelzi ha nem conditional
+		private int targetBbId = -1;
+		private boolean normal = false; // jelzi ha nem conditional
 		private final Partitioner<OUT> partitioner;
 
-		ArrayList<OUT> buffer = null;
-		OutState state = OutState.IDLE;
-		int cflSize = -1; // The CFL that is being emitted. We need this, because cflSizes becomes empty when we become waiting.
+		private ArrayList<OUT> buffer = null;
+		private OutState state = OutState.IDLE;
+		private int cflSize = -1; // The CFL that is being emitted. We need this, because cflSizes becomes empty when we become waiting.
 
-		boolean[] sentStart;
+		private boolean[] sentStart;
 
 		Out(byte splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
 			this.splitId = splitId;
@@ -506,7 +445,86 @@ public class BagOperatorHost<IN, OUT>
 			this.sentStart = new boolean[partitioner.targetPara];
 		}
 
-		void sendElement(OUT e) {
+		void collectElement(OUT e) {
+			assert state == OutState.FORWARDING || state == OutState.DAMMING;
+			if (state == OutState.FORWARDING) {
+				sendElement(e);
+			} else {
+				buffer.add(e);
+			}
+		}
+
+		void closeBag() {
+			switch (state) {
+				case IDLE:
+					assert false;
+					break;
+				case DAMMING:
+					state = OutState.WAITING;
+					break;
+				case WAITING:
+					assert false;
+					break;
+				case FORWARDING:
+					if (buffer != null) {
+						for(OUT e: buffer) {
+							sendElement(e);
+						}
+					}
+					assert cflSize == outCFLSizes.peek();
+					endBag();
+					break;
+			}
+		}
+
+		void startOutBag(Integer outCFLSize) {
+			boolean targetReached = false;
+			for (int i = outCFLSize; i < latestCFL.size(); i++) {
+				if(latestCFL.get(i) == targetBbId) {
+					targetReached = true;
+				}
+			}
+			cflSize = outCFLSize;
+			if(!targetReached && !normal){
+				state = OutState.DAMMING;
+				buffer = new ArrayList<>();
+			} else {
+				startBag();
+				buffer = null; // Ez azert kell, mert vannak ilyen buffer != null checkek, es azok elkuldenek a regit
+				state = OutState.FORWARDING;
+			}
+		}
+
+		void notifyAppendToCFL(List<Integer> cfl) {
+			if (cfl.get(cfl.size() - 1) == targetBbId) {
+				switch (state) {
+					case IDLE:
+						break;
+					case DAMMING:
+						assert outCFLSizes.size() > 0;
+						assert cflSize == outCFLSizes.peek();
+						startBag();
+						state = OutState.FORWARDING;
+						break;
+					case WAITING:
+						startBag();
+						if (buffer != null) {
+							for (OUT e : buffer) {
+								sendElement(e);
+							}
+						}
+						endBag();
+						state = OutState.IDLE;
+						break;
+					case FORWARDING:
+						break;
+				}
+			}
+		}
+
+
+
+		private void sendElement(OUT e) {
 			short part = partitioner.getPart(e);
 			// (Amugy ez a logika meg van duplazva a Bagify-ban is most)
 			if (!sentStart[part]) {
@@ -516,12 +534,12 @@ public class BagOperatorHost<IN, OUT>
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
 		}
 
-		void startBag() {
+		private void startBag() {
 			for (int i=0; i<sentStart.length; i++)
 				sentStart[i] = false;
 		}
 
-		void endBag() {
+		private void endBag() {
 			for (short i=0; i<sentStart.length; i++) {
 				if (sentStart[i]) {
 					sendEnd(i);
