@@ -162,7 +162,7 @@ public class ConnectedComponents {
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_1 = labelsIt
 				//.setConnectionType(new gg.partitioners.Forward<>())
-				.bt("labels_1", Util.tpe(), new PhiNode2<Tuple2<Integer, Integer>>(1, 4)
+				.bt("labels_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 4)
 				.addInput(0,0,false,2)
 				.addInput(1,1,false,9)
 				.out(0,1,true, new Tuple2by0(para)) // (this goes to two places, but none of them is conditional)
@@ -174,7 +174,7 @@ public class ConnectedComponents {
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_1 = updatesIt
 				//.setConnectionType(new gg.partitioners.Forward<>())
-				.bt("updates_1", Util.tpe(), new PhiNode2<Tuple2<Integer, Integer>>(1, 5)
+				.bt("updates_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 5)
 				.addInput(0,0,false,3)
 				.addInput(1,1,false,8)
 				.out(0,1,true, new Tuple2by0(para))

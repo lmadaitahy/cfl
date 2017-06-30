@@ -71,7 +71,7 @@ public class SimpleCF {
 		DataStream<ElementOrEvent<Integer>> phi = it
 				//.setConnectionType(new gg.partitioners.Random<>())
 				.bt("phi",inputBag.getType(),
-						new PhiNode2<Integer>(1, 1)
+						new PhiNode<Integer>(1, 1)
 								.addInput(0, 0, false, 0)
 								.addInput(1, 1, false, 2)
 								.out(0, 1, true, new Random<>(env.getParallelism())))

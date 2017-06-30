@@ -1,11 +1,7 @@
 package gg.jobs;
 
-import gg.BagOperatorHost;
-import gg.CFLConfig;
-import gg.CondOutputSelector;
-import gg.ElementOrEvent;
-import gg.KickoffSource;
-import gg.PhiNode2;
+import gg.*;
+import gg.PhiNode;
 import gg.operators.AssertBagEquals;
 import gg.operators.AssertEquals;
 import gg.operators.Bagify;
@@ -96,7 +92,7 @@ public class SimpleCFDataSize {
 
 		DataStream<ElementOrEvent<Integer>> phi_i = it_i
 				.bt("phi_i",inputBag_i.getType(),
-						new PhiNode2<Integer>(1, 1)
+						new PhiNode<Integer>(1, 1)
 								.addInput(0, 0, false, 0)
 								.addInput(1, 1, false, 2)
 								.out(0, 1, true, new Random<>(env.getParallelism())))
@@ -104,7 +100,7 @@ public class SimpleCFDataSize {
 
 		DataStream<ElementOrEvent<Integer>> phi_d = it_d
 				.bt("phi_d",inputBag_d.getType(),
-						new PhiNode2<Integer>(1, 7)
+						new PhiNode<Integer>(1, 7)
 								.addInput(0, 0, false, 6)
 								.addInput(1, 1, false, 8)
 								.out(0, 1, true, new Random<>(env.getParallelism())))

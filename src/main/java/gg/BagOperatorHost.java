@@ -153,13 +153,6 @@ public class BagOperatorHost<IN, OUT>
 			switch (eleOrEvent.event.type) {
 				case START:
 					assert eleOrEvent.event.assumedTargetPara == getRuntimeContext().getNumberOfParallelSubtasks();
-
-					///
-					if (sp.status != InputSubpartition.Status.CLOSED) {
-						if (CFLConfig.vlog) LOG.info("Operator {" + name + "}[" + subpartitionId +"] processElement assertion failed: sp.status != InputSubpartition.Status.CLOSED");
-					}
-					///
-
 					assert sp.status == InputSubpartition.Status.CLOSED;
 					sp.status = InputSubpartition.Status.OPEN;
 					sp.addNewBuffer(ev.bagID);
@@ -349,7 +342,7 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	// Note: inputCFLSize should be set before this
-	// Note: Also called from PhiNode2
+	// Note: Also called from PhiNode
 	void activateLogicalInput(int id, int outCFLSize) {
 		//  - For each subpartition, we tell it what to do:
 		//    - Find a buffer that has the appropriate id
