@@ -12,6 +12,11 @@ public class CFLITCase {
     }
 
     @Test(expected=JobCancellationException.class)
+    public void testEmptyBags() throws Exception {
+        EmptyBags.main(null);
+    }
+
+    @Test(expected=JobCancellationException.class)
     public void testSimpleCF() throws Exception {
         SimpleCF.main(new String[]{"100"});
     }

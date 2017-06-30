@@ -54,6 +54,7 @@ public class BagOperatorHost<IN, OUT>
     private volatile boolean terminalBBReached;
 
 	private HashSet<BagID> notifyCloseInputs = new HashSet<>();
+	private HashSet<BagID> notifyCloseInputEmpties = new HashSet<>();
 
 	private boolean consumed = false;
 
@@ -334,6 +335,9 @@ public class BagOperatorHost<IN, OUT>
 
 		if (notifyCloseInputs.contains(input.currentBagID)) {
 			input.closeCurrentInBag();
+			if (notifyCloseInputEmpties.contains(input.currentBagID)) {
+				consumed = true;
+			}
 		}
 
 		// Asszem itt kell majd a remove buffer if bonyolult CFG-s condition
@@ -379,13 +383,24 @@ public class BagOperatorHost<IN, OUT>
 		@Override
 		public void notifyCloseInput(BagID bagID, int opID) {
 			synchronized (BagOperatorHost.this) {
-				if (opID == BagOperatorHost.this.opID || opID == CFLManager.CloseInputBag.broadcast) {
+				if (opID == BagOperatorHost.this.opID || opID == CFLManager.CloseInputBag.emptyBag) {
 					assert !notifyCloseInputs.contains(bagID);
 					notifyCloseInputs.add(bagID);
+
+					if (opID == CFLManager.CloseInputBag.emptyBag) {
+						notifyCloseInputEmpties.add(bagID);
+					}
 
 					for (Input inp : inputs) {
 						//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
 						if (bagID.equals(inp.currentBagID)) {
+
+							if (opID == CFLManager.CloseInputBag.emptyBag) {
+								// Itt az EmptyFromEmpty marker interface azert nem kell, mert nem rontja ez el a dolgokat a consumed = true
+								// akkor sem, ha nem empty lesz az eredmeny bag.
+								consumed = true;
+							}
+
 							inp.closeCurrentInBag();
 						}
 					}
