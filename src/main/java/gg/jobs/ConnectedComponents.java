@@ -11,9 +11,11 @@ import gg.util.Util;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
+import org.apache.flink.streaming.api.environment.LocalStreamEnvironment;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 import org.slf4j.Logger;
@@ -72,6 +74,11 @@ public class ConnectedComponents {
 //		Configuration cfg = new Configuration();
 //		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
 //		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20
+
+		if (env instanceof LocalStreamEnvironment) {
+			// mert kulonben az otthoni gepen 8 szal lenne, amikoris nem eleg a network buffer
+			env.getConfig().setParallelism(4);
+		}
 
 		//env.getConfig().setParallelism(1);
 
