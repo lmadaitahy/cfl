@@ -448,7 +448,7 @@ public class BagOperatorHost<IN, OUT>
 
 		private ArrayList<OUT> buffer = null;
 		private OutState state = OutState.IDLE;
-		private int cflSize = -1; // The CFL that is being emitted. We need this, because cflSizes becomes empty when we become waiting.
+		private int outCFLSize = -1; // The CFL that is being emitted. We need this, because cflSizes becomes empty when we become waiting.
 
 		private boolean[] sentStart;
 
@@ -486,7 +486,7 @@ public class BagOperatorHost<IN, OUT>
 							sendElement(e);
 						}
 					}
-					assert cflSize == outCFLSizes.peek();
+					assert outCFLSize == outCFLSizes.peek();
 					endBag();
 					break;
 			}
@@ -494,13 +494,21 @@ public class BagOperatorHost<IN, OUT>
 
 		void startOutBag(Integer outCFLSize) {
 			boolean targetReached = false;
-			for (int i = outCFLSize; i < latestCFL.size(); i++) {
-				if(latestCFL.get(i) == targetBbId) {
-					targetReached = true;
+			if (normal) {
+				targetReached = true;
+			} else {
+				// Azert nem kell +1 az outCFLSize-nak, mert ugye az outCFL _utani_ elem igy is
+				for (int i = outCFLSize; i < latestCFL.size(); i++) {
+					if (latestCFL.get(i) == targetBbId) {
+						targetReached = true;
+					}
+					if (latestCFL.get(i) == bbId) {
+						break; // Merthogy akkor egy kesobbi bag folul fogja irni a mostanit.
+					}
 				}
 			}
-			cflSize = outCFLSize;
-			if(!targetReached && !normal){
+			this.outCFLSize = outCFLSize;
+			if (!targetReached) {
 				state = OutState.DAMMING;
 				buffer = new ArrayList<>();
 			} else {
@@ -511,28 +519,41 @@ public class BagOperatorHost<IN, OUT>
 		}
 
 		void notifyAppendToCFL(List<Integer> cfl) {
-			if (cfl.get(cfl.size() - 1) == targetBbId) {
-				switch (state) {
-					case IDLE:
-						break;
-					case DAMMING:
-						assert outCFLSizes.size() > 0;
-						assert cflSize == outCFLSizes.peek();
-						startBag();
-						state = OutState.FORWARDING;
-						break;
-					case WAITING:
-						startBag();
-						if (buffer != null) {
-							for (OUT e : buffer) {
-								sendElement(e);
-							}
+			if (!normal && (state == OutState.DAMMING || state == OutState.WAITING)) {
+				if (cfl.get(cfl.size() - 1) == targetBbId) {
+					// Leellenorizzuk, hogy nem irodik-e felul, mielott meg a jelenleg hozzaadottat elerne
+					boolean overwritten = false;
+					for (int i = outCFLSize; i < cfl.size() - 1; i++) {
+						if (cfl.get(i) == bbId) {
+							overwritten = true;
 						}
-						endBag();
-						state = OutState.IDLE;
-						break;
-					case FORWARDING:
-						break;
+					}
+					if (!overwritten) {
+						switch (state) {
+							case IDLE:
+								assert false; // Csak azert, mert a fentebbi if kizarja
+								break;
+							case DAMMING:
+								assert outCFLSizes.size() > 0;
+								assert outCFLSize == outCFLSizes.peek();
+								startBag();
+								state = OutState.FORWARDING;
+								break;
+							case WAITING:
+								startBag();
+								if (buffer != null) {
+									for (OUT e : buffer) {
+										sendElement(e);
+									}
+								}
+								endBag();
+								state = OutState.IDLE;
+								break;
+							case FORWARDING:
+								assert false; // Csak azert, mert a fentebbi if kizarja
+								break;
+						}
+					}
 				}
 			}
 		}
@@ -564,14 +585,14 @@ public class BagOperatorHost<IN, OUT>
 
 		private void sendStart(short part) {
 			sentStart[part] = true;
-			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, partitioner.targetPara, new BagID(cflSize, opID));
+			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, partitioner.targetPara, new BagID(outCFLSize, opID));
 			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending START to " + part + ": " + new ElementOrEvent<>(subpartitionId, event, splitId, part));
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, part), 0));
 		}
 
 		private void sendEnd(short part) {
 			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending END to " + part);
-			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, partitioner.targetPara, new BagID(cflSize, opID));
+			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, partitioner.targetPara, new BagID(outCFLSize, opID));
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, part), 0));
 		}
 	}

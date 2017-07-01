@@ -45,14 +45,12 @@ public class SimpleCF {
 
 		final int bufferTimeout = 0;
 
-		//env.setBufferTimeout(bufferTimeout); // TODO: ujrafuttatni igy a clusteren, mert lehet, hogy gyorsabb lett. (Lokalisan nem merheto kulonbseg.)
+		//env.setBufferTimeout(bufferTimeout); // TODO: ujrafuttatni igy a clusteren, mert lehet, hogy gyorsabb lett. (Bar lokalisan nem merheto kulonbseg.)
 
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
+		//KickoffSource kickoffSrc = new KickoffSource(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2);
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
-//		env.addSource(new KickoffSource(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-//				, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-//				, 1, 2)).addSink(new DiscardingSink<>());
 
 
 		Integer[] input = new Integer[]{1};

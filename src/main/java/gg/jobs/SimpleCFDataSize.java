@@ -56,10 +56,6 @@ public class SimpleCFDataSize {
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
-//		env.addSource(new KickoffSource(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-//				, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-//				, 1, 2)).addSink(new DiscardingSink<>());
-
 
 		Integer[] input_i = new Integer[]{0};
 
