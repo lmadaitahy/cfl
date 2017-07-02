@@ -23,11 +23,6 @@ public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Inte
     public void openOutBag() {
         super.openOutBag();
         ht = new HashMap<>();
-
-        ////
-        LOG.info("UpdateJoin.openOutBag");
-        ////
-
         probeBuffered = new ArrayList<>();
         buildDone = false;
         probeDone = false;

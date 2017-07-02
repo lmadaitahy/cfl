@@ -13,7 +13,7 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 
 	protected BagOperatorOutputCollector<OUT> out;
 
-	private boolean[] open = new boolean[]{false, false};
+	private boolean[] open = new boolean[]{false, false, false};
 
 	protected String name;
 

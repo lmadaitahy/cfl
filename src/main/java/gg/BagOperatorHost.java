@@ -27,7 +27,7 @@ public class BagOperatorHost<IN, OUT>
 
 	private static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
 
-	private BagOperator<IN,OUT> op;
+	protected BagOperator<IN,OUT> op;
 	protected int bbId;
 	private int inputParallelism = -1;
 	private String name;
@@ -49,7 +49,7 @@ public class BagOperatorHost<IN, OUT>
 	protected List<Integer> latestCFL; //majd vigyazni, hogy ez valszeg ugyanaz az objektumpeldany, mint ami a CFLManagerben van
 	protected Queue<Integer> outCFLSizes; // ha nem ures, akkor epp az elson dolgozunk; ha ures, akkor nem dolgozunk
 
-	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
+	protected ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
     private volatile boolean terminalBBReached;
 
@@ -60,6 +60,17 @@ public class BagOperatorHost<IN, OUT>
 
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID) {
 		this.op = op;
+		this.bbId = bbId;
+		this.inputs = new ArrayList<>();
+		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
+		this.cflConfig = CFLConfig.getInstance();
+		assert this.terminalBBId >= 0;
+		this.opID = opID;
+		// warning: this runs in the driver, so we shouldn't access CFLManager here
+	}
+
+	// Does not set op
+	protected BagOperatorHost(int bbId, int opID) {
 		this.bbId = bbId;
 		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
@@ -231,7 +242,9 @@ public class BagOperatorHost<IN, OUT>
 
 			BagID outBagID = new BagID(outCFLSizes.peek(), opID);
 			if (numElements > 0 || consumed) {
-				cflMan.producedLocal(outBagID, inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks(), subpartitionId, opID);
+				if (!(BagOperatorHost.this instanceof MutableBagCC && ((MutableBagCC.MutableBagOperator)op).inpID == 2)) {
+					cflMan.producedLocal(outBagID, inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks(), subpartitionId, opID);
+				}
 			}
 
 			numElements = 0;
@@ -263,13 +276,21 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
+	protected void chooseOuts() {
+		for (Out out: outs) {
+			out.active = true;
+		}
+	}
+
 	synchronized protected void startOutBag() {
 		assert !outCFLSizes.isEmpty();
 		Integer outCFLSize = outCFLSizes.peek();
 
-		assert latestCFL.get(outCFLSize - 1) == bbId;
+		assert latestCFL.get(outCFLSize - 1) == bbId || this instanceof MutableBagCC;
 
 		consumed = false;
+
+		chooseOuts(); // Ez csak a MutableBag-nel kell
 
 		// Treat outputs
 		for(Out o: outs) {
@@ -433,7 +454,7 @@ public class BagOperatorHost<IN, OUT>
 
 	private enum OutState {IDLE, DAMMING, WAITING, FORWARDING}
 
-	private final class Out implements Serializable {
+	protected class Out implements Serializable {
 
 		// Egyelore nem csinalunk kulon BB elerese altal kivaltott discardot. (Amugy ha uj out bag van, akkor eldobodik a reginek a buffere igy is.)
 
@@ -465,106 +486,117 @@ public class BagOperatorHost<IN, OUT>
 
 		private boolean[] sentStart;
 
+		boolean active;
+
 		Out(byte splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
 			this.splitId = splitId;
 			this.targetBbId = targetBbId;
 			this.normal = normal;
 			this.partitioner = partitioner;
 			this.sentStart = new boolean[partitioner.targetPara];
+			this.active = false;
 		}
 
 		void collectElement(OUT e) {
-			assert state == OutState.FORWARDING || state == OutState.DAMMING;
-			if (state == OutState.FORWARDING) {
-				sendElement(e);
-			} else {
-				buffer.add(e);
+			if (active) {
+				assert state == OutState.FORWARDING || state == OutState.DAMMING;
+				if (state == OutState.FORWARDING) {
+					sendElement(e);
+				} else {
+					buffer.add(e);
+				}
 			}
 		}
 
 		void closeBag() {
-			switch (state) {
-				case IDLE:
-					assert false;
-					break;
-				case DAMMING:
-					state = OutState.WAITING;
-					break;
-				case WAITING:
-					assert false;
-					break;
-				case FORWARDING:
-					if (buffer != null) {
-						for(OUT e: buffer) {
-							sendElement(e);
+			if (active) {
+				switch (state) {
+					case IDLE:
+						assert false;
+						break;
+					case DAMMING:
+						state = OutState.WAITING;
+						break;
+					case WAITING:
+						assert false;
+						break;
+					case FORWARDING:
+						if (buffer != null) {
+							for (OUT e : buffer) {
+								sendElement(e);
+							}
 						}
-					}
-					assert outCFLSize == outCFLSizes.peek();
-					endBag();
-					break;
+						assert outCFLSize == outCFLSizes.peek();
+						endBag();
+						break;
+				}
 			}
 		}
 
 		void startOutBag(Integer outCFLSize) {
-			boolean targetReached = false;
-			if (normal) {
-				targetReached = true;
-			} else {
-				// Azert nem kell +1 az outCFLSize-nak, mert ugye az outCFL _utani_ elem igy is
-				for (int i = outCFLSize; i < latestCFL.size(); i++) {
-					if (latestCFL.get(i) == targetBbId) {
-						targetReached = true;
-					}
-					if (latestCFL.get(i) == bbId) {
-						break; // Merthogy akkor egy kesobbi bag folul fogja irni a mostanit.
+			if (active) {
+				boolean targetReached = false;
+				if (normal) {
+					targetReached = true;
+				} else {
+					// Azert nem kell +1 az outCFLSize-nak, mert ugye az outCFL _utani_ elem igy is
+					for (int i = outCFLSize; i < latestCFL.size(); i++) {
+						if (latestCFL.get(i) == targetBbId) {
+							targetReached = true;
+						}
+						if (latestCFL.get(i) == bbId) {
+							break; // Merthogy akkor egy kesobbi bag folul fogja irni a mostanit.
+						}
 					}
 				}
-			}
-			this.outCFLSize = outCFLSize;
-			if (!targetReached) {
-				state = OutState.DAMMING;
-				buffer = new ArrayList<>();
-			} else {
-				startBag();
-				buffer = null; // Ez azert kell, mert vannak ilyen buffer != null checkek, es azok elkuldenek a regit
-				state = OutState.FORWARDING;
+				this.outCFLSize = outCFLSize;
+				if (!targetReached) {
+					state = OutState.DAMMING;
+					buffer = new ArrayList<>();
+				} else {
+					startBag();
+					buffer = null; // Ez azert kell, mert vannak ilyen buffer != null checkek, es azok elkuldenek a regit
+					state = OutState.FORWARDING;
+				}
 			}
 		}
 
 		void notifyAppendToCFL(List<Integer> cfl) {
-			if (!normal && (state == OutState.DAMMING || state == OutState.WAITING)) {
-				if (cfl.get(cfl.size() - 1) == targetBbId) {
-					// Leellenorizzuk, hogy nem irodik-e felul, mielott meg a jelenleg hozzaadottat elerne
-					boolean overwritten = false;
-					for (int i = outCFLSize; i < cfl.size() - 1; i++) {
-						if (cfl.get(i) == bbId) {
-							overwritten = true;
+			if (active) {
+				if (!normal && (state == OutState.DAMMING || state == OutState.WAITING)) {
+					if (cfl.get(cfl.size() - 1) == targetBbId) {
+						// Leellenorizzuk, hogy nem irodik-e felul, mielott meg a jelenleg hozzaadottat elerne
+						boolean overwritten = false;
+						for (int i = outCFLSize; i < cfl.size() - 1; i++) {
+							if (cfl.get(i) == bbId) {
+								overwritten = true;
+							}
 						}
-					}
-					if (!overwritten) {
-						switch (state) {
-							case IDLE:
-								assert false; // Csak azert, mert a fentebbi if kizarja
-								break;
-							case DAMMING:
-								assert outCFLSizes.size() > 0;
-								assert outCFLSize == outCFLSizes.peek();
-								startBag();
-								state = OutState.FORWARDING;
-								break;
-							case WAITING:
-								startBag();
-								if (buffer != null) {
-									for (OUT e : buffer) {
-										sendElement(e);
+						if (!overwritten) {
+							switch (state) {
+								case IDLE:
+									assert false; // Csak azert, mert a fentebbi if kizarja
+									break;
+								case DAMMING:
+									assert outCFLSizes.size() > 0;
+									assert outCFLSize == outCFLSizes.peek();
+									startBag();
+									state = OutState.FORWARDING;
+									break;
+								case WAITING:
+									startBag();
+									if (buffer != null) {
+										for (OUT e : buffer) {
+											sendElement(e);
+										}
 									}
-								}
-								endBag();
-								state = OutState.IDLE;
-								break;
-							case FORWARDING:
-								assert false; // Csak azert, mert a fentebbi if kizarja
-								break;
+									endBag();
+									state = OutState.IDLE;
+									break;
+								case FORWARDING:
+									assert false; // Csak azert, mert a fentebbi if kizarja
+									break;
+							}
 						}
 					}
 				}
@@ -573,7 +605,7 @@ public class BagOperatorHost<IN, OUT>
 
 
 
-		private void sendElement(OUT e) {
+		void sendElement(OUT e) {
 			short part = partitioner.getPart(e);
 			// (Amugy ez a logika meg van duplazva a Bagify-ban is most)
 			if (!sentStart[part]) {
@@ -583,12 +615,12 @@ public class BagOperatorHost<IN, OUT>
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
 		}
 
-		private void startBag() {
+		void startBag() {
 			for (int i=0; i<sentStart.length; i++)
 				sentStart[i] = false;
 		}
 
-		private void endBag() {
+		void endBag() {
 			for (short i=0; i<sentStart.length; i++) {
 				if (sentStart[i]) {
 					sendEnd(i);
