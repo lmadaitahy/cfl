@@ -28,7 +28,7 @@ public class BagOperatorHost<IN, OUT>
 	private static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
 
 	private BagOperator<IN,OUT> op;
-	private int bbId;
+	protected int bbId;
 	private int inputParallelism = -1;
 	private String name;
 	private int terminalBBId = -2;
@@ -47,7 +47,7 @@ public class BagOperatorHost<IN, OUT>
 	// ----------------------
 
 	protected List<Integer> latestCFL; //majd vigyazni, hogy ez valszeg ugyanaz az objektumpeldany, mint ami a CFLManagerben van
-	private Queue<Integer> outCFLSizes; // ha nem ures, akkor epp az elson dolgozunk; ha ures, akkor nem dolgozunk
+	protected Queue<Integer> outCFLSizes; // ha nem ures, akkor epp az elson dolgozunk; ha ures, akkor nem dolgozunk
 
 	private ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
@@ -190,6 +190,10 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
+	protected void outCFLSizesRemove() {
+		outCFLSizes.remove();
+	}
+
 	private class MyCollector implements BagOperatorOutputCollector<OUT> {
 
 		private int numElements = 0;
@@ -232,7 +236,7 @@ public class BagOperatorHost<IN, OUT>
 
 			numElements = 0;
 
-			outCFLSizes.remove();
+			outCFLSizesRemove();
 			if(outCFLSizes.size() > 0) { // ha van jelenleg varakozo munka
 				if (CFLConfig.vlog) LOG.info("Out.closeBag starting a new out bag {" + name + "}");
 				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
@@ -259,7 +263,7 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
-	synchronized private void startOutBag() {
+	synchronized protected void startOutBag() {
 		assert !outCFLSizes.isEmpty();
 		Integer outCFLSize = outCFLSizes.peek();
 
@@ -291,22 +295,22 @@ public class BagOperatorHost<IN, OUT>
 	protected void chooseLogicalInputs(int outCFLSize) {
 		// figure out the input bag IDs
 		for (Input input: inputs) {
-			assert input.inputCFLSize == -1;
+			int inputCFLSize;
 			if (input.inputInSameBlock) {
-				input.inputCFLSize = outCFLSize;
+				inputCFLSize = outCFLSize;
 			} else {
 				int i;
 				for (i = outCFLSize - 2; input.bbId != latestCFL.get(i); i--) {}
-				input.inputCFLSize = i + 1;
+				inputCFLSize = i + 1;
 			}
 
-			activateLogicalInput(input.id, outCFLSize);
+			activateLogicalInput(input.id, outCFLSize, inputCFLSize);
 		}
 	}
 
 	// Note: inputCFLSize should be set before this
 	// Note: Also called from PhiNode
-	void activateLogicalInput(int id, int outCFLSize) {
+	void activateLogicalInput(int id, int outCFLSize, int inputCFLSize) {
 		//  - For each subpartition, we tell it what to do:
 		//    - Find a buffer that has the appropriate id
 		//      - Give all the elements to the BagOperator
@@ -315,6 +319,8 @@ public class BagOperatorHost<IN, OUT>
 		//  - If we already have a notification that input bag is closed, then we tell this to the operator
 		op.openInBag(id);
 		Input input = inputs.get(id);
+		assert input.inputCFLSize == -1;
+		input.inputCFLSize = inputCFLSize;
 		input.activeFor.add(outCFLSize);
 		//assert input.currentBagID == null;
 		input.currentBagID = new BagID(input.inputCFLSize, input.opID);
@@ -343,6 +349,14 @@ public class BagOperatorHost<IN, OUT>
 		// Asszem itt kell majd a remove buffer if bonyolult CFG-s condition
 	}
 
+	protected boolean updateOutCFLSizes(List<Integer> cfl) {
+		if (cfl.get(cfl.size() - 1) == bbId) {
+			outCFLSizes.add(cfl.size());
+			return true;
+		}
+		return false;
+	}
+
 	private class MyCFLCallback implements CFLCallback {
 
 		public void notify(List<Integer> cfl) {
@@ -358,13 +372,12 @@ public class BagOperatorHost<IN, OUT>
 					o.notifyAppendToCFL(cfl);
 				}
 
-				if (cfl.get(cfl.size() - 1) == bbId) {
-					outCFLSizes.add(cfl.size());
-					if (outCFLSizes.size() == 1) { // jelenleg nem dolgozunk epp (ezt onnan tudjuk, hogy ures volt az outCFLSizes)
-						startOutBag();
-					} else {
-						if (CFLConfig.vlog) LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
-					}
+				boolean workInProgress = outCFLSizes.size() > 0;
+				boolean hasAdded = updateOutCFLSizes(cfl);
+				if (!workInProgress && hasAdded) {
+					startOutBag();
+				} else {
+					if (CFLConfig.vlog) LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
 				}
 			}
 		}
