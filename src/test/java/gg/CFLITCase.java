@@ -30,4 +30,9 @@ public class CFLITCase {
     public void testConnectedComponents() throws Exception {
         ConnectedComponents.main(null);
     }
+
+    @Test(expected=JobCancellationException.class)
+    public void testConnectedComponentsMB() throws Exception {
+        ConnectedComponentsMB.main(null);
+    }
 }

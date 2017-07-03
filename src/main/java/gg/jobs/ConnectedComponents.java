@@ -71,14 +71,14 @@ public class ConnectedComponents {
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-//		Configuration cfg = new Configuration();
-//		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
-//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20
-
 		if (env instanceof LocalStreamEnvironment) {
 			// mert kulonben az otthoni gepen 8 szal lenne, amikoris nem eleg a network buffer
 			env.getConfig().setParallelism(4);
 		}
+
+//		Configuration cfg = new Configuration();
+//		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(9, cfg); //20
 
 		//env.getConfig().setParallelism(1);
 

@@ -91,16 +91,16 @@ public class ConnectedComponentsMB {
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-//		Configuration cfg = new Configuration();
-//		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
-//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20
-
 		if (env instanceof LocalStreamEnvironment) {
 			// mert kulonben az otthoni gepen 8 szal lenne, amikoris nem eleg a network buffer
 			env.getConfig().setParallelism(4);
 		}
 
-		env.getConfig().setParallelism(1); //////////
+//		Configuration cfg = new Configuration();
+//		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20
+
+		//env.getConfig().setParallelism(1); //////////
 
 		int para = env.getParallelism();
 
@@ -111,15 +111,15 @@ public class ConnectedComponentsMB {
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
 
 		@SuppressWarnings("unchecked")
-		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)};
-//		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{
-//				Tuple2.of(0,1),
-//				Tuple2.of(1,2),
-//				Tuple2.of(3,4),
-//				Tuple2.of(4,0),
-//				Tuple2.of(5,6),
-//				Tuple2.of(5,7)
-//		};
+		//Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)};
+		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{
+				Tuple2.of(0,1),
+				Tuple2.of(1,2),
+				Tuple2.of(3,4),
+				Tuple2.of(4,0),
+				Tuple2.of(5,6),
+				Tuple2.of(5,7)
+		};
 
 		// berakjuk megforditva is az eleket
 		@SuppressWarnings("unchecked")
@@ -170,7 +170,7 @@ public class ConnectedComponentsMB {
 			}
 		}, 0, 2)
 			.addInput(0,0,true,1)
-			.out(0,0,true, new Forward<>(para)))
+			.out(0,0,true, new Tuple2by0(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
@@ -190,7 +190,7 @@ public class ConnectedComponentsMB {
 			.out(0,1,true, new Tuple2by0(para)) // To update
 			.out(1,1,true, new Forward<>(1)) // to nonEmpty
 			.out(2,1,false, new Forward<>(para)) // back-edge to updates_1 phi-node
-			.out(3, 2, false, new Forward<>(para)) // output of toBag
+			.out(3, 2, true, new Forward<>(1)) // output of toBag  // majd itt a para-t at kell allitani, amikor nagy adaton futtatok jobot!
 		)
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
@@ -350,7 +350,7 @@ public class ConnectedComponentsMB {
 		result
 				//.setConnectionType(new gg.partitioners.Random<>())
 				.bt("print", Util.tpe(), new BagOperatorHost<Tuple2<Integer, Integer>, Unit>(new Print<>("result"), 2, 12)
-						.addInput(0,1,false,15)).setParallelism(1);
+						.addInput(0,1,true,15)).setParallelism(1);
 
 		result
 				.bt("AssertBagEquals", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>(
@@ -363,7 +363,7 @@ public class ConnectedComponentsMB {
 						Tuple2.of(6,5),
 						Tuple2.of(7,5)
 				), 2, 13)
-						.addInput(0,1,false,15)).setParallelism(1);
+						.addInput(0,1,true,15)).setParallelism(1);
 
 		CFLConfig.getInstance().setNumToSubscribe();
 

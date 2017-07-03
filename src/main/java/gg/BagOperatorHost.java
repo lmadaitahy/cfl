@@ -37,7 +37,7 @@ public class BagOperatorHost<IN, OUT>
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
-	private short subpartitionId = -25;
+	protected short subpartitionId = -25;
 
 	private CFLManager cflMan;
 	private MyCFLCallback cb;
@@ -286,7 +286,7 @@ public class BagOperatorHost<IN, OUT>
 		assert !outCFLSizes.isEmpty();
 		Integer outCFLSize = outCFLSizes.peek();
 
-		assert latestCFL.get(outCFLSize - 1) == bbId || this instanceof MutableBagCC;
+		assert latestCFL.get(outCFLSize - 1).equals(bbId) || this instanceof MutableBagCC;
 
 		consumed = false;
 
@@ -298,7 +298,13 @@ public class BagOperatorHost<IN, OUT>
 		}
 
 		// Tell the BagOperator that we are opening a new bag
+		int outCFLSizesSize = outCFLSizes.size();
 		op.openOutBag();
+		if (outCFLSizes.size() < outCFLSizesSize) {
+			// Ez a mokolas itt azert kell, mert ha mar esetleg az openOutBag kivaltotta az elemek kikuldeset es a bag lezarasat, akkor a
+			// kesobbiekben elszallnank vmi asserten. (Ez a MutableBag.toBag-nel tortenik pl.)
+			return;
+		}
 
 		for (Input input: inputs) {
 			//assert input.finishedSubpartitionCounter == -1;
@@ -562,41 +568,40 @@ public class BagOperatorHost<IN, OUT>
 		}
 
 		void notifyAppendToCFL(List<Integer> cfl) {
-			if (active) {
-				if (!normal && (state == OutState.DAMMING || state == OutState.WAITING)) {
-					if (cfl.get(cfl.size() - 1) == targetBbId) {
-						// Leellenorizzuk, hogy nem irodik-e felul, mielott meg a jelenleg hozzaadottat elerne
-						boolean overwritten = false;
-						for (int i = outCFLSize; i < cfl.size() - 1; i++) {
-							if (cfl.get(i) == bbId) {
-								overwritten = true;
-							}
+			// Itt azert nem jo az isActive, mert van, hogy egy korabban aktivat kene meg csak msot elkuldeni a notify hatasara.
+			if (!normal && (state == OutState.DAMMING || state == OutState.WAITING)) {
+				if (cfl.get(cfl.size() - 1) == targetBbId) {
+					// Leellenorizzuk, hogy nem irodik-e felul, mielott meg a jelenleg hozzaadottat elerne
+					boolean overwritten = false;
+					for (int i = outCFLSize; i < cfl.size() - 1; i++) {
+						if (cfl.get(i) == bbId) {
+							overwritten = true;
 						}
-						if (!overwritten) {
-							switch (state) {
-								case IDLE:
-									assert false; // Csak azert, mert a fentebbi if kizarja
-									break;
-								case DAMMING:
-									assert outCFLSizes.size() > 0;
-									assert outCFLSize == outCFLSizes.peek();
-									startBag();
-									state = OutState.FORWARDING;
-									break;
-								case WAITING:
-									startBag();
-									if (buffer != null) {
-										for (OUT e : buffer) {
-											sendElement(e);
-										}
+					}
+					if (!overwritten) {
+						switch (state) {
+							case IDLE:
+								assert false; // Csak azert, mert a fentebbi if kizarja
+								break;
+							case DAMMING:
+								assert outCFLSizes.size() > 0;
+								assert outCFLSize == outCFLSizes.peek();
+								startBag();
+								state = OutState.FORWARDING;
+								break;
+							case WAITING:
+								startBag();
+								if (buffer != null) {
+									for (OUT e : buffer) {
+										sendElement(e);
 									}
-									endBag();
-									state = OutState.IDLE;
-									break;
-								case FORWARDING:
-									assert false; // Csak azert, mert a fentebbi if kizarja
-									break;
-							}
+								}
+								endBag();
+								state = OutState.IDLE;
+								break;
+							case FORWARDING:
+								assert false; // Csak azert, mert a fentebbi if kizarja
+								break;
 						}
 					}
 				}
