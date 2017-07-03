@@ -78,7 +78,7 @@ public class ConnectedComponents {
 
 //		Configuration cfg = new Configuration();
 //		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
-//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(9, cfg); //20
+//		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20 // amugy sokszor 9-nel jon elo hiba, mivel ekkor mar nehol nem kap minden instance
 
 		//env.getConfig().setParallelism(1);
 

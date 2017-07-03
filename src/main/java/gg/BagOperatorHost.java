@@ -241,7 +241,9 @@ public class BagOperatorHost<IN, OUT>
 			}
 
 			BagID outBagID = new BagID(outCFLSizes.peek(), opID);
-			if (numElements > 0 || consumed) {
+			if (numElements > 0 || consumed || inputBagIDs.size() == 0) {
+				// inputBagIDs.size() == 0 esetben azert kell kuldenunk, mert ilyenkor a checkForClosingProduced mindenhonnan var
+				// (az elejen levo (s.inputs.size() == 0) if miatt)
 				if (!(BagOperatorHost.this instanceof MutableBagCC && ((MutableBagCC.MutableBagOperator)op).inpID == 2)) {
 					cflMan.producedLocal(outBagID, inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks(), subpartitionId, opID);
 				}
