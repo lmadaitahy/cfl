@@ -28,7 +28,7 @@ public class CFLITCase {
 
     @Test(expected=JobCancellationException.class)
     public void testConnectedComponents() throws Exception {
-        ConnectedComponents.main(null);
+        ConnectedComponents.main(new String[]{});
     }
 
     @Test(expected=JobCancellationException.class)

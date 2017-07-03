@@ -25,6 +25,7 @@ import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
 import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -35,6 +36,7 @@ import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.LocalStreamEnvironment;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
+import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.xml.Elem;
@@ -111,28 +113,12 @@ public class ConnectedComponentsMB {
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
 
-		@SuppressWarnings("unchecked")
-		//Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)};
-		Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{
-				Tuple2.of(0,1),
-				Tuple2.of(1,2),
-				Tuple2.of(3,4),
-				Tuple2.of(4,0),
-				Tuple2.of(5,6),
-				Tuple2.of(5,7)
-		};
 
-		// berakjuk megforditva is az eleket
-		@SuppressWarnings("unchecked")
-		Tuple2<Integer, Integer>[] edgesNB = new Tuple2[edgesNB0.length * 2];
-		for (int i=0; i<edgesNB0.length; i++) {
-			edgesNB[i*2] = edgesNB0[i];
-			edgesNB[i*2+1] = Tuple2.of(edgesNB0[i].f1, edgesNB0[i].f0);
-		}
 
+		DataStream<Tuple2<Integer, Integer>> edgesStream = Util.getGraph(env, args);
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> edges =
-				env.fromCollection(Arrays.asList(edgesNB))
+				edgesStream
 						.transform("bagify",
 								Util.tpe(), new Bagify<>(new Tuple2by0(para), 14))
 						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
@@ -348,10 +334,10 @@ public class ConnectedComponentsMB {
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> result = mbSplit.select("3");
 
-		result
-				//.setConnectionType(new gg.partitioners.Random<>())
-				.bt("print", Util.tpe(), new BagOperatorHost<Tuple2<Integer, Integer>, Unit>(new Print<>("result"), 2, 12)
-						.addInput(0,1,true,15)).setParallelism(1);
+//		result
+//				//.setConnectionType(new gg.partitioners.Random<>())
+//				.bt("print", Util.tpe(), new BagOperatorHost<Tuple2<Integer, Integer>, Unit>(new Print<>("result"), 2, 12)
+//						.addInput(0,1,true,15)).setParallelism(1);
 
 		result
 				.bt("AssertBagEquals", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>(

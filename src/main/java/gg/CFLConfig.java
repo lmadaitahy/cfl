@@ -33,5 +33,5 @@ public class CFLConfig implements Serializable {
 
 
 
-    public static final boolean vlog = true;
+    public static final boolean vlog = false;
 }
