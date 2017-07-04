@@ -615,7 +615,7 @@ public class BagOperatorHost<IN, OUT>
 
 
 		void sendElement(OUT e) {
-			short part = partitioner.getPart(e);
+			short part = partitioner.getPart(e, subpartitionId);
 			// (Amugy ez a logika meg van duplazva a Bagify-ban is most)
 			if (!sentStart[part]) {
 				sendStart(part);

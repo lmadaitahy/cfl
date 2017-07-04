@@ -12,7 +12,7 @@ public class Tuple2by0 extends Partitioner<Tuple2<Integer, Integer>> {
     }
 
     @Override
-    public short getPart(Tuple2<Integer, Integer> elem) {
+    public short getPart(Tuple2<Integer, Integer> elem, short subpartitionId) {
         return (short)(elem.f0 % targetPara);
     }
 }

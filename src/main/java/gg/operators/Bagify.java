@@ -60,7 +60,7 @@ public class Bagify<T>
     @Override
     public void processElement(StreamRecord<T> e) throws Exception {
         numElements++;
-        short part = partitioner.getPart(e.getValue());
+        short part = partitioner.getPart(e.getValue(), subpartitionId);
         // (ez a logika ugyanez a BagOperatorHost-ban)
         if (!sentStart[part]) {
             sentStart[part] = true;

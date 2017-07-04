@@ -8,6 +8,7 @@ import gg.KickoffSource;
 import gg.MutableBagCC;
 import gg.PhiNode;
 import gg.operators.*;
+import gg.partitioners.Always0;
 import gg.partitioners.FlinkPartitioner;
 import gg.partitioners.Forward;
 import gg.partitioners.Tuple2by0;
@@ -168,9 +169,9 @@ public class ConnectedComponentsMB {
 			.addInput(1, 1, true, 7)
 			.addInput(2, 1, true, 15)
 			.out(0,1,true, new Tuple2by0(para)) // To update
-			.out(1,1,true, new Forward<>(1)) // to nonEmpty
+			.out(1,1,true, new Always0<>(1)) // to nonEmpty
 			.out(2,1,false, new Forward<>(para)) // back-edge to updates_1 phi-node
-			.out(3, 2, true, new Forward<>(outFile == null ? 1 : para)) // output of toBag
+			.out(3, 2, true, outFile == null ? new Always0<>(1) : new Forward<>(para)) // output of toBag
 		)
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
@@ -260,7 +261,7 @@ public class ConnectedComponentsMB {
 						new BagOperatorHost<>(
 								new NonEmpty<Tuple2<Integer, Integer>>(), 1, 10)
 								.addInput(0, 1, true, 15)
-								.out(0,1,true, new Forward<>(1)))
+								.out(0,1,true, new Always0<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
 				.setParallelism(1);
 

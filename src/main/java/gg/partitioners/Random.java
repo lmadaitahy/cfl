@@ -9,7 +9,7 @@ public class Random<T> extends Partitioner<T> {
 	private final java.util.Random rnd = new java.util.Random();
 
 	@Override
-	public short getPart(T e) {
+	public short getPart(T e, short subpartitionId) {
 		return (short)rnd.nextInt(targetPara);
 	}
 }

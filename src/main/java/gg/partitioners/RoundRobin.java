@@ -9,7 +9,7 @@ public class RoundRobin<T> extends Partitioner<T> {
 	}
 
 	@Override
-	public short getPart(T elem) {
+	public short getPart(T elem, short subpartitionId) {
 		short ret = i;
 		i++;
 		if (i >= targetPara){

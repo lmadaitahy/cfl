@@ -17,5 +17,5 @@ public abstract class Partitioner<T> implements Serializable {
         this.targetPara = (short)targetPara;
     }
 
-    public abstract short getPart(T e);
+    public abstract short getPart(T e, short subpartitionId);
 }

@@ -2,6 +2,7 @@ package gg.jobs;
 
 import gg.*;
 import gg.operators.*;
+import gg.partitioners.Always0;
 import gg.partitioners.Tuple2by0;
 import gg.partitioners.FlinkPartitioner;
 import gg.partitioners.Forward;
@@ -227,7 +228,7 @@ public class ConnectedComponents {
 								.addInput(0,1,true,4)
 								.addInput(1,1,true,7)
 								.out(0,1,true, new Tuple2by0(para)) // To labels_2 update
-								.out(1,1,true, new Forward<>(1)) // to nonEmpty
+								.out(1,1,true, new Always0<>(1)) // to nonEmpty
 						        .out(2,1,false, new Forward<>(para)) // back-edge
 				)
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
@@ -244,7 +245,7 @@ public class ConnectedComponents {
 								.addInput(0,1,true,4) // labels_1
 								.addInput(1,1,true,8) // updates_2
 								.out(0,1,false, new Forward<>(para)) // back-edge
-								.out(1,2,false, new Forward<>(outFile == null ? 1 : para)) // out of the loop
+								.out(1,2,false, outFile == null ? new Always0<>(1) : new Forward<>(para)) // out of the loop
 				)
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
 				.setConnectionType(new FlinkPartitioner<>())
@@ -261,7 +262,7 @@ public class ConnectedComponents {
 						new BagOperatorHost<>(
 								new NonEmpty<Tuple2<Integer, Integer>>(), 1, 10)
 								.addInput(0, 1, true, 8)
-								.out(0,1,true, new Forward<>(1)))
+								.out(0,1,true, new Always0<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
 				.setParallelism(1);
 

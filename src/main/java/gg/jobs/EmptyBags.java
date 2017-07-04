@@ -46,7 +46,7 @@ public class EmptyBags {
 				.bt("id-map",input.getType(),
 				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1)
 						.addInput(0, 0, true, 0)
-						.out(0,0,true, new gg.partitioners.Forward<>(1)))
+						.out(0,0,true, new gg.partitioners.Always0<>(1)))
 				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		output
