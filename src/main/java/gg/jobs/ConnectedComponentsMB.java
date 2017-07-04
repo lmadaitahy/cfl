@@ -7,17 +7,7 @@ import gg.ElementOrEvent;
 import gg.KickoffSource;
 import gg.MutableBagCC;
 import gg.PhiNode;
-import gg.operators.AssertBagEquals;
-import gg.operators.Bagify;
-import gg.operators.ConditionNode;
-import gg.operators.Distinct;
-import gg.operators.FlatMap;
-import gg.operators.GroupBy0Min1;
-import gg.operators.IdMap;
-import gg.operators.Join;
-import gg.operators.NonEmpty;
-import gg.operators.Print;
-import gg.operators.UpdateJoin;
+import gg.operators.*;
 import gg.partitioners.FlinkPartitioner;
 import gg.partitioners.Forward;
 import gg.partitioners.Tuple2by0;
@@ -29,6 +19,7 @@ import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
@@ -114,6 +105,8 @@ public class ConnectedComponentsMB {
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
 
 
+		String outFile = ParameterTool.fromArgs(args).get("output");
+
 
 		DataStream<Tuple2<Integer, Integer>> edgesStream = Util.getGraph(env, args);
 
@@ -177,7 +170,7 @@ public class ConnectedComponentsMB {
 			.out(0,1,true, new Tuple2by0(para)) // To update
 			.out(1,1,true, new Forward<>(1)) // to nonEmpty
 			.out(2,1,false, new Forward<>(para)) // back-edge to updates_1 phi-node
-			.out(3, 2, true, new Forward<>(1)) // output of toBag  // majd itt a para-t at kell allitani, amikor nagy adaton futtatok jobot!
+			.out(3, 2, true, new Forward<>(outFile == null ? 1 : para)) // output of toBag
 		)
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
@@ -259,47 +252,7 @@ public class ConnectedComponentsMB {
 				}).returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
 			));
 
-		//     updates_2 = labels_1.join(minMsgs).on(0).equalTo(0).with( ((vid, label), (target, msg)) => if (msg < label) out.collect((target, msg)) )
-//		SplitStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_2 = labels_1
-//				.map(new LogicalInputIdFiller<>(0))
-//				.union(minMsgs.map(new LogicalInputIdFiller<>(1)))
-//				.setConnectionType(new FlinkPartitioner<>())
-//				//.setConnectionType(new Tuple2by0())
-//				.bt("updates_2", Util.tpe(), new BagOperatorHost<>(new Join(){
-//					@Override
-//					protected void udf(Tuple2<Integer, Integer> a, Tuple2<Integer, Integer> b) {
-//						if (a.f1 > b.f1) {
-//							out.collectElement(b);
-//						}
-//					}
-//				}, 1, 8)
-//								.addInput(0,1,true,4)
-//								.addInput(1,1,true,7)
-//								.out(0,1,true, new Tuple2by0(para)) // To labels_2 update
-//								.out(1,1,true, new Forward<>(1)) // to nonEmpty
-//						        .out(2,1,false, new Forward<>(para)) // back-edge
-//				)
-//				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
-//				.setConnectionType(new FlinkPartitioner<>())
-//				.split(new CondOutputSelector<>());
-
 		mbIt.closeWith(mbSplit.select("0").map(new LogicalInputIdFiller<>(2)));
-
-		//     labels_2 = labels_1.update(updates_2)
-//		SplitStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_2 = labels_1
-//				.map(new LogicalInputIdFiller<>(0))
-//				.union(updates_2.select("0").map(new LogicalInputIdFiller<>(1)))
-//				.setConnectionType(new FlinkPartitioner<>())
-//				//.setConnectionType(new Tuple2by0())
-//				.bt("labels_2",Util.tpe(),new BagOperatorHost<>(new UpdateJoin(),1,9)
-//								.addInput(0,1,true,4) // labels_1
-//								.addInput(1,1,true,8) // updates_2
-//								.out(0,1,false, new Forward<>(para)) // back-edge
-//								.out(1,2,false, new Forward<>(1)) // out of the loop
-//				)
-//				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
-//				.setConnectionType(new FlinkPartitioner<>())
-//				.split(new CondOutputSelector<>());
 
 		DataStream<ElementOrEvent<Boolean>> nonEmpty = mbSplit.select("1")
 				//.setConnectionType(new gg.partitioners.Random<>())  //ez azert nem kell, mert itt huzzuk ossze 1-re a para-t
@@ -334,23 +287,23 @@ public class ConnectedComponentsMB {
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> result = mbSplit.select("3");
 
-//		result
-//				//.setConnectionType(new gg.partitioners.Random<>())
-//				.bt("print", Util.tpe(), new BagOperatorHost<Tuple2<Integer, Integer>, Unit>(new Print<>("result"), 2, 12)
-//						.addInput(0,1,true,15)).setParallelism(1);
+		if (outFile == null) {
+			result.bt("AssertBagEquals", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>(
+							Tuple2.of(0, 0),
+							Tuple2.of(1, 0),
+							Tuple2.of(2, 0),
+							Tuple2.of(3, 0),
+							Tuple2.of(4, 0),
+							Tuple2.of(5, 5),
+							Tuple2.of(6, 5),
+							Tuple2.of(7, 5)
+					), 2, 13)
+							.addInput(0, 1, true, 15)).setParallelism(1);
+		} else {
+			result.bt("FileSink", Util.tpe(), new BagOperatorHost<>(new FileSink<Tuple2<Integer, Integer>>(outFile), 2, 13)
+							.addInput(0,1,true,15));
+		}
 
-		result
-				.bt("AssertBagEquals", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>(
-						Tuple2.of(0,0),
-						Tuple2.of(1,0),
-						Tuple2.of(2,0),
-						Tuple2.of(3,0),
-						Tuple2.of(4,0),
-						Tuple2.of(5,5),
-						Tuple2.of(6,5),
-						Tuple2.of(7,5)
-				), 2, 13)
-						.addInput(0,1,true,15)).setParallelism(1);
 
 		CFLConfig.getInstance().setNumToSubscribe();
 

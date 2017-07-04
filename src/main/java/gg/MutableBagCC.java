@@ -114,7 +114,6 @@ public class MutableBagCC extends BagOperatorHost<Tuple2<Integer, Integer>, Tupl
 
 			switch (inpID) {
 				case -1:
-					// todo: meg majd atgondolni, hogy a coordinatio rendben lesz-e
 					for (HashMap.Entry<Integer, Tuple2<Integer, Integer>> e: hm.entrySet()) {
 						out.collectElement(e.getValue());
 					}

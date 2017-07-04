@@ -1,5 +1,6 @@
 package gg.operators;
 
+import gg.BagOperatorHost;
 import gg.BagOperatorOutputCollector;
 import gg.CFLConfig;
 import org.slf4j.Logger;
@@ -16,6 +17,12 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 	private boolean[] open = new boolean[]{false, false, false};
 
 	protected String name;
+
+	protected BagOperatorHost<IN, OUT> host;
+
+	public void giveHost(BagOperatorHost<IN, OUT> host) {
+		this.host = host;
+	}
 
 	public final void openInBag(int logicalInputId) {
 		if (CFLConfig.vlog) LOG.info("openInBag[" + name + "]: logicalInputId: " + logicalInputId);

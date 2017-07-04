@@ -33,6 +33,6 @@ public class CFLITCase {
 
     @Test(expected=JobCancellationException.class)
     public void testConnectedComponentsMB() throws Exception {
-        ConnectedComponentsMB.main(null);
+        ConnectedComponentsMB.main(new String[]{});
     }
 }

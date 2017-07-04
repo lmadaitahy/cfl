@@ -98,6 +98,8 @@ public class ConnectedComponents {
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
 
 
+		String outFile = ParameterTool.fromArgs(args).get("output");
+
 
 		DataStream<Tuple2<Integer, Integer>> edgesStream = Util.getGraph(env, args);
 
@@ -242,7 +244,7 @@ public class ConnectedComponents {
 								.addInput(0,1,true,4) // labels_1
 								.addInput(1,1,true,8) // updates_2
 								.out(0,1,false, new Forward<>(para)) // back-edge
-								.out(1,2,false, new Forward<>(1)) // out of the loop
+								.out(1,2,false, new Forward<>(outFile == null ? 1 : para)) // out of the loop
 				)
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
 				.setConnectionType(new FlinkPartitioner<>())
@@ -273,23 +275,23 @@ public class ConnectedComponents {
 
 		// --- Iteration ends here ---
 
-//		labels_2.select("1")
-//				//.setConnectionType(new gg.partitioners.Random<>())
-//				.bt("print labels_2", Util.tpe(), new BagOperatorHost<Tuple2<Integer, Integer>, Unit>(new Print<>("labels_2"), 2, 12)
-//						.addInput(0,1,false,9)).setParallelism(1);
 
-		labels_2.select("1")
-				.bt("AssertBagEquals", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>(
-						Tuple2.of(0,0),
-						Tuple2.of(1,0),
-						Tuple2.of(2,0),
-						Tuple2.of(3,0),
-						Tuple2.of(4,0),
-						Tuple2.of(5,5),
-						Tuple2.of(6,5),
-						Tuple2.of(7,5)
-				), 2, 13)
-						.addInput(0,1,false,9)).setParallelism(1);
+		if (outFile == null) {
+			labels_2.select("1").bt("AssertBagEquals", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>(
+					Tuple2.of(0, 0),
+					Tuple2.of(1, 0),
+					Tuple2.of(2, 0),
+					Tuple2.of(3, 0),
+					Tuple2.of(4, 0),
+					Tuple2.of(5, 5),
+					Tuple2.of(6, 5),
+					Tuple2.of(7, 5)
+			), 2, 13)
+					.addInput(0, 1, false, 9)).setParallelism(1);
+		} else {
+			labels_2.select("1").bt("FileSink", Util.tpe(), new BagOperatorHost<>(new FileSink<Tuple2<Integer, Integer>>(outFile), 2, 13)
+					.addInput(0,1,false,9));
+		}
 
 		CFLConfig.getInstance().setNumToSubscribe();
 

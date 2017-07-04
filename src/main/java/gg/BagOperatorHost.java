@@ -37,7 +37,7 @@ public class BagOperatorHost<IN, OUT>
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
-	protected short subpartitionId = -25;
+	public short subpartitionId = -25;
 
 	private CFLManager cflMan;
 	private MyCFLCallback cb;
@@ -120,6 +120,8 @@ public class BagOperatorHost<IN, OUT>
         terminalBBReached = false;
 
 		op.giveOutputCollector(new MyCollector());
+
+		op.giveHost(this);
 
 		cflMan = CFLManager.getSing();
 
