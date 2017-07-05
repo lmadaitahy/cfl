@@ -18,6 +18,14 @@ public class FileSink<T> extends BagOperator<T, Unit> {
 
     public FileSink(String path) {
         this.path = path;
+
+        // Create the directory here in the ctor, to not try it para times.
+        File f = new File(path);
+        if (f.exists()) {
+            throw new RuntimeException("Output file already exists (" + path + ")");
+        }
+        boolean r = f.mkdirs();
+        assert r;
     }
 
     @Override
@@ -25,11 +33,8 @@ public class FileSink<T> extends BagOperator<T, Unit> {
         super.openOutBag();
 
         try {
-            new File(path).mkdirs();
             writer = new PrintWriter(path + "/" + host.subpartitionId, "UTF-8");
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (UnsupportedEncodingException e) {
+        } catch (FileNotFoundException | UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }
     }
