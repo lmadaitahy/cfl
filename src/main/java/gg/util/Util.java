@@ -2,6 +2,7 @@ package gg.util;
 
 import gg.ElementOrEvent;
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.io.TupleCsvInputFormat;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -57,6 +58,47 @@ public class Util {
 			public void flatMap(Tuple2<Integer, Integer> value, Collector<Tuple2<Integer, Integer>> out) throws Exception {
 				out.collect(value);
 				out.collect(Tuple2.of(value.f1, value.f0));
+			}
+		});
+	}
+
+	public static DataStream<TupleIntInt> getGraphTuple2IntInt(StreamExecutionEnvironment env, String[] args) {
+		@SuppressWarnings("unchecked")
+		//Tuple2<Integer, Integer>[] edgesNB0 = new Tuple2[]{Tuple2.of(0,1)};
+				TupleIntInt[] edgesNB0 = new TupleIntInt[]{
+				TupleIntInt.of(0,1),
+				TupleIntInt.of(1,2),
+				TupleIntInt.of(3,4),
+				TupleIntInt.of(4,0),
+				TupleIntInt.of(5,6),
+				TupleIntInt.of(5,7)
+		};
+
+		final ParameterTool params = ParameterTool.fromArgs(args);
+
+		DataStream<TupleIntInt> edgesStream;
+
+		String file = params.get("edges");
+		if (file != null) {
+			LOG.info("Reading input from file " + file);
+			edgesStream = env.createInput(new TupleCsvInputFormat<>(new Path(file),"\n", "\t", new TupleTypeInfo<>(TypeInformation.of(Integer.class), TypeInformation.of(Integer.class))),
+					new TupleTypeInfo<Tuple2<Integer, Integer>>(TypeInformation.of(Integer.class), TypeInformation.of(Integer.class)))
+			.map(new MapFunction<Tuple2<Integer, Integer>, TupleIntInt>() {
+				@Override
+				public TupleIntInt map(Tuple2<Integer, Integer> value) throws Exception {
+					return TupleIntInt.of(value.f0, value.f1);
+				}
+			});
+		} else {
+			LOG.info("No input file given. Using built-in dataset.");
+			edgesStream = env.fromCollection(Arrays.asList(edgesNB0));
+		}
+
+		return edgesStream.flatMap(new FlatMapFunction<TupleIntInt, TupleIntInt>() {
+			@Override
+			public void flatMap(TupleIntInt value, Collector<TupleIntInt> out) throws Exception {
+				out.collect(value);
+				out.collect(TupleIntInt.of(value.f1, value.f0));
 			}
 		});
 	}

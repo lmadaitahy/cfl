@@ -1,8 +1,7 @@
 package gg;
 
 import gg.operators.BagOperator;
-import gg.partitioners.Partitioner;
-import org.apache.flink.api.java.tuple.Tuple2;
+import gg.util.TupleIntInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
 
-public class MutableBagCC extends BagOperatorHost<Tuple2<Integer, Integer>, Tuple2<Integer, Integer>> {
+public class MutableBagCC extends BagOperatorHost<TupleIntInt, TupleIntInt> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(MutableBagCC.class);
 
@@ -99,9 +98,9 @@ public class MutableBagCC extends BagOperatorHost<Tuple2<Integer, Integer>, Tupl
 		}
 	}
 
-	class MutableBagOperator extends BagOperator<Tuple2<Integer, Integer>, Tuple2<Integer, Integer>> {
+	class MutableBagOperator extends BagOperator<TupleIntInt, TupleIntInt> {
 
-		HashMap<Integer, Tuple2<Integer, Integer>> hm = new HashMap<>();
+		HashMap<Integer, TupleIntInt> hm = new HashMap<>();
 
 		int inpID = -3;
 
@@ -114,7 +113,7 @@ public class MutableBagCC extends BagOperatorHost<Tuple2<Integer, Integer>, Tupl
 
 			switch (inpID) {
 				case -1:
-					for (HashMap.Entry<Integer, Tuple2<Integer, Integer>> e: hm.entrySet()) {
+					for (HashMap.Entry<Integer, TupleIntInt> e: hm.entrySet()) {
 						out.collectElement(e.getValue());
 					}
 					out.closeBag();
@@ -132,7 +131,7 @@ public class MutableBagCC extends BagOperatorHost<Tuple2<Integer, Integer>, Tupl
 		}
 
 		@Override
-		public void pushInElement(Tuple2<Integer, Integer> e, int logicalInputId) {
+		public void pushInElement(TupleIntInt e, int logicalInputId) {
 			super.pushInElement(e, logicalInputId);
 			switch (logicalInputId) {
 				case 0: // toMutable
@@ -142,7 +141,7 @@ public class MutableBagCC extends BagOperatorHost<Tuple2<Integer, Integer>, Tupl
 				case 1: // join
 					{
 						assert inpID == 1;
-						Tuple2<Integer, Integer> g = hm.get(e.f0);
+						TupleIntInt g = hm.get(e.f0);
 						assert g != null; // az altalanos interface-nel nem, de a CC-nel mindig benne kell lennie
 						if (g.f1 > e.f1) {
 							out.collectElement(e);
@@ -151,7 +150,7 @@ public class MutableBagCC extends BagOperatorHost<Tuple2<Integer, Integer>, Tupl
 					}
 				case 2: // update
 					assert inpID == 2;
-					Tuple2<Integer, Integer> present = hm.replace(e.f0, e);
+					TupleIntInt present = hm.replace(e.f0, e);
 					assert present != null; // az altalanos interface-nel nem, de a CC-nel mindig benne kell lennie
 					break;
 				default:

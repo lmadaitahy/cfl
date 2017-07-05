@@ -93,6 +93,8 @@ public class ConnectedComponents {
 		int para = env.getParallelism();
 
 
+		//////////////////////////////////// TODO: Change this also to TupleIntInt
+
 
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
