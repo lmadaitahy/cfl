@@ -92,7 +92,7 @@ public class ConnectedComponents {
 
 		int para = env.getParallelism();
 
-		//env.setBufferTimeout(0);
+
 
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
@@ -112,7 +112,6 @@ public class ConnectedComponents {
 				.setConnectionType(new FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> vertices0 = edges
-				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("vertices0", Util.tpe(), new BagOperatorHost<>(new FlatMap<Tuple2<Integer, Integer>, Integer>(){
 			@Override
 			public void pushInElement(Tuple2<Integer, Integer> e, int logicalInputId) {
@@ -126,7 +125,6 @@ public class ConnectedComponents {
 				.setConnectionType(new FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> vertices = vertices0
-				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("vertices", Util.tpe(),
 				new BagOperatorHost<Integer, Integer>(new Distinct<>(), 0, 1)
 						.addInput(0,0,true, 0)
@@ -135,7 +133,6 @@ public class ConnectedComponents {
 				.setConnectionType(new FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_0 = vertices
-				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("labels_0", Util.tpe(), new BagOperatorHost<>(new FlatMap<Integer,Tuple2<Integer,Integer>>(){
 			@Override
 			public void pushInElement(Integer e, int logicalInputId) {
@@ -149,7 +146,6 @@ public class ConnectedComponents {
 				.setConnectionType(new FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_0 = labels_0
-				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("updates_0", Util.tpe(), new BagOperatorHost<>(new IdMap<Tuple2<Integer, Integer>>(), 0, 3)
 				.addInput(0,0,true,2)
 				.out(0,0,true, new Forward<>(para)))
@@ -162,7 +158,6 @@ public class ConnectedComponents {
 		IterativeStream<ElementOrEvent<Tuple2<Integer, Integer>>> labelsIt = labels_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_1 = labelsIt
-				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("labels_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 4)
 				.addInput(0,0,false,2)
 				.addInput(1,1,false,9)
@@ -174,7 +169,6 @@ public class ConnectedComponents {
 		IterativeStream<ElementOrEvent<Tuple2<Integer, Integer>>> updatesIt = updates_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_1 = updatesIt
-				//.setConnectionType(new gg.partitioners.Forward<>())
 				.bt("updates_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 5)
 				.addInput(0,0,false,3)
 				.addInput(1,1,false,8)
@@ -188,7 +182,6 @@ public class ConnectedComponents {
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_1.map(new LogicalInputIdFiller<>(1)))
 				.setConnectionType(new FlinkPartitioner<>()) // Meg lehetne nezni, hogy enelkul is mukodik-e
-				//.setConnectionType(new Tuple2by0())
 				.bt("msgs", Util.tpe(), new BagOperatorHost<>(new Join(){
 					@Override
 					protected void udf(Tuple2<Integer, Integer> a, Tuple2<Integer, Integer> b) {
@@ -204,7 +197,6 @@ public class ConnectedComponents {
 
 		//todo: combiner
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> minMsgs = msgs
-				//.setConnectionType(new Tuple2by0())
 				.bt("minMsgs", Util.tpe(), new BagOperatorHost<>(new GroupBy0Min1(), 1, 7)
 						.addInput(0,1,true,6)
 						.out(0,1,true, new Tuple2by0(para)))
@@ -216,7 +208,6 @@ public class ConnectedComponents {
 				.map(new LogicalInputIdFiller<>(0))
 				.union(minMsgs.map(new LogicalInputIdFiller<>(1)))
 				.setConnectionType(new FlinkPartitioner<>())
-				//.setConnectionType(new Tuple2by0())
 				.bt("updates_2", Util.tpe(), new BagOperatorHost<>(new Join(){
 					@Override
 					protected void udf(Tuple2<Integer, Integer> a, Tuple2<Integer, Integer> b) {
@@ -240,7 +231,6 @@ public class ConnectedComponents {
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_2.select("0").map(new LogicalInputIdFiller<>(1)))
 				.setConnectionType(new FlinkPartitioner<>())
-				//.setConnectionType(new Tuple2by0())
 				.bt("labels_2",Util.tpe(),new BagOperatorHost<>(new UpdateJoin(),1,9)
 								.addInput(0,1,true,4) // labels_1
 								.addInput(1,1,true,8) // updates_2
@@ -257,7 +247,6 @@ public class ConnectedComponents {
 		// exit cond
 
 		DataStream<ElementOrEvent<Boolean>> nonEmpty = updates_2.select("1")
-				//.setConnectionType(new gg.partitioners.Random<>())  //ez azert nem kell, mert itt huzzuk ossze 1-re a para-t
 				.bt("nonEmpty",Util.tpe(),
 						new BagOperatorHost<>(
 								new NonEmpty<Tuple2<Integer, Integer>>(), 1, 10)
@@ -267,7 +256,6 @@ public class ConnectedComponents {
 				.setParallelism(1);
 
 		DataStream<ElementOrEvent<Unit>> exitCond = nonEmpty
-				//.setConnectionType(new gg.partitioners.Random<>())  // ez azert nem kell, mert az input es mi is 1-es para-val vagyunk
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
 								new ConditionNode(1,2), 1, 11)
