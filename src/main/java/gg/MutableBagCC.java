@@ -1,5 +1,6 @@
 package gg;
 
+import gg.jobs.ConnectedComponentsMB;
 import gg.operators.BagOperator;
 import gg.util.TupleIntInt;
 import org.slf4j.Logger;
@@ -28,7 +29,7 @@ public class MutableBagCC extends BagOperatorHost<TupleIntInt, TupleIntInt> {
 	private Queue<Integer> whichInput = new ArrayDeque<>();
 
 	public MutableBagCC(int opID) {
-		super(1, opID);
+		super(1, opID, ConnectedComponentsMB.tupleIntIntSer);
 		op = new MutableBagOperator();
 	}
 

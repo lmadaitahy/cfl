@@ -13,8 +13,10 @@ import gg.partitioners.RoundRobin;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
@@ -40,6 +42,9 @@ import java.util.Arrays;
 public class SimpleCFDataSize {
 
 	//private static final Logger LOG = LoggerFactory.getLogger(SimpleCF.class);
+
+	private static TypeSerializer<Integer> integerSer = TypeInformation.of(Integer.class).createSerializer(new ExecutionConfig());
+	private static TypeSerializer<Boolean> booleanSer = TypeInformation.of(Boolean.class).createSerializer(new ExecutionConfig());
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -88,7 +93,7 @@ public class SimpleCFDataSize {
 
 		DataStream<ElementOrEvent<Integer>> phi_i = it_i
 				.bt("phi_i",inputBag_i.getType(),
-						new PhiNode<Integer>(1, 1)
+						new PhiNode<Integer>(1, 1, integerSer)
 								.addInput(0, 0, false, 0)
 								.addInput(1, 1, false, 2)
 								.out(0, 1, true, new Random<>(env.getParallelism())))
@@ -96,7 +101,7 @@ public class SimpleCFDataSize {
 
 		DataStream<ElementOrEvent<Integer>> phi_d = it_d
 				.bt("phi_d",inputBag_d.getType(),
-						new PhiNode<Integer>(1, 7)
+						new PhiNode<Integer>(1, 7, integerSer)
 								.addInput(0, 0, false, 6)
 								.addInput(1, 1, false, 8)
 								.out(0, 1, true, new Random<>(env.getParallelism())))
@@ -106,7 +111,7 @@ public class SimpleCFDataSize {
 		SplitStream<ElementOrEvent<Integer>> incedSplit_i = phi_i
 				.bt("inc-map_i",inputBag_i.getType(),
 						new BagOperatorHost<>(
-								new IncMap(), 1, 2)
+								new IncMap(), 1, 2, integerSer)
 								.addInput(0, 1, true, 1)
 								.out(0,1,false, new Random<>(env.getParallelism())) // back edge
 								.out(1,2,false, new Random<>(1)) // out of the loop
@@ -117,7 +122,7 @@ public class SimpleCFDataSize {
 		SplitStream<ElementOrEvent<Integer>> incedSplit_d = phi_d
 				.bt("inc-map_d",inputBag_d.getType(),
 						new BagOperatorHost<>(
-								new IncMap(), 1, 8)
+								new IncMap(), 1, 8, integerSer)
 								.addInput(0, 1, true, 7)
 								.out(0,1,false, new Random<>(env.getParallelism())) // back edge
 								.out(1,2,false, new Random<>(1))) // out of the loop
@@ -137,7 +142,7 @@ public class SimpleCFDataSize {
 				//.setConnectionType(new gg.partitioners.Random<>())
 				.bt("smaller-than",Util.tpe(),
 						new BagOperatorHost<>(
-								new SmallerThan(n), 1, 3)
+								new SmallerThan(n), 1, 3, integerSer)
 								.addInput(0, 1, true, 2)
 								.out(0,1,true, new Random<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
@@ -147,7 +152,7 @@ public class SimpleCFDataSize {
 		DataStream<ElementOrEvent<Unit>> exitCond = smallerThan
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
-								new ConditionNode(1,2), 1, 4)
+								new ConditionNode(1,2), 1, 4, booleanSer)
 								.addInput(0, 1, true, 3)).setParallelism(1);
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert nincs output
 
@@ -158,7 +163,7 @@ public class SimpleCFDataSize {
 
 		output_i.bt("Check i == " + n, Util.tpe(),
 				new BagOperatorHost<>(
-						new AssertEquals<>(n), 2, 5)
+						new AssertEquals<>(n), 2, 5, integerSer)
 						.addInput(0, 1, false, 2)).setParallelism(1);
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert nincs output
 
@@ -169,7 +174,7 @@ public class SimpleCFDataSize {
 
 		output_d.bt("Check d == " + n, Util.tpe(),
 				new BagOperatorHost<>(
-						new AssertBagEquals<>(correctOut), 2, 9)
+						new AssertBagEquals<>(correctOut), 2, 9, integerSer)
 						.addInput(0, 1, false, 8)).setParallelism(1);
 		//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert nincs output
 

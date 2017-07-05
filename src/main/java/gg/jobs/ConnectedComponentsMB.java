@@ -13,9 +13,11 @@ import gg.util.LogicalInputIdFiller;
 import gg.util.TupleIntInt;
 import gg.util.Unit;
 import gg.util.Util;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
@@ -74,6 +76,10 @@ public class ConnectedComponentsMB {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ConnectedComponentsMB.class);
 
+	private static TypeSerializer<Integer> integerSer = TypeInformation.of(Integer.class).createSerializer(new ExecutionConfig());
+	private static TypeSerializer<Boolean> booleanSer = TypeInformation.of(Boolean.class).createSerializer(new ExecutionConfig());
+	public static TypeSerializer<TupleIntInt> tupleIntIntSer = TypeInformation.of(TupleIntInt.class).createSerializer(new ExecutionConfig());
+
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -116,7 +122,7 @@ public class ConnectedComponentsMB {
 				super.pushInElement(e, logicalInputId);
 				out.collectElement(e.f0);
 			}
-		}, 0, 0)
+		}, 0, 0, tupleIntIntSer)
 			.addInput(0,0,true,14)
 			.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
@@ -124,7 +130,7 @@ public class ConnectedComponentsMB {
 
 		DataStream<ElementOrEvent<Integer>> vertices = vertices0
 				.bt("vertices", Util.tpe(),
-				new BagOperatorHost<Integer, Integer>(new Distinct<>(), 0, 1)
+				new BagOperatorHost<Integer, Integer>(new Distinct<>(), 0, 1, integerSer)
 						.addInput(0,0,true, 0)
 						.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
@@ -137,7 +143,7 @@ public class ConnectedComponentsMB {
 				super.pushInElement(e, logicalInputId);
 				out.collectElement(TupleIntInt.of(e,e));
 			}
-		}, 0, 2)
+		}, 0, 2, integerSer)
 			.addInput(0,0,true,1)
 			.out(0,0,true, new TupleIntIntBy0(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
@@ -170,7 +176,7 @@ public class ConnectedComponentsMB {
 
 
 		DataStream<ElementOrEvent<TupleIntInt>> updates_0 = labels_0
-				.bt("updates_0", Util.tpe(), new BagOperatorHost<>(new IdMap<TupleIntInt>(), 0, 3)
+				.bt("updates_0", Util.tpe(), new BagOperatorHost<>(new IdMap<TupleIntInt>(), 0, 3, tupleIntIntSer)
 				.addInput(0,0,true,2)
 				.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
@@ -182,7 +188,7 @@ public class ConnectedComponentsMB {
 		IterativeStream<ElementOrEvent<TupleIntInt>> updatesIt = updates_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
 
 		DataStream<ElementOrEvent<TupleIntInt>> updates_1 = updatesIt
-				.bt("updates_1", Util.tpe(), new PhiNode<TupleIntInt>(1, 5)
+				.bt("updates_1", Util.tpe(), new PhiNode<TupleIntInt>(1, 5, tupleIntIntSer)
 				.addInput(0,0,false,3)
 				.addInput(1,1,false,15)
 				.out(0,1,true, new TupleIntIntBy0(para))
@@ -200,7 +206,7 @@ public class ConnectedComponentsMB {
 					protected void udf(TupleIntInt a, TupleIntInt b) {
 						out.collectElement(TupleIntInt.of(a.f1, b.f1));
 					}
-				}, 1, 6)
+				}, 1, 6, tupleIntIntSer)
 				.addInput(0,0,false,14) // edges
 				.addInput(1,1,true,5) // updates_1
 				.out(0,1,true, new TupleIntIntBy0(para))
@@ -210,7 +216,7 @@ public class ConnectedComponentsMB {
 
 		//todo: combiner
 		DataStream<ElementOrEvent<TupleIntInt>> minMsgs = msgs
-				.bt("minMsgs", Util.tpe(), new BagOperatorHost<>(new GroupBy0Min1TupleIntInt(), 1, 7)
+				.bt("minMsgs", Util.tpe(), new BagOperatorHost<>(new GroupBy0Min1TupleIntInt(), 1, 7, tupleIntIntSer)
 						.addInput(0,1,true,6)
 						.out(0,1,true, new TupleIntIntBy0(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
@@ -230,7 +236,7 @@ public class ConnectedComponentsMB {
 		DataStream<ElementOrEvent<Boolean>> nonEmpty = mbSplit.select("1")
 				.bt("nonEmpty",Util.tpe(),
 						new BagOperatorHost<>(
-								new NonEmpty<TupleIntInt>(), 1, 10)
+								new NonEmpty<TupleIntInt>(), 1, 10, tupleIntIntSer)
 								.addInput(0, 1, true, 15)
 								.out(0,1,true, new Always0<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
@@ -239,7 +245,7 @@ public class ConnectedComponentsMB {
 		DataStream<ElementOrEvent<Unit>> exitCond = nonEmpty
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
-								new ConditionNode(1,2), 1, 11)
+								new ConditionNode(1,2), 1, 11, booleanSer)
 								.addInput(0, 1, true, 10))
 				.setParallelism(1);
 
@@ -268,10 +274,10 @@ public class ConnectedComponentsMB {
 					TupleIntInt.of(5, 5),
 					TupleIntInt.of(6, 5),
 					TupleIntInt.of(7, 5)
-					), 2, 13)
+					), 2, 13, tupleIntIntSer)
 							.addInput(0, 1, true, 15)).setParallelism(1);
 		} else {
-			result.bt("GraphSink", Util.tpe(), new BagOperatorHost<>(new GraphSinkTupleIntInt(outFile), 2, 13)
+			result.bt("GraphSink", Util.tpe(), new BagOperatorHost<>(new GraphSinkTupleIntInt(outFile), 2, 13, tupleIntIntSer)
 							.addInput(0,1,true,15));
 		}
 

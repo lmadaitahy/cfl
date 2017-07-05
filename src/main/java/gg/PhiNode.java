@@ -2,6 +2,7 @@ package gg;
 
 
 import gg.operators.IdMap;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,8 +13,8 @@ public class PhiNode<T> extends BagOperatorHost<T,T> implements Serializable {
 
 	protected static final Logger LOG = LoggerFactory.getLogger(PhiNode.class);
 
-	public PhiNode(int bbId, int opID) {
-		super(new IdMap<T>(), bbId, opID);
+	public PhiNode(int bbId, int opID, TypeSerializer<T> inSer) {
+		super(new IdMap<T>(), bbId, opID, inSer);
 	}
 
 	@Override

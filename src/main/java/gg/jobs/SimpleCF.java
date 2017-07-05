@@ -7,8 +7,10 @@ import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
 import gg.partitioners.Random;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
@@ -31,6 +33,9 @@ import java.util.Arrays;
 public class SimpleCF {
 
 	//private static final Logger LOG = LoggerFactory.getLogger(SimpleCF.class);
+
+	private static TypeSerializer<Integer> integerSer = TypeInformation.of(Integer.class).createSerializer(new ExecutionConfig());
+	private static TypeSerializer<Boolean> booleanSer = TypeInformation.of(Boolean.class).createSerializer(new ExecutionConfig());
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -69,7 +74,7 @@ public class SimpleCF {
 		DataStream<ElementOrEvent<Integer>> phi = it
 				//.setConnectionType(new gg.partitioners.Random<>())
 				.bt("phi",inputBag.getType(),
-						new PhiNode<Integer>(1, 1)
+						new PhiNode<Integer>(1, 1, integerSer)
 								.addInput(0, 0, false, 0)
 								.addInput(1, 1, false, 2)
 								.out(0, 1, true, new Random<>(env.getParallelism())))
@@ -80,7 +85,7 @@ public class SimpleCF {
 				//.setConnectionType(new gg.partitioners.Random<>())
 				.bt("inc-map",inputBag.getType(),
 						new BagOperatorHost<>(
-								new IncMap(), 1, 2)
+								new IncMap(), 1, 2, integerSer)
 								.addInput(0, 1, true, 1)
 								.out(0,1,false, new Random<>(env.getParallelism())) // back edge
 								.out(1,2,false, new Random<>(1)) // out of the loop
@@ -96,7 +101,7 @@ public class SimpleCF {
 				//.setConnectionType(new gg.partitioners.Random<>())
 				.bt("smaller-than",Util.tpe(),
 						new BagOperatorHost<>(
-								new SmallerThan(n), 1, 3)
+								new SmallerThan(n), 1, 3, integerSer)
 								.addInput(0, 1, true, 2)
 								.out(0,1,true, new Random<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
@@ -106,7 +111,7 @@ public class SimpleCF {
 		DataStream<ElementOrEvent<Unit>> exitCond = smallerThan
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
-								new ConditionNode(1,2), 1, 4)
+								new ConditionNode(1,2), 1, 4, booleanSer)
 								.addInput(0, 1, true, 3)).setParallelism(1);
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert nincs output
 
@@ -115,7 +120,7 @@ public class SimpleCF {
 
 		output.bt("Check i == " + n, Util.tpe(),
 				new BagOperatorHost<>(
-						new AssertEquals<>(n), 2, 5)
+						new AssertEquals<>(n), 2, 5, integerSer)
 						.addInput(0, 1, false, 2)).setParallelism(1);
 				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert nincs output
 

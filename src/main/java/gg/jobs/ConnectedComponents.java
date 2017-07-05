@@ -9,27 +9,20 @@ import gg.partitioners.Forward;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Unit;
 import gg.util.Util;
-import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.io.CsvInputFormat;
-import org.apache.flink.api.java.io.TupleCsvInputFormat;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.typeutils.TupleTypeInfo;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.configuration.Configuration;
-import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import org.apache.flink.streaming.api.environment.LocalStreamEnvironment;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
-import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
 
 
 // // BB 0
@@ -76,6 +69,10 @@ public class ConnectedComponents {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ConnectedComponents.class);
 
+	private static TypeSerializer<Integer> integerSer = TypeInformation.of(Integer.class).createSerializer(new ExecutionConfig());
+	private static TypeSerializer<Boolean> booleanSer = TypeInformation.of(Boolean.class).createSerializer(new ExecutionConfig());
+	private static TypeSerializer<Tuple2<Integer, Integer>> tuple2Ser = TypeInformation.of(new TypeHint<Tuple2<Integer, Integer>>(){}).createSerializer(new ExecutionConfig());
+
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -120,7 +117,7 @@ public class ConnectedComponents {
 				super.pushInElement(e, logicalInputId);
 				out.collectElement(e.f0);
 			}
-		}, 0, 0)
+		}, 0, 0, tuple2Ser)
 			.addInput(0,0,true,14)
 			.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
@@ -128,7 +125,7 @@ public class ConnectedComponents {
 
 		DataStream<ElementOrEvent<Integer>> vertices = vertices0
 				.bt("vertices", Util.tpe(),
-				new BagOperatorHost<Integer, Integer>(new Distinct<>(), 0, 1)
+				new BagOperatorHost<Integer, Integer>(new Distinct<>(), 0, 1, integerSer)
 						.addInput(0,0,true, 0)
 						.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
@@ -141,14 +138,14 @@ public class ConnectedComponents {
 				super.pushInElement(e, logicalInputId);
 				out.collectElement(Tuple2.of(e,e));
 			}
-		}, 0, 2)
+		}, 0, 2, integerSer)
 			.addInput(0,0,true,1)
 			.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_0 = labels_0
-				.bt("updates_0", Util.tpe(), new BagOperatorHost<>(new IdMap<Tuple2<Integer, Integer>>(), 0, 3)
+				.bt("updates_0", Util.tpe(), new BagOperatorHost<>(new IdMap<Tuple2<Integer, Integer>>(), 0, 3, tuple2Ser)
 				.addInput(0,0,true,2)
 				.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
@@ -160,7 +157,7 @@ public class ConnectedComponents {
 		IterativeStream<ElementOrEvent<Tuple2<Integer, Integer>>> labelsIt = labels_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_1 = labelsIt
-				.bt("labels_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 4)
+				.bt("labels_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 4, tuple2Ser)
 				.addInput(0,0,false,2)
 				.addInput(1,1,false,9)
 				.out(0,1,true, new Tuple2by0(para)) // (this goes to two places, but none of them is conditional)
@@ -171,7 +168,7 @@ public class ConnectedComponents {
 		IterativeStream<ElementOrEvent<Tuple2<Integer, Integer>>> updatesIt = updates_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
 
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_1 = updatesIt
-				.bt("updates_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 5)
+				.bt("updates_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 5, tuple2Ser)
 				.addInput(0,0,false,3)
 				.addInput(1,1,false,8)
 				.out(0,1,true, new Tuple2by0(para))
@@ -189,7 +186,7 @@ public class ConnectedComponents {
 					protected void udf(Tuple2<Integer, Integer> a, Tuple2<Integer, Integer> b) {
 						out.collectElement(Tuple2.of(a.f1, b.f1));
 					}
-				}, 1, 6)
+				}, 1, 6, tuple2Ser)
 				.addInput(0,0,false,14) // edges
 				.addInput(1,1,true,5) // updates_1
 				.out(0,1,true, new Tuple2by0(para))
@@ -199,7 +196,7 @@ public class ConnectedComponents {
 
 		//todo: combiner
 		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> minMsgs = msgs
-				.bt("minMsgs", Util.tpe(), new BagOperatorHost<>(new GroupBy0Min1(), 1, 7)
+				.bt("minMsgs", Util.tpe(), new BagOperatorHost<>(new GroupBy0Min1(), 1, 7, tuple2Ser)
 						.addInput(0,1,true,6)
 						.out(0,1,true, new Tuple2by0(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
@@ -217,7 +214,7 @@ public class ConnectedComponents {
 							out.collectElement(b);
 						}
 					}
-				}, 1, 8)
+				}, 1, 8, tuple2Ser)
 								.addInput(0,1,true,4)
 								.addInput(1,1,true,7)
 								.out(0,1,true, new Tuple2by0(para)) // To labels_2 update
@@ -233,7 +230,7 @@ public class ConnectedComponents {
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_2.select("0").map(new LogicalInputIdFiller<>(1)))
 				.setConnectionType(new FlinkPartitioner<>())
-				.bt("labels_2",Util.tpe(),new BagOperatorHost<>(new UpdateJoin(),1,9)
+				.bt("labels_2",Util.tpe(),new BagOperatorHost<>(new UpdateJoin(),1,9, tuple2Ser)
 								.addInput(0,1,true,4) // labels_1
 								.addInput(1,1,true,8) // updates_2
 								.out(0,1,false, new Forward<>(para)) // back-edge
@@ -251,7 +248,7 @@ public class ConnectedComponents {
 		DataStream<ElementOrEvent<Boolean>> nonEmpty = updates_2.select("1")
 				.bt("nonEmpty",Util.tpe(),
 						new BagOperatorHost<>(
-								new NonEmpty<Tuple2<Integer, Integer>>(), 1, 10)
+								new NonEmpty<Tuple2<Integer, Integer>>(), 1, 10, tuple2Ser)
 								.addInput(0, 1, true, 8)
 								.out(0,1,true, new Always0<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
@@ -260,7 +257,7 @@ public class ConnectedComponents {
 		DataStream<ElementOrEvent<Unit>> exitCond = nonEmpty
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
-								new ConditionNode(1,2), 1, 11)
+								new ConditionNode(1,2), 1, 11, booleanSer)
 								.addInput(0, 1, true, 10))
 				.setParallelism(1);
 
@@ -277,10 +274,10 @@ public class ConnectedComponents {
 					Tuple2.of(5, 5),
 					Tuple2.of(6, 5),
 					Tuple2.of(7, 5)
-			), 2, 13)
+			), 2, 13, tuple2Ser)
 					.addInput(0, 1, false, 9)).setParallelism(1);
 		} else {
-			labels_2.select("1").bt("GraphSink", Util.tpe(), new BagOperatorHost<>(new GraphSink(outFile), 2, 13)
+			labels_2.select("1").bt("GraphSink", Util.tpe(), new BagOperatorHost<>(new GraphSink(outFile), 2, 13, tuple2Ser)
 					.addInput(0,1,false,9));
 		}
 

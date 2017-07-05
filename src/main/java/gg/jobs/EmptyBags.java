@@ -9,7 +9,9 @@ import gg.operators.Bagify;
 import gg.operators.IdMap;
 import gg.partitioners.RoundRobin;
 import gg.util.Util;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
@@ -17,6 +19,8 @@ import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 import java.util.Arrays;
 
 public class EmptyBags {
+
+	private static TypeSerializer<String> stringSer = TypeInformation.of(String.class).createSerializer(new ExecutionConfig());
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -44,13 +48,13 @@ public class EmptyBags {
 
 		DataStream<ElementOrEvent<String>> output = input
 				.bt("id-map",input.getType(),
-				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1)
+				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1, stringSer)
 						.addInput(0, 0, true, 0)
 						.out(0,0,true, new gg.partitioners.Always0<>(1)))
 				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		output
-				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<String>(), 0, 2)
+				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<String>(), 0, 2, stringSer)
 						.addInput(0, 0, true, 1))
 				.setParallelism(1);
 

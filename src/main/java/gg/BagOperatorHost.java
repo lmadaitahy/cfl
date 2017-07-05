@@ -3,6 +3,8 @@ package gg;
 
 import gg.operators.BagOperator;
 import gg.partitioners.Partitioner;
+import gg.util.SerializedBuffer;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.datastream.InputParaSettable;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -34,6 +36,7 @@ public class BagOperatorHost<IN, OUT>
 	private int terminalBBId = -2;
 	private CFLConfig cflConfig;
 	private int opID = -1;
+	private TypeSerializer<IN> inSer;
 
 	// ---------------------- Initialized in setup (i.e., on TM):
 
@@ -58,7 +61,7 @@ public class BagOperatorHost<IN, OUT>
 
 	private boolean consumed = false;
 
-	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID) {
+	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID, TypeSerializer<IN> inSer) {
 		this.op = op;
 		this.bbId = bbId;
 		this.inputs = new ArrayList<>();
@@ -66,17 +69,19 @@ public class BagOperatorHost<IN, OUT>
 		this.cflConfig = CFLConfig.getInstance();
 		assert this.terminalBBId >= 0;
 		this.opID = opID;
+		this.inSer = inSer;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
 	// Does not set op
-	protected BagOperatorHost(int bbId, int opID) {
+	protected BagOperatorHost(int bbId, int opID, TypeSerializer<IN> inSer) {
 		this.bbId = bbId;
 		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
 		this.cflConfig = CFLConfig.getInstance();
 		assert this.terminalBBId >= 0;
 		this.opID = opID;
+		this.inSer = inSer;
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
@@ -111,7 +116,7 @@ public class BagOperatorHost<IN, OUT>
 		for(Input inp: inputs) {
 			inp.inputSubpartitions = new InputSubpartition[inputParallelism];
 			for (int i = 0; i < inp.inputSubpartitions.length; i++) {
-				inp.inputSubpartitions[i] = new InputSubpartition<>();
+				inp.inputSubpartitions[i] = new InputSubpartition<>(inSer);
 			}
 		}
 
@@ -155,7 +160,7 @@ public class BagOperatorHost<IN, OUT>
 
 		if (eleOrEvent.element != null) {
 			IN ele = eleOrEvent.element;
-			sp.buffers.get(sp.buffers.size()-1).elements.add(ele);
+			sp.buffers.get(sp.buffers.size()-1).elements.insert(ele);
 			if(!sp.damming) {
 				consumed = true;
 				op.pushInElement(ele, eleOrEvent.logicalInputId);
@@ -689,11 +694,11 @@ public class BagOperatorHost<IN, OUT>
 		enum Status {OPEN, CLOSED}
 
 		class Buffer {
-			ArrayList<T> elements;
+			SerializedBuffer<T> elements;
 			BagID bagID;
 
 			Buffer(BagID bagID) {
-				this.elements = new ArrayList<>();
+				this.elements = new SerializedBuffer<T>(ser);
 				this.bagID = bagID;
 			}
 		}
@@ -704,7 +709,10 @@ public class BagOperatorHost<IN, OUT>
 
 		boolean damming;
 
-		InputSubpartition() {
+		TypeSerializer<T> ser;
+
+		InputSubpartition(TypeSerializer<T> ser) {
+			this.ser = ser;
 			buffers = new ArrayList<>();
 			status = Status.CLOSED;
 			damming = false;
