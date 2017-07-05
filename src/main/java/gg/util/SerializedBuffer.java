@@ -24,19 +24,13 @@ public class SerializedBuffer<T> implements Iterable<T> {
     private boolean consumeStarted = false;
 
     private int numWritten = 0;
-    private int numRead = 0;
 
     public SerializedBuffer(TypeSerializer<T> ser) {
         this.ser = ser;
     }
 
-
-    private ArrayList<T> xx = new ArrayList<T>();
-
-
     public void insert(T e) {
-        assert !consumeStarted;  //todo: ez miert nem igaz?
-        xx.add(e);
+        ///////////////assert !consumeStarted;  //todo: ez miert nem igaz?
         numWritten++;
         try {
             ser.serialize(e, outView);
@@ -59,26 +53,20 @@ public class SerializedBuffer<T> implements Iterable<T> {
 
         RandomAccessInputView inView = new RandomAccessInputView(segs, segSize);
 
+        private int numRead = 0;
+
         @Override
         public boolean hasNext() {
             assert numRead <= numWritten;
             return numRead < numWritten;
         }
 
-        int ind = 0;
-
         @Override
         public T next() {
-            assert numWritten == xx.size();
             numRead++;
             assert numRead <= numWritten;
             try {
-                T ret = ser.deserialize(inView);
-
-                assert xx.get(ind).equals(ret);
-                ind++;
-
-                return ret;
+                return ser.deserialize(inView);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
