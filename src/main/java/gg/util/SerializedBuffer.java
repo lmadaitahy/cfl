@@ -30,8 +30,13 @@ public class SerializedBuffer<T> implements Iterable<T> {
         this.ser = ser;
     }
 
+
+    private ArrayList<T> xx = new ArrayList<T>();
+
+
     public void insert(T e) {
         assert !consumeStarted;  //todo: ez miert nem igaz?
+        xx.add(e);
         numWritten++;
         try {
             ser.serialize(e, outView);
@@ -60,12 +65,20 @@ public class SerializedBuffer<T> implements Iterable<T> {
             return numRead < numWritten;
         }
 
+        int ind = 0;
+
         @Override
         public T next() {
+            assert numWritten == xx.size();
             numRead++;
             assert numRead <= numWritten;
             try {
-                return ser.deserialize(inView);
+                T ret = ser.deserialize(inView);
+
+                assert xx.get(ind).equals(ret);
+                ind++;
+
+                return ret;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
