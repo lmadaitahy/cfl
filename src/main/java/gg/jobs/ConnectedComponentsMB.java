@@ -280,7 +280,7 @@ public class ConnectedComponentsMB {
 					), 2, 13)
 							.addInput(0, 1, true, 15)).setParallelism(1);
 		} else {
-			result.bt("FileSink", Util.tpe(), new BagOperatorHost<>(new FileSink<Tuple2<Integer, Integer>>(outFile), 2, 13)
+			result.bt("GraphSink", Util.tpe(), new BagOperatorHost<>(new GraphSink(outFile), 2, 13)
 							.addInput(0,1,true,15));
 		}
 

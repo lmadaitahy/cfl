@@ -278,7 +278,7 @@ public class ConnectedComponents {
 			), 2, 13)
 					.addInput(0, 1, false, 9)).setParallelism(1);
 		} else {
-			labels_2.select("1").bt("FileSink", Util.tpe(), new BagOperatorHost<>(new FileSink<Tuple2<Integer, Integer>>(outFile), 2, 13)
+			labels_2.select("1").bt("GraphSink", Util.tpe(), new BagOperatorHost<>(new GraphSink(outFile), 2, 13)
 					.addInput(0,1,false,9));
 		}
 

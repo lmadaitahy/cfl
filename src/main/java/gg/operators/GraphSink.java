@@ -10,6 +10,6 @@ public class GraphSink extends FileSink<Tuple2<Integer, Integer>> {
 
     @Override
     protected void print(Tuple2<Integer, Integer> e) {
-        writer.print(e.f0 + " " + e.f1);
+        writer.println(e.f0 + " " + e.f1);
     }
 }
