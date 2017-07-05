@@ -24,5 +24,6 @@ public class Distinct<T> extends BagOperator<T,T> {
     public void closeInBag(int inputId) {
         super.closeInBag(inputId);
         out.closeBag();
+        set = null;
     }
 }

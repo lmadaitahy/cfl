@@ -640,7 +640,8 @@ public class BagOperatorHost<IN, OUT>
 					sendEnd(i);
 				}
 			}
-			////////////////////////////////////////////// TODO: Esetleg itt el lehetne dobni a buffert minden gond nelkul?
+
+			buffer = null;
 		}
 
 		private void sendStart(short part) {
