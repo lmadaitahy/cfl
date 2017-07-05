@@ -34,11 +34,8 @@ public class Bagify<T>
 
     private CFLManager cflMan;
 
-//    // deprecated, use the other ctor
-//    public Bagify(Partitioner<T> partitioner) {
-//        this.partitioner = partitioner;
-//        opID = BagOperatorHost.opIDCounter++;  assert false; // use the other ctor
-//    }
+    private StreamRecord<T> reuseStreamRecord = new StreamRecord<>(null);
+    private ElementOrEvent<T> reuseEleOrEvent = new ElementOrEvent<>();
 
     public Bagify(Partitioner<T> partitioner, int opID) {
         this.partitioner = partitioner;
@@ -67,7 +64,8 @@ public class Bagify<T>
             ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, partitioner.targetPara, new BagID(outCflSize, opID));
             output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, (byte)-1, part), 0));
         }
-        output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e.getValue(), (byte)-1, part), 0));
+
+        output.collect(reuseStreamRecord.replace(reuseEleOrEvent.replace(subpartitionId, e.getValue(), (byte)-1, part), 0));
     }
 
 

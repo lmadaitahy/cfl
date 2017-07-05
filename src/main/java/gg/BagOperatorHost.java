@@ -711,6 +711,13 @@ public class BagOperatorHost<IN, OUT>
 		}
 
 		void addNewBuffer(BagID bagID) {
+
+			// Olf buffers are hopefully not needed. (Ideally, we would actually check some complicated condition in the control flow graph.)
+			// Setting elements to null instead of throwing the buffer away ensures that we easily notice if this assumption is violated.
+			for (int i = 0; i < buffers.size() - 2; i++) {
+				buffers.get(i).elements = null;
+			}
+
 			buffers.add(new Buffer(bagID));
 		}
 	}
