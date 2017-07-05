@@ -2,7 +2,9 @@ package gg;
 
 import org.apache.flink.streaming.api.CanForceFlush;
 
-public class ElementOrEvent<T> implements CanForceFlush {
+import java.io.Serializable;
+
+public class ElementOrEvent<T> implements Serializable, CanForceFlush {
 
 	public short subPartitionId; // az input operator melyik physical instance-erol jott
 	public T element;
@@ -23,6 +25,14 @@ public class ElementOrEvent<T> implements CanForceFlush {
 		this.element = element;
 		this.splitId = splitId;
 		this.targetPart = targetPart;
+	}
+
+	public ElementOrEvent<T> replace(short subPartitionId, T element, byte splitId, short targetPart) {
+		this.subPartitionId = subPartitionId;
+		this.element = element;
+		this.splitId = splitId;
+		this.targetPart = targetPart;
+		return this;
 	}
 
 	public ElementOrEvent(short subPartitionId, Event event, byte splitId, short targetPart) {

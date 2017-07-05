@@ -614,6 +614,9 @@ public class BagOperatorHost<IN, OUT>
 
 
 
+		private StreamRecord<OUT> reuseStreamRecord = new StreamRecord<>(null);
+		private ElementOrEvent<OUT> reuseEleOrEvent = new ElementOrEvent<>();
+
 		void sendElement(OUT e) {
 			short part = partitioner.getPart(e, subpartitionId);
 			// (Amugy ez a logika meg van duplazva a Bagify-ban is most)
@@ -621,7 +624,9 @@ public class BagOperatorHost<IN, OUT>
 				sendStart(part);
 			}
 			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending element to " + part + ": " + new ElementOrEvent<>(subpartitionId, e, splitId, part));
-			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
+
+			//output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
+			output.collect(reuseStreamRecord.replace(reuseEleOrEvent.replace(subpartitionId, e, splitId, part), 0));
 		}
 
 		void startBag() {
@@ -635,6 +640,7 @@ public class BagOperatorHost<IN, OUT>
 					sendEnd(i);
 				}
 			}
+			////////////////////////////////////////////// TODO: Esetleg itt el lehetne dobni a buffert minden gond nelkul?
 		}
 
 		private void sendStart(short part) {

@@ -1,6 +1,8 @@
 package gg.util;
 
-public final class TupleIntInt {
+import java.io.Serializable;
+
+public final class TupleIntInt implements Serializable {
 
     public int f0, f1;
 
