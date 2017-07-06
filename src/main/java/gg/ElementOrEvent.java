@@ -1,7 +1,11 @@
 package gg;
 
+import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.core.memory.DataInputView;
+import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.streaming.api.CanForceFlush;
 
+import java.io.IOException;
 import java.io.Serializable;
 
 public class ElementOrEvent<T> implements Serializable, CanForceFlush {
@@ -97,4 +101,73 @@ public class ElementOrEvent<T> implements Serializable, CanForceFlush {
 				", targetPart=" + targetPart +
 				'}';
 	}
+
+	// ------------------------- Serializers -------------------------
+
+//	public static final class ElementOrEventSerializer extends TypeSerializer<ElementOrEvent> {
+//		@Override
+//		public boolean isImmutableType() {
+//			return false;
+//		}
+//
+//		@Override
+//		public TypeSerializer<ElementOrEvent> duplicate() {
+//			return this;
+//		}
+//
+//		@Override
+//		public ElementOrEvent createInstance() {
+//			return new ElementOrEvent();
+//		}
+//
+//		@Override
+//		public ElementOrEvent copy(ElementOrEvent from) {
+//			return from.copy();
+//		}
+//
+//		@Override
+//		public ElementOrEvent copy(ElementOrEvent from, ElementOrEvent reuse) {
+//			return from.copy();
+//		}
+//
+//		@Override
+//		public int getLength() {
+//			//todo
+//		}
+//
+//		@Override
+//		public void serialize(ElementOrEvent record, DataOutputView target) throws IOException {
+////todo
+//		}
+//
+//		@Override
+//		public ElementOrEvent deserialize(DataInputView source) throws IOException {
+//			//todo
+//		}
+//
+//		@Override
+//		public ElementOrEvent deserialize(ElementOrEvent reuse, DataInputView source) throws IOException {
+//			//todo
+//		}
+//
+//		@Override
+//		public void copy(DataInputView source, DataOutputView target) throws IOException {
+////todo
+//		}
+//
+//		@Override
+//		public boolean equals(Object obj) {
+//			//todo
+//		}
+//
+//		@Override
+//		public boolean canEqual(Object obj) {
+//			//todo
+//		}
+//
+//		@Override
+//		public int hashCode() {
+//			//todo
+//		}
+//	}
 }

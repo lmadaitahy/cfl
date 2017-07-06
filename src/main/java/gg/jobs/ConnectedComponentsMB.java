@@ -97,6 +97,8 @@ public class ConnectedComponentsMB {
 		int para = env.getParallelism();
 
 
+		env.getConfig().enableCodeGeneration();
+
 
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
