@@ -3,13 +3,16 @@ package gg;
 import gg.jobs.ConnectedComponentsMB;
 import gg.operators.BagOperator;
 import gg.util.TupleIntInt;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
+import java.util.function.Consumer;
 
 public class MutableBagCC extends BagOperatorHost<TupleIntInt, TupleIntInt> {
 
@@ -101,9 +104,13 @@ public class MutableBagCC extends BagOperatorHost<TupleIntInt, TupleIntInt> {
 
 	class MutableBagOperator extends BagOperator<TupleIntInt, TupleIntInt> {
 
-		HashMap<Integer, TupleIntInt> hm = new HashMap<>();
+		private final Int2IntOpenHashMap hm = new Int2IntOpenHashMap(8192);
 
 		int inpID = -3;
+
+		public MutableBagOperator() {
+			hm.defaultReturnValue(Integer.MIN_VALUE);
+		}
 
 		@Override
 		public void openOutBag() {
@@ -114,9 +121,15 @@ public class MutableBagCC extends BagOperatorHost<TupleIntInt, TupleIntInt> {
 
 			switch (inpID) {
 				case -1:
-					for (HashMap.Entry<Integer, TupleIntInt> e: hm.entrySet()) {
-						out.collectElement(e.getValue());
-					}
+//					for (HashMap.Entry<Integer, TupleIntInt> e: hm.entrySet()) {
+//						out.collectElement(e.getValue());
+//					}
+					hm.int2IntEntrySet().fastForEach(new Consumer<Int2IntMap.Entry>() {
+						@Override
+						public void accept(Int2IntMap.Entry e) {
+							out.collectElement(TupleIntInt.of(e.getIntKey(), e.getIntValue()));
+						}
+					});
 					out.closeBag();
 					break;
 				case 0:
@@ -137,22 +150,30 @@ public class MutableBagCC extends BagOperatorHost<TupleIntInt, TupleIntInt> {
 			switch (logicalInputId) {
 				case 0: // toMutable
 					assert inpID == 0;
-					hm.put(e.f0, e);
+					hm.put(e.f0, e.f1);
 					break;
 				case 1: // join
 					{
 						assert inpID == 1;
-						TupleIntInt g = hm.get(e.f0);
-						assert g != null; // az altalanos interface-nel nem, de a CC-nel mindig benne kell lennie
-						if (g.f1 > e.f1) {
+
+//						TupleIntInt g = hm.get(e.f0);
+//						assert g != null; // az altalanos interface-nel nem, de a CC-nel mindig benne kell lennie
+//						if (g.f1 > e.f1) {
+//							out.collectElement(e);
+//						}
+
+						int g = hm.get(e.f0);
+						assert g != hm.defaultReturnValue(); // az altalanos interface-nel nem, de a CC-nel mindig benne kell lennie
+						if (g > e.f1) {
 							out.collectElement(e);
 						}
+
 						break;
 					}
 				case 2: // update
 					assert inpID == 2;
-					TupleIntInt present = hm.replace(e.f0, e);
-					assert present != null; // az altalanos interface-nel nem, de a CC-nel mindig benne kell lennie
+					int present = hm.replace(e.f0, e.f1);
+					assert present != hm.defaultReturnValue(); // az altalanos interface-nel nem, de a CC-nel mindig benne kell lennie
 					break;
 				default:
 					assert false;
