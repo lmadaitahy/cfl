@@ -125,7 +125,7 @@ public class ConnectedComponents {
 
 		DataStream<ElementOrEvent<Integer>> vertices = vertices0
 				.bt("vertices", Util.tpe(),
-				new BagOperatorHost<Integer, Integer>(new Distinct<>(), 0, 1, integerSer)
+				new BagOperatorHost<Integer, Integer>(new DistinctInt(), 0, 1, integerSer)
 						.addInput(0,0,true, 0)
 						.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
