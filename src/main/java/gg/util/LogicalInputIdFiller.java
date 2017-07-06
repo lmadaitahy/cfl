@@ -13,8 +13,7 @@ public class LogicalInputIdFiller<T> implements MapFunction<ElementOrEvent<T>,El
 
     @Override
     public ElementOrEvent<T> map(ElementOrEvent<T> e) throws Exception {
-        ElementOrEvent<T> r = e.copy();
-        r.logicalInputId = logicalInputId;
-        return r;
+        e.logicalInputId = logicalInputId;
+        return e;
     }
 }
