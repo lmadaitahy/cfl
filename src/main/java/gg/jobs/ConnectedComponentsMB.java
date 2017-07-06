@@ -203,8 +203,8 @@ public class ConnectedComponentsMB {
 				.setConnectionType(new FlinkPartitioner<>()) // Meg lehetne nezni, hogy enelkul is mukodik-e
 				.bt("msgs", Util.tpe(), new BagOperatorHost<>(new JoinTupleIntInt(){
 					@Override
-					protected void udf(TupleIntInt a, TupleIntInt b) {
-						out.collectElement(TupleIntInt.of(a.f1, b.f1));
+					protected void udf(int b, TupleIntInt p) {
+						out.collectElement(TupleIntInt.of(b, p.f1));
 					}
 				}, 1, 6, tupleIntIntSer)
 				.addInput(0,0,false,14) // edges

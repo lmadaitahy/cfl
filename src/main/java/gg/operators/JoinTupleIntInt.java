@@ -1,9 +1,9 @@
 package gg.operators;
 
 import gg.util.TupleIntInt;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,7 +12,7 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
 
     private static final Logger LOG = LoggerFactory.getLogger(JoinTupleIntInt.class);
 
-    private HashMap<Integer, ArrayList<TupleIntInt>> ht;
+    private HashMap<Integer, IntArrayList> ht;
     private ArrayList<TupleIntInt> probeBuffered;
     private boolean buildDone;
     private boolean probeDone;
@@ -31,13 +31,13 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
         super.pushInElement(e, logicalInputId);
         if (logicalInputId == 0) { // build side
             assert !buildDone;
-            ArrayList<TupleIntInt> l = ht.get(e.f0);
+            IntArrayList l = ht.get(e.f0);
             if (l == null) {
-                l = new ArrayList<>();
-                l.add(e);
+                l = new IntArrayList(2);
+                l.add(e.f1);
                 ht.put(e.f0,l);
             } else {
-                l.add(e);
+                l.add(e.f1);
             }
         } else { // probe side
             if (!buildDone) {
@@ -72,14 +72,14 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
         }
     }
 
-    private void probe(TupleIntInt e) {
-        ArrayList<TupleIntInt> l = ht.get(e.f0);
+    private void probe(TupleIntInt p) {
+        IntArrayList l = ht.get(p.f0);
         if (l != null) {
-            for (TupleIntInt b: l) {
-                udf(b, e);
+            for (int b: l) {
+                udf(b, p);
             }
         }
     }
 
-    protected abstract void udf(TupleIntInt a, TupleIntInt b); // Uses out
+    protected abstract void udf(int b, TupleIntInt p); // Uses out
 }
