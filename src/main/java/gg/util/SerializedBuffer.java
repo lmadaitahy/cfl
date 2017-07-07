@@ -29,7 +29,7 @@ public class SerializedBuffer<T> implements Iterable<T> {
         this.ser = ser;
     }
 
-    public void insert(T e) {
+    public void add(T e) {
         ///////////////assert !consumeStarted;  //todo: ez miert nem igaz?
         numWritten++;
         try {

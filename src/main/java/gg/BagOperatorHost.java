@@ -160,7 +160,7 @@ public class BagOperatorHost<IN, OUT>
 
 		if (eleOrEvent.element != null) {
 			IN ele = eleOrEvent.element;
-			sp.buffers.get(sp.buffers.size()-1).elements.insert(ele);
+			sp.buffers.get(sp.buffers.size()-1).elements.add(ele);
 			if(!sp.damming) {
 				consumed = true;
 				op.pushInElement(ele, eleOrEvent.logicalInputId);

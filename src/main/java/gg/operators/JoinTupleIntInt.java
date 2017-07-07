@@ -1,5 +1,6 @@
 package gg.operators;
 
+import gg.util.SerializedBuffer;
 import gg.util.TupleIntInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,7 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
     private static final Logger LOG = LoggerFactory.getLogger(JoinTupleIntInt.class);
 
     private Int2ObjectOpenHashMap<IntArrayList> ht;
-    private ArrayList<TupleIntInt> probeBuffered;
+    private SerializedBuffer<TupleIntInt> probeBuffered;
     private boolean buildDone;
     private boolean probeDone;
 
@@ -21,7 +22,7 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
     public void openOutBag() {
         super.openOutBag();
         ht = new Int2ObjectOpenHashMap<>(8192);
-        probeBuffered = new ArrayList<>();
+        probeBuffered = new SerializedBuffer<>(new TupleIntInt.TupleIntIntSerializer());
         buildDone = false;
         probeDone = false;
     }
