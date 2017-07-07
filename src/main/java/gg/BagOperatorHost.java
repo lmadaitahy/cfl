@@ -2,9 +2,11 @@ package gg;
 
 
 import gg.operators.BagOperator;
+import gg.operators.ReusingBagOperator;
 import gg.partitioners.Partitioner;
 import gg.util.SerializedBuffer;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.InputParaSettable;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -60,6 +62,8 @@ public class BagOperatorHost<IN, OUT>
 	private HashSet<BagID> notifyCloseInputEmpties = new HashSet<>();
 
 	private boolean consumed = false;
+
+	private HashSet<Tuple2<Integer, Integer>> inputUses = new HashSet<>(); // (inputID, cflSize)
 
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID, TypeSerializer<IN> inSer) {
 		this.op = op;
@@ -353,7 +357,16 @@ public class BagOperatorHost<IN, OUT>
 		//      - If it is the last one and not finished then remove the dam
 		//    - If there is no appropriate buffer, then we do nothing for now
 		//  - If we already have a notification that input bag is closed, then we tell this to the operator
+
+		boolean reuse = false;
+		if (!inputUses.add(Tuple2.of(id, inputCFLSize))) {
+			if (op instanceof ReusingBagOperator) {
+				((ReusingBagOperator) op).signalReuse();
+				reuse = true;
+			}
+		}
 		op.openInBag(id);
+
 		Input input = inputs.get(id);
 		assert input.inputCFLSize == -1;
 		input.inputCFLSize = inputCFLSize;
@@ -368,9 +381,14 @@ public class BagOperatorHost<IN, OUT>
 			}
 			if(i < sp.buffers.size()) { // we have found an appropriate buffer
 				assert input.currentBagID.equals(sp.buffers.get(i).bagID);
-				giveBufferToBagOperator(sp, i, id);
+				if (!reuse) {
+					giveBufferToBagOperator(sp, i, id);
+				} else {
+					consumed = true; // giveBufferToBagOperator would do this, and we still need this event if we are reusing
+				}
 				if(i == sp.buffers.size() - 1 && sp.status != InputSubpartition.Status.CLOSED) { // the last one and not finished
 					sp.damming = false;
+					assert !reuse;
 				}
 			}
 		}
