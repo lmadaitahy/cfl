@@ -1,5 +1,10 @@
 package gg.util;
 
+import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.core.memory.DataInputView;
+import org.apache.flink.core.memory.DataOutputView;
+
+import java.io.IOException;
 import java.io.Serializable;
 
 public final class TupleIntInt implements Serializable {
@@ -45,5 +50,81 @@ public final class TupleIntInt implements Serializable {
 
     public static TupleIntInt of(int f0, int f1) {
         return new TupleIntInt(f0, f1);
+    }
+
+
+    // ------------------------- Serializers -------------------------
+
+    public static final class TupleIntIntSerializer extends TypeSerializer<TupleIntInt> {
+
+        @Override
+        public boolean isImmutableType() {
+            return false;
+        }
+
+        @Override
+        public TypeSerializer<TupleIntInt> duplicate() {
+            return this;
+        }
+
+        @Override
+        public TupleIntInt createInstance() {
+            return new TupleIntInt();
+        }
+
+        @Override
+        public TupleIntInt copy(TupleIntInt from) {
+            return copy(from, new TupleIntInt());
+        }
+
+        @Override
+        public TupleIntInt copy(TupleIntInt from, TupleIntInt reuse) {
+            reuse.f0 = from.f0;
+            reuse.f1 = from.f1;
+            return reuse;
+        }
+
+        @Override
+        public int getLength() {
+            return 8;
+        }
+
+        @Override
+        public void serialize(TupleIntInt record, DataOutputView target) throws IOException {
+            target.writeInt(record.f0);
+            target.writeInt(record.f1);
+        }
+
+        @Override
+        public TupleIntInt deserialize(DataInputView source) throws IOException {
+            return deserialize(createInstance(), source);
+        }
+
+        @Override
+        public TupleIntInt deserialize(TupleIntInt reuse, DataInputView source) throws IOException {
+            reuse.f0 = source.readInt();
+            reuse.f1 = source.readInt();
+            return reuse;
+        }
+
+        @Override
+        public void copy(DataInputView source, DataOutputView target) throws IOException {
+            target.write(source, getLength());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof TupleIntIntSerializer;
+        }
+
+        @Override
+        public boolean canEqual(Object obj) {
+            return obj instanceof TupleIntIntSerializer;
+        }
+
+        @Override
+        public int hashCode() {
+            return 44;
+        }
     }
 }
