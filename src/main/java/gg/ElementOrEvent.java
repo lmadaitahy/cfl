@@ -1,7 +1,14 @@
 package gg;
 
+import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.typeutils.PojoTypeInfo;
+import org.apache.flink.core.memory.DataInputView;
+import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.streaming.api.CanForceFlush;
 
+import java.io.IOException;
 import java.io.Serializable;
 
 public class ElementOrEvent<T> implements Serializable, CanForceFlush {
@@ -84,6 +91,8 @@ public class ElementOrEvent<T> implements Serializable, CanForceFlush {
 					", bagID=" + bagID +
 					'}';
 		}
+
+		public static final Type[] enumConsts = Type.class.getEnumConstants();
 	}
 
 	@Override
@@ -96,5 +105,123 @@ public class ElementOrEvent<T> implements Serializable, CanForceFlush {
 				", logicalInputId=" + logicalInputId +
 				", targetPart=" + targetPart +
 				'}';
+	}
+
+	// ------------------------- Serializers -------------------------
+
+	public static final class ElementOrEventSerializerFactory implements PojoTypeInfo.CustomSerializerFactory {
+		@Override
+		public <C> TypeSerializer<C> get(PojoTypeInfo<C> tpe) {
+			final int elemFieldInd = 0;
+			assert tpe.getFieldNames()[elemFieldInd].equals("element");
+			TypeInformation elemTpe = tpe.getTypeAt(elemFieldInd);
+			return (TypeSerializer<C>) new ElementOrEventSerializer<C>(elemTpe.createSerializer(new ExecutionConfig()));
+		}
+	}
+
+	public static final class ElementOrEventSerializer<T> extends TypeSerializer<ElementOrEvent<T>> {
+
+		final TypeSerializer<T> elementSerializer;
+
+		public ElementOrEventSerializer(TypeSerializer<T> elementSerializer) {
+			this.elementSerializer = elementSerializer;
+		}
+
+		@Override
+		public boolean isImmutableType() {
+			return false;
+		}
+
+		@Override
+		public TypeSerializer<ElementOrEvent<T>> duplicate() {
+			return this;
+		}
+
+		@Override
+		public ElementOrEvent<T> createInstance() {
+			return new ElementOrEvent<>();
+		}
+
+		@Override
+		public ElementOrEvent<T> copy(ElementOrEvent<T> from) {
+			return from.copy();
+		}
+
+		@Override
+		public ElementOrEvent<T> copy(ElementOrEvent<T> from, ElementOrEvent<T> reuse) {
+			return from.copy();
+		}
+
+		@Override
+		public int getLength() {
+			return -1;
+		}
+
+		@Override
+		public void serialize(ElementOrEvent<T> r, DataOutputView target) throws IOException {
+			target.writeByte(r.splitId);
+			target.writeByte(r.logicalInputId);
+			target.writeShort(r.subPartitionId);
+			target.writeShort(r.targetPart);
+			if (r.event != null) {
+				target.writeBoolean(true); // mark that it's an Event
+				target.writeInt(r.event.type.ordinal());
+				target.writeShort(r.event.assumedTargetPara);
+				target.writeInt(r.event.bagID.cflSize);
+				target.writeInt(r.event.bagID.opID);
+			} else {
+				assert r.element != null;
+				target.writeBoolean(false); // mark that it's an Element
+				elementSerializer.serialize(r.element, target);
+			}
+		}
+
+		@Override
+		public ElementOrEvent<T> deserialize(DataInputView source) throws IOException {
+			ElementOrEvent<T> r = new ElementOrEvent<T>();
+			deserialize(r, source);
+			return r;
+		}
+
+		@Override
+		public ElementOrEvent<T> deserialize(ElementOrEvent<T> r, DataInputView s) throws IOException {
+			r.splitId = s.readByte();
+			r.logicalInputId = s.readByte();
+			r.subPartitionId = s.readShort();
+			r.targetPart = s.readShort();
+			boolean isEvent = s.readBoolean();
+			if (isEvent) {
+				r.event = new Event();
+				r.event.type = Event.enumConsts[s.readInt()];
+				r.event.assumedTargetPara = s.readShort();
+				r.event.bagID = new BagID();
+				r.event.bagID.cflSize = s.readInt();
+				r.event.bagID.opID = s.readInt();
+			} else {
+				r.element = elementSerializer.deserialize(s);
+			}
+			return r;
+		}
+
+		@Override
+		public void copy(DataInputView source, DataOutputView target) throws IOException {
+			ElementOrEvent<T> ee = deserialize(source);
+			serialize(ee, target);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			return obj instanceof ElementOrEventSerializer && elementSerializer.equals(((ElementOrEventSerializer) obj).elementSerializer);
+		}
+
+		@Override
+		public boolean canEqual(Object obj) {
+			return obj instanceof ElementOrEventSerializer;
+		}
+
+		@Override
+		public int hashCode() {
+			return 43;
+		}
 	}
 }

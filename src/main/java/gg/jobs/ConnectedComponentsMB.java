@@ -18,6 +18,7 @@ import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.typeutils.PojoTypeInfo;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
@@ -95,6 +96,10 @@ public class ConnectedComponentsMB {
 		//env.getConfig().setParallelism(1); //////////
 
 		int para = env.getParallelism();
+
+
+
+		PojoTypeInfo.registerCustomSerializer(ElementOrEvent.class, new ElementOrEvent.ElementOrEventSerializerFactory());
 
 
 
