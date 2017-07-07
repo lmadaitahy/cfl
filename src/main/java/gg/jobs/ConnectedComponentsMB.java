@@ -79,7 +79,7 @@ public class ConnectedComponentsMB {
 
 	private static TypeSerializer<Integer> integerSer = TypeInformation.of(Integer.class).createSerializer(new ExecutionConfig());
 	private static TypeSerializer<Boolean> booleanSer = TypeInformation.of(Boolean.class).createSerializer(new ExecutionConfig());
-	public static TypeSerializer<TupleIntInt> tupleIntIntSer = TypeInformation.of(TupleIntInt.class).createSerializer(new ExecutionConfig());
+	public static TypeSerializer<TupleIntInt> tupleIntIntSer = new TupleIntInt.TupleIntIntSerializer();
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
