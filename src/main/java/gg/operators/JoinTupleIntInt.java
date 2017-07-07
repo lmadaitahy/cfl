@@ -4,15 +4,15 @@ import gg.util.TupleIntInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> {
 
     private static final Logger LOG = LoggerFactory.getLogger(JoinTupleIntInt.class);
 
-    private HashMap<Integer, IntArrayList> ht;
+    private Int2ObjectOpenHashMap<IntArrayList> ht;
     private ArrayList<TupleIntInt> probeBuffered;
     private boolean buildDone;
     private boolean probeDone;
@@ -20,7 +20,7 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
     @Override
     public void openOutBag() {
         super.openOutBag();
-        ht = new HashMap<>();
+        ht = new Int2ObjectOpenHashMap<>(8192);
         probeBuffered = new ArrayList<>();
         buildDone = false;
         probeDone = false;
