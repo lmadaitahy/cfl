@@ -3,10 +3,11 @@ package gg.jobs;
 import gg.*;
 import gg.operators.*;
 import gg.partitioners.Always0;
-import gg.partitioners.Tuple2by0;
+import gg.partitioners.TupleIntIntBy0;
 import gg.partitioners.FlinkPartitioner;
 import gg.partitioners.Forward;
 import gg.util.LogicalInputIdFiller;
+import gg.util.TupleIntInt;
 import gg.util.Unit;
 import gg.util.Util;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -14,6 +15,7 @@ import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.typeutils.PojoTypeInfo;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
@@ -71,7 +73,7 @@ public class ConnectedComponents {
 
 	private static TypeSerializer<Integer> integerSer = TypeInformation.of(Integer.class).createSerializer(new ExecutionConfig());
 	private static TypeSerializer<Boolean> booleanSer = TypeInformation.of(Boolean.class).createSerializer(new ExecutionConfig());
-	private static TypeSerializer<Tuple2<Integer, Integer>> tuple2Ser = TypeInformation.of(new TypeHint<Tuple2<Integer, Integer>>(){}).createSerializer(new ExecutionConfig());
+	private static TypeSerializer<TupleIntInt> tupleIntIntSer = new TupleIntInt.TupleIntIntSerializer();
 
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -90,7 +92,10 @@ public class ConnectedComponents {
 		int para = env.getParallelism();
 
 
-		//////////////////////////////////// TODO: Change this also to TupleIntInt
+
+		PojoTypeInfo.registerCustomSerializer(ElementOrEvent.class, new ElementOrEvent.ElementOrEventSerializerFactory());
+		PojoTypeInfo.registerCustomSerializer(TupleIntInt.class, TupleIntInt.TupleIntIntSerializer.class);
+
 
 
 		CFLConfig.getInstance().terminalBBId = 2;
@@ -101,23 +106,23 @@ public class ConnectedComponents {
 		String outFile = ParameterTool.fromArgs(args).get("output");
 
 
-		DataStream<Tuple2<Integer, Integer>> edgesStream = Util.getGraph(env, args);
+		DataStream<TupleIntInt> edgesStream = Util.getGraphTuple2IntInt(env, args);
 
-		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> edges =
+		DataStream<ElementOrEvent<TupleIntInt>> edges =
 				edgesStream
 						.transform("bagify",
-								Util.tpe(), new Bagify<>(new Tuple2by0(para), 14))
-						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+								Util.tpe(), new Bagify<>(new TupleIntIntBy0(para), 14))
+						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
 		DataStream<ElementOrEvent<Integer>> vertices0 = edges
-				.bt("vertices0", Util.tpe(), new BagOperatorHost<>(new FlatMap<Tuple2<Integer, Integer>, Integer>(){
+				.bt("vertices0", Util.tpe(), new BagOperatorHost<>(new FlatMap<TupleIntInt, Integer>(){
 			@Override
-			public void pushInElement(Tuple2<Integer, Integer> e, int logicalInputId) {
+			public void pushInElement(TupleIntInt e, int logicalInputId) {
 				super.pushInElement(e, logicalInputId);
 				out.collectElement(e.f0);
 			}
-		}, 0, 0, tuple2Ser)
+		}, 0, 0, tupleIntIntSer)
 			.addInput(0,0,true,14)
 			.out(0,0,true, new Forward<>(para)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
@@ -131,112 +136,112 @@ public class ConnectedComponents {
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
-		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_0 = vertices
-				.bt("labels_0", Util.tpe(), new BagOperatorHost<>(new FlatMap<Integer,Tuple2<Integer,Integer>>(){
+		DataStream<ElementOrEvent<TupleIntInt>> labels_0 = vertices
+				.bt("labels_0", Util.tpe(), new BagOperatorHost<>(new FlatMap<Integer,TupleIntInt>(){
 			@Override
 			public void pushInElement(Integer e, int logicalInputId) {
 				super.pushInElement(e, logicalInputId);
-				out.collectElement(Tuple2.of(e,e));
+				out.collectElement(TupleIntInt.of(e,e));
 			}
 		}, 0, 2, integerSer)
 			.addInput(0,0,true,1)
 			.out(0,0,true, new Forward<>(para)))
-				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
-		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_0 = labels_0
-				.bt("updates_0", Util.tpe(), new BagOperatorHost<>(new IdMap<Tuple2<Integer, Integer>>(), 0, 3, tuple2Ser)
+		DataStream<ElementOrEvent<TupleIntInt>> updates_0 = labels_0
+				.bt("updates_0", Util.tpe(), new BagOperatorHost<>(new IdMap<TupleIntInt>(), 0, 3, tupleIntIntSer)
 				.addInput(0,0,true,2)
 				.out(0,0,true, new Forward<>(para)))
-				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
 
 		// --- Iteration starts here ---
 
-		IterativeStream<ElementOrEvent<Tuple2<Integer, Integer>>> labelsIt = labels_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
+		IterativeStream<ElementOrEvent<TupleIntInt>> labelsIt = labels_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
 
-		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_1 = labelsIt
-				.bt("labels_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 4, tuple2Ser)
+		DataStream<ElementOrEvent<TupleIntInt>> labels_1 = labelsIt
+				.bt("labels_1", Util.tpe(), new PhiNode<TupleIntInt>(1, 4, tupleIntIntSer)
 				.addInput(0,0,false,2)
 				.addInput(1,1,false,9)
-				.out(0,1,true, new Tuple2by0(para)) // (this goes to two places, but none of them is conditional)
+				.out(0,1,true, new TupleIntIntBy0(para)) // (this goes to two places, but none of them is conditional)
 		)
-				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
-		IterativeStream<ElementOrEvent<Tuple2<Integer, Integer>>> updatesIt = updates_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
+		IterativeStream<ElementOrEvent<TupleIntInt>> updatesIt = updates_0.map(new LogicalInputIdFiller<>(0)).iterate(1000000000);
 
-		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_1 = updatesIt
-				.bt("updates_1", Util.tpe(), new PhiNode<Tuple2<Integer, Integer>>(1, 5, tuple2Ser)
+		DataStream<ElementOrEvent<TupleIntInt>> updates_1 = updatesIt
+				.bt("updates_1", Util.tpe(), new PhiNode<TupleIntInt>(1, 5, tupleIntIntSer)
 				.addInput(0,0,false,3)
 				.addInput(1,1,false,8)
-				.out(0,1,true, new Tuple2by0(para))
+				.out(0,1,true, new TupleIntIntBy0(para))
 		)
-				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
 		//     msgs = edges.join(updates_1).on(0).equalTo(0).with( ((u,v), (vid, label)) => (v,label) )
-		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> msgs = edges
+		DataStream<ElementOrEvent<TupleIntInt>> msgs = edges
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_1.map(new LogicalInputIdFiller<>(1)))
 				.setConnectionType(new FlinkPartitioner<>()) // Meg lehetne nezni, hogy enelkul is mukodik-e
-				.bt("msgs", Util.tpe(), new BagOperatorHost<>(new Join(){
+				.bt("msgs", Util.tpe(), new BagOperatorHost<>(new JoinTupleIntInt(){
 					@Override
-					protected void udf(Tuple2<Integer, Integer> a, Tuple2<Integer, Integer> b) {
-						out.collectElement(Tuple2.of(a.f1, b.f1));
+					protected void udf(int b, TupleIntInt p) {
+						out.collectElement(TupleIntInt.of(b, p.f1));
 					}
-				}, 1, 6, tuple2Ser)
+				}, 1, 6, tupleIntIntSer)
 				.addInput(0,0,false,14) // edges
 				.addInput(1,1,true,5) // updates_1
-				.out(0,1,true, new Tuple2by0(para))
+				.out(0,1,true, new TupleIntIntBy0(para))
 				)
-				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
 		//todo: combiner
-		DataStream<ElementOrEvent<Tuple2<Integer, Integer>>> minMsgs = msgs
-				.bt("minMsgs", Util.tpe(), new BagOperatorHost<>(new GroupBy0Min1(), 1, 7, tuple2Ser)
+		DataStream<ElementOrEvent<TupleIntInt>> minMsgs = msgs
+				.bt("minMsgs", Util.tpe(), new BagOperatorHost<>(new GroupBy0Min1TupleIntInt(), 1, 7, tupleIntIntSer)
 						.addInput(0,1,true,6)
-						.out(0,1,true, new Tuple2by0(para)))
-				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+						.out(0,1,true, new TupleIntIntBy0(para)))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>());
 
 		//     updates_2 = labels_1.join(minMsgs).on(0).equalTo(0).with( ((vid, label), (target, msg)) => if (msg < label) out.collect((target, msg)) )
-		SplitStream<ElementOrEvent<Tuple2<Integer, Integer>>> updates_2 = labels_1
+		SplitStream<ElementOrEvent<TupleIntInt>> updates_2 = labels_1
 				.map(new LogicalInputIdFiller<>(0))
 				.union(minMsgs.map(new LogicalInputIdFiller<>(1)))
 				.setConnectionType(new FlinkPartitioner<>())
-				.bt("updates_2", Util.tpe(), new BagOperatorHost<>(new Join(){
+				.bt("updates_2", Util.tpe(), new BagOperatorHost<>(new JoinTupleIntInt(){
 					@Override
-					protected void udf(Tuple2<Integer, Integer> a, Tuple2<Integer, Integer> b) {
-						if (a.f1 > b.f1) {
-							out.collectElement(b);
+					protected void udf(int b, TupleIntInt p) {
+						if (b > p.f1) {
+							out.collectElement(p);
 						}
 					}
-				}, 1, 8, tuple2Ser)
+				}, 1, 8, tupleIntIntSer)
 								.addInput(0,1,true,4)
 								.addInput(1,1,true,7)
-								.out(0,1,true, new Tuple2by0(para)) // To labels_2 update
+								.out(0,1,true, new TupleIntIntBy0(para)) // To labels_2 update
 								.out(1,1,true, new Always0<>(1)) // to nonEmpty
 						        .out(2,1,false, new Forward<>(para)) // back-edge
 				)
-				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>())
 				.split(new CondOutputSelector<>());
 
 		//     labels_2 = labels_1.update(updates_2)
-		SplitStream<ElementOrEvent<Tuple2<Integer, Integer>>> labels_2 = labels_1
+		SplitStream<ElementOrEvent<TupleIntInt>> labels_2 = labels_1
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_2.select("0").map(new LogicalInputIdFiller<>(1)))
 				.setConnectionType(new FlinkPartitioner<>())
-				.bt("labels_2",Util.tpe(),new BagOperatorHost<>(new UpdateJoin(),1,9, tuple2Ser)
+				.bt("labels_2",Util.tpe(),new BagOperatorHost<>(new UpdateJoinTupleIntInt(),1,9, tupleIntIntSer)
 								.addInput(0,1,true,4) // labels_1
 								.addInput(1,1,true,8) // updates_2
 								.out(0,1,false, new Forward<>(para)) // back-edge
 								.out(1,2,false, outFile == null ? new Always0<>(1) : new Forward<>(para)) // out of the loop
 				)
-				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Integer>>>(){}))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
 				.setConnectionType(new FlinkPartitioner<>())
 				.split(new CondOutputSelector<>());
 
@@ -248,7 +253,7 @@ public class ConnectedComponents {
 		DataStream<ElementOrEvent<Boolean>> nonEmpty = updates_2.select("1")
 				.bt("nonEmpty",Util.tpe(),
 						new BagOperatorHost<>(
-								new NonEmpty<Tuple2<Integer, Integer>>(), 1, 10, tuple2Ser)
+								new NonEmpty<TupleIntInt>(), 1, 10, tupleIntIntSer)
 								.addInput(0, 1, true, 8)
 								.out(0,1,true, new Always0<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
@@ -266,18 +271,18 @@ public class ConnectedComponents {
 
 		if (outFile == null) {
 			labels_2.select("1").bt("AssertBagEquals", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>(
-					Tuple2.of(0, 0),
-					Tuple2.of(1, 0),
-					Tuple2.of(2, 0),
-					Tuple2.of(3, 0),
-					Tuple2.of(4, 0),
-					Tuple2.of(5, 5),
-					Tuple2.of(6, 5),
-					Tuple2.of(7, 5)
-			), 2, 13, tuple2Ser)
+					TupleIntInt.of(0, 0),
+					TupleIntInt.of(1, 0),
+					TupleIntInt.of(2, 0),
+					TupleIntInt.of(3, 0),
+					TupleIntInt.of(4, 0),
+					TupleIntInt.of(5, 5),
+					TupleIntInt.of(6, 5),
+					TupleIntInt.of(7, 5)
+			), 2, 13, tupleIntIntSer)
 					.addInput(0, 1, false, 9)).setParallelism(1);
 		} else {
-			labels_2.select("1").bt("GraphSink", Util.tpe(), new BagOperatorHost<>(new GraphSink(outFile), 2, 13, tuple2Ser)
+			labels_2.select("1").bt("GraphSink", Util.tpe(), new BagOperatorHost<>(new GraphSinkTupleIntInt(outFile), 2, 13, tupleIntIntSer)
 					.addInput(0,1,false,9));
 		}
 
