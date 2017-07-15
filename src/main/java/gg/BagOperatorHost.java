@@ -404,7 +404,7 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	protected boolean updateOutCFLSizes(List<Integer> cfl) {
-		if (cfl.get(cfl.size() - 1) == bbId) {
+		if (cfl.get(cfl.size() - 1).equals(bbId)) {
 			outCFLSizes.add(cfl.size());
 			return true;
 		}
@@ -574,10 +574,10 @@ public class BagOperatorHost<IN, OUT>
 				} else {
 					// Azert nem kell +1 az outCFLSize-nak, mert ugye az outCFL _utani_ elem igy is
 					for (int i = outCFLSize; i < latestCFL.size(); i++) {
-						if (latestCFL.get(i) == targetBbId) {
+						if (latestCFL.get(i).equals(targetBbId)) {
 							targetReached = true;
 						}
-						if (latestCFL.get(i) == bbId) {
+						if (latestCFL.get(i).equals(bbId)) {
 							break; // Merthogy akkor egy kesobbi bag folul fogja irni a mostanit.
 						}
 					}
@@ -597,11 +597,11 @@ public class BagOperatorHost<IN, OUT>
 		void notifyAppendToCFL(List<Integer> cfl) {
 			// Itt azert nem jo az isActive, mert van, hogy egy korabban aktivat kene meg csak msot elkuldeni a notify hatasara.
 			if (!normal && (state == OutState.DAMMING || state == OutState.WAITING)) {
-				if (cfl.get(cfl.size() - 1) == targetBbId) {
+				if (cfl.get(cfl.size() - 1).equals(targetBbId)) {
 					// Leellenorizzuk, hogy nem irodik-e felul, mielott meg a jelenleg hozzaadottat elerne
 					boolean overwritten = false;
 					for (int i = outCFLSize; i < cfl.size() - 1; i++) {
-						if (cfl.get(i) == bbId) {
+						if (cfl.get(i).equals(bbId)) {
 							overwritten = true;
 						}
 					}
@@ -612,7 +612,7 @@ public class BagOperatorHost<IN, OUT>
 								break;
 							case DAMMING:
 								assert outCFLSizes.size() > 0;
-								assert outCFLSize == outCFLSizes.peek();
+								assert outCFLSizes.peek().equals(outCFLSize);
 								startBag();
 								state = OutState.FORWARDING;
 								break;
