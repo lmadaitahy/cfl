@@ -290,7 +290,7 @@ public class ConnectedComponentsMB {
 
 		CFLConfig.getInstance().setNumToSubscribe();
 
-		System.out.println(env.getExecutionPlan());
+		//System.out.println(env.getExecutionPlan());
 		env.execute();
 	}
 }

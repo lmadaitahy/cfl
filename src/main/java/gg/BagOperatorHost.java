@@ -65,6 +65,8 @@ public class BagOperatorHost<IN, OUT>
 
 	private HashSet<Tuple2<Integer, Integer>> inputUses = new HashSet<>(); // (inputID, cflSize)
 
+	private boolean shouldLogStart;
+
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID, TypeSerializer<IN> inSer) {
 		this.op = op;
 		this.bbId = bbId;
@@ -148,6 +150,40 @@ public class BagOperatorHost<IN, OUT>
 		cflMan.subscribe(cb);
 	}
 
+	private int getMul() {
+		int mul = -1;
+		if (op instanceof MutableBagCC.MutableBagOperator) {
+			switch (((MutableBagCC.MutableBagOperator) op).inpID) {
+				case -1: // toBag
+					mul = 1;
+					break;
+				case 0: // toMutable
+					mul = 10;
+					break;
+				case 1: // join
+					mul = 100;
+					break;
+				case 2: // update
+					mul = 1000;
+					break;
+				default:
+					assert false;
+			}
+		} else {
+			mul = 1;
+		}
+		return mul;
+	}
+
+	private void notifyLogStart() {
+		if (shouldLogStart) {
+			shouldLogStart = false;
+			if (CFLConfig.logStartEnd) {
+				LOG.info("=== " + System.currentTimeMillis() + " S " + outCFLSizes.peek() + " " + opID * getMul());
+			}
+		}
+	}
+
 	@Override
 	synchronized public void processElement(StreamRecord<ElementOrEvent<IN>> streamRecord) throws Exception {
 
@@ -167,6 +203,7 @@ public class BagOperatorHost<IN, OUT>
 			sp.buffers.get(sp.buffers.size()-1).elements.add(ele);
 			if(!sp.damming) {
 				consumed = true;
+				notifyLogStart();
 				op.pushInElement(ele, eleOrEvent.logicalInputId);
 			}
 		} else {
@@ -235,6 +272,10 @@ public class BagOperatorHost<IN, OUT>
 				o.closeBag();
 			}
 
+			if (CFLConfig.logStartEnd) {
+				LOG.info("=== " + System.currentTimeMillis() + " E " + outCFLSizes.peek() + " " + opID * getMul());
+			}
+
 			ArrayList<BagID> inputBagIDs = new ArrayList<>();
 			for (Input inp: inputs) {
 				// a kov. assert akkor mondjuk elromolhat, ha ilyen short-circuit-es jellegu az operator, hogy van, hogy mar akkor
@@ -284,6 +325,7 @@ public class BagOperatorHost<IN, OUT>
 	// i: buffer index in inputSubpartitions
 	synchronized private void giveBufferToBagOperator(InputSubpartition<IN> sp, int i, int logicalInputId) {
 		consumed = true;
+		notifyLogStart();
 		for(IN e: sp.buffers.get(i).elements) {
 			op.pushInElement(e, logicalInputId);
 		}
@@ -302,6 +344,8 @@ public class BagOperatorHost<IN, OUT>
 		assert latestCFL.get(outCFLSize - 1).equals(bbId) || this instanceof MutableBagCC;
 
 		consumed = false;
+
+		shouldLogStart = true;
 
 		chooseOuts(); // Ez csak a MutableBag-nel kell
 
