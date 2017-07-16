@@ -1,9 +1,11 @@
 package gg.operators;
 
 /**
- * Don't forget to set the parallelism to 1!
+ * Don't forget to either set the parallelism to 1, or put an Or with para 1 after this.
+ *
+ * Abban kulonbozik a NonEmpty-tol, hogy nem kuld olyankor, ha nem jott be elem
  */
-public class NonEmpty<T> extends BagOperator<T, Boolean> {
+public class NonEmptyCombiner<T> extends BagOperator<T, Boolean> {
 
     private static final int closedNum = -1000;
 
@@ -31,9 +33,9 @@ public class NonEmpty<T> extends BagOperator<T, Boolean> {
     @Override
     public void closeInBag(int inputId) {
         super.closeInBag(inputId);
-        if (num == 0) {
-            out.collectElement(false);
-        }
+//        if (num == 0) {
+//            out.collectElement(false);
+//        }
         num = closedNum;
         out.closeBag();
     }

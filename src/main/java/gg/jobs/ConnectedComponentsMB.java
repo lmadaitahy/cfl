@@ -93,7 +93,7 @@ public class ConnectedComponentsMB {
 //		cfg.setLong("taskmanager.network.numberOfBuffers", 32768); //16384
 //		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment(20, cfg); //20 // amugy sokszor 9-nel jon elo hiba, mivel ekkor mar nehol nem kap minden instance
 
-		//env.getConfig().setParallelism(1); //////////
+		//env.getConfig().setParallelism(3); /////////
 
 		int para = env.getParallelism();
 
@@ -169,7 +169,7 @@ public class ConnectedComponentsMB {
 			.addInput(1, 1, true, 7)
 			.addInput(2, 1, true, 15)
 			.out(0,1,true, new TupleIntIntBy0(para)) // To update
-			.out(1,1,true, new Always0<>(1)) // to nonEmpty
+			.out(1,1,true, new Forward<>(para)) // to nonEmpty
 			.out(2,1,false, new Forward<>(para)) // back-edge to updates_1 phi-node
 			.out(3, 2, true, outFile == null ? new Always0<>(1) : new Forward<>(para)) // output of toBag
 		)
@@ -242,17 +242,25 @@ public class ConnectedComponentsMB {
 		DataStream<ElementOrEvent<Boolean>> nonEmpty = mbSplit.select("1")
 				.bt("nonEmpty",Util.tpe(),
 						new BagOperatorHost<>(
-								new NonEmpty<TupleIntInt>(), 1, 10, tupleIntIntSer)
+								new NonEmptyCombiner<TupleIntInt>(), 1, 10, tupleIntIntSer)
 								.addInput(0, 1, true, 15)
 								.out(0,1,true, new Always0<>(1)))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}));
+
+		DataStream<ElementOrEvent<Boolean>> nonEmptyOred = nonEmpty
+				.bt("Or",Util.tpe(),
+						new BagOperatorHost<>(
+								new Or(), 1, 16, booleanSer)
+								.addInput(0, 1, true, 10)
+								.out(0, 1, true, new Always0<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
 				.setParallelism(1);
 
-		DataStream<ElementOrEvent<Unit>> exitCond = nonEmpty
+		DataStream<ElementOrEvent<Unit>> exitCond = nonEmptyOred
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
 								new ConditionNode(1,2), 1, 11, booleanSer)
-								.addInput(0, 1, true, 10))
+								.addInput(0, 1, true, 16))
 				.setParallelism(1);
 
 		updatesIt.closeWith(mbSplit.select("2").map(new LogicalInputIdFiller<>(1))
