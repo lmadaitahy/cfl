@@ -223,7 +223,7 @@ public class ConnectedComponents {
 								.addInput(0,1,true,4)
 								.addInput(1,1,true,7)
 								.out(0,1,true, new TupleIntIntBy0(para)) // To labels_2 update
-								.out(1,1,true, new Always0<>(1)) // to nonEmpty
+								.out(1,1,true, new Forward<>(para)) // to nonEmpty
 						        .out(2,1,false, new Forward<>(para)) // back-edge
 				)
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
@@ -253,17 +253,25 @@ public class ConnectedComponents {
 		DataStream<ElementOrEvent<Boolean>> nonEmpty = updates_2.select("1")
 				.bt("nonEmpty",Util.tpe(),
 						new BagOperatorHost<>(
-								new NonEmpty<TupleIntInt>(), 1, 10, tupleIntIntSer)
+								new NonEmptyCombiner<TupleIntInt>(), 1, 10, tupleIntIntSer)
 								.addInput(0, 1, true, 8)
 								.out(0,1,true, new Always0<>(1)))
+				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}));
+
+		DataStream<ElementOrEvent<Boolean>> nonEmptyOred = nonEmpty
+				.bt("Or",Util.tpe(),
+						new BagOperatorHost<>(
+								new Or(), 1, 16, booleanSer)
+								.addInput(0, 1, true, 10)
+								.out(0, 1, true, new Always0<>(1)))
 				.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
 				.setParallelism(1);
 
-		DataStream<ElementOrEvent<Unit>> exitCond = nonEmpty
+		DataStream<ElementOrEvent<Unit>> exitCond = nonEmptyOred
 				.bt("exit-cond",Util.tpe(),
 						new BagOperatorHost<>(
 								new ConditionNode(1,2), 1, 11, booleanSer)
-								.addInput(0, 1, true, 10))
+								.addInput(0, 1, true, 16))
 				.setParallelism(1);
 
 		// --- Iteration ends here ---
