@@ -54,12 +54,12 @@ struct boperator {
 };
 
 vector<boperator> ops{
-  boperator(0,"vertices0",0),
+  boperator(0,"verticesMult",0),
   boperator(1,"vertices (distinct)",8),
-  boperator(2,"labels\\_0",2),
-  boperator(3,"updates\\_0",3),
+  boperator(2,"labels$_0$",2),
+  boperator(3,"updates$_0$",3),
   boperator(150,"create MutableBag",12),
-  boperator(5,"updates\\_1 (Phi)",4),
+  boperator(5,"updates$_1$ (Phi)",4),
   boperator(6,"msgs (join with edges)",5),
   boperator(7,"minMsgs (reduceByKey)",6),
   boperator(1500,"join with MutableBag",7),
@@ -187,14 +187,19 @@ int main() {
 
   printf(R"(
   \begin{axis}[
-    hide axis,
-    xmin=10,
-    xmax=50,
+    hide y axis,
+    xtick style={draw=none},
+    axis x line*=bottom,
+    xmin=0,
+    xmax=%lld,
+    xlabel=Time (sec),
+    width=9.58cm,
+    height=5.21cm,
     ymin=0,
     ymax=0.4,
     legend columns=2,
-    legend style={font=\small, at={(0.6,-.05)}, anchor=north, row sep=-2pt,},
-    ])");
+    legend style={font=\small, at={(0.5,-.3)}, anchor=north, row sep=-2pt,},
+    ])",(maxTime-minTime)/1000);
   for(boperator &op: ops){
     printf(R"(
     \addlegendimage{mycolor%d,line width=0.8mm}
