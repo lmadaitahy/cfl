@@ -52,8 +52,8 @@ import org.slf4j.LoggerFactory;
 // SSA
 // // BB 0
 // edges = // read graph (each edge has to be present twice: (u,v) and (v,u))
-// vertices0 = edges.map((x,y) => x)
-// vertices = vertices0.distinct
+// verticesMult = edges.map((x,y) => x)
+// vertices = verticesMult.distinct
 // labels_0 = vertices.map(x => (x,x))
 // mb = toMutable(labels_0)
 // updates_0 = labels_0
@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
 //     updates_1 = phi(updates_0, updates_2)
 //     msgs = edges.join(updates_1).on(0).equalTo(0).with( ((u,v), (vid, label)) => (v,label) )
 //     minMsgs = msgs.groupBy(0).min(1)
-//     j = join(mb, minMsgs, (x,y) => x) // a kov. sor is beolvasztva most ebbe
+//     j = join(mb, minMsgs) // a kov. sor is beolvasztva most ebbe
 //     updates_2 = j.flatMap( ((vid, label), (target, msg)) => if (msg < label) out.collect((target, msg)) )
 //     update(mb, updates_2)
 //     nonEmpty = updates_2.nonEmpty
