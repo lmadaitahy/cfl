@@ -132,7 +132,7 @@ int main() {
     auto &bagids0 = e.second;
 
     // cflSize-ok kozti elvalasztovonal
-    printf("  \\draw (0,%f) -- (8,%f);\n",y,y);
+    printf("  \\draw (-1,%f) -- (8,%f);\n",y,y);
     y+=yScale/2;
 
     vector<bagid> bagids;
@@ -182,8 +182,9 @@ int main() {
     }
   }
 
-  printf("  \\draw (0,%f) -- (8,%f);\n",y,y); // utolso elvalasztovonal
+  printf("  \\draw (-1,%f) -- (8,%f);\n",y,y); // utolso elvalasztovonal
 
+  printf("  \\draw (0,0) -- (0,%f);\n",y); // bal fuggoleges vonal
 
   printf(R"(
   \begin{axis}[
@@ -207,7 +208,9 @@ int main() {
   }
   printf("\n");
   printf(R"(  \end{axis})");
-    
+  printf("\n\n");    
+
+  printf(R"(  \node[anchor=east,text width=1.1cm] at (0,0.29) {\small \begin{tabular}{c} Before \\ loop \end{tabular}};)");
 
   return 0;
 }
