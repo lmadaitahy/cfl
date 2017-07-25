@@ -11,7 +11,7 @@ using namespace std;
 
 
 
-const int paperWidth = 8; 
+const double paperWidth = 7.4;
 const double yScale = 0.08;
 
 
@@ -53,21 +53,34 @@ struct boperator {
   boperator(int id, string name, int color): id(id), name(name), color(color) {}
 };
 
+// Regi valtozat, amiben meg a "Before loop" is benne volt
+// vector<boperator> ops{
+//   boperator(0,"verticesMult",0),
+//   boperator(1,"vertices (distinct)",8),
+//   boperator(2,"labels$_0$",2),
+//   boperator(3,"updates$_0$",3),
+//   boperator(150,"create MutableBag",12),
+//   boperator(5,"updates$_1$ (Phi)",4),
+//   boperator(6,"msgs (join with edges)",5),
+//   boperator(7,"minMsgs (reduceByKey)",6),
+//   boperator(1500,"join with MutableBag",7),
+//   boperator(15000,"update of MutableBag",1),
+//   boperator(10,"combiner of nonEmpty",9),
+//   boperator(11,"exit-condition",10),
+//   boperator(16,"nonEmpty",11),
+// };
+
 vector<boperator> ops{
-  boperator(0,"verticesMult",0),
-  boperator(1,"vertices (distinct)",8),
-  boperator(2,"labels$_0$",2),
-  boperator(3,"updates$_0$",3),
-  boperator(150,"create MutableBag",12),
-  boperator(5,"updates$_1$ (Phi)",4),
-  boperator(6,"msgs (join with edges)",5),
-  boperator(7,"minMsgs (reduceByKey)",6),
-  boperator(1500,"join with MutableBag",7),
-  boperator(15000,"update of MutableBag",1),
-  boperator(10,"combiner of nonEmpty",9),
-  boperator(11,"exit-condition",10),
-  boperator(16,"nonEmpty",11),
+  boperator(5,"updates$_1$ (Phi)",0),
+  boperator(6,"msgs (join with edges)",1),
+  boperator(7,"minMsgs (reduceByKey)",2),
+  boperator(1500,"join with MutableBag",3),
+  boperator(15000,"update of MutableBag",4),
+  boperator(10,"combiner of nonEmpty",5),
+  boperator(11,"exit-condition",6),
+  boperator(16,"nonEmpty",7),
 };
+
 
 
 int main() {
@@ -78,8 +91,11 @@ int main() {
   }
 
   // http://colorbrewer2.org/#type=qualitative&scheme=Paired&n=12
-  const char *colordefs[] = {"A6CEE3","1F78B4","B2DF8A","33A02C","FB9A99","E31A1C","FDBF6F","FF7F00","CAB2D6","6A3D9A","FFFF99","B15928","000000"};
-  for(int i=0; i<13; i++){
+  // Regi valtozat, amiben meg a "Before loop" is benne volt
+  //const char *colordefs[] = {"A6CEE3","1F78B4","B2DF8A","33A02C","FB9A99","E31A1C","FDBF6F","FF7F00","CAB2D6","6A3D9A","FFFF99","B15928","000000"};
+  // Uj, 8 szines:
+  const char *colordefs[] = {"E41A1C","377EB8","4DAF4A","984EA3","FF7F00","FFFF33","A65628","F781BF"};
+  for(int i=0; i<8; i++){
     printf("  \\definecolor{mycolor%d}{HTML}{%s}\n",i,colordefs[i]);
   }
   printf("\n");
@@ -103,7 +119,7 @@ int main() {
 
   for(input_line cl: inputLines){
 
-    if (cl.cflSize>4) {
+    if (cl.cflSize > 5 || cl.cflSize == 1) {
       continue;
     }
 
@@ -132,7 +148,7 @@ int main() {
     auto &bagids0 = e.second;
 
     // cflSize-ok kozti elvalasztovonal
-    printf("  \\draw (-1,%f) -- (8,%f);\n",y,y);
+    printf("  \\draw (-1,%f) -- (%f,%f);\n",y,paperWidth,y);
     y+=yScale/2;
 
     vector<bagid> bagids;
@@ -182,7 +198,7 @@ int main() {
     }
   }
 
-  printf("  \\draw (-1,%f) -- (8,%f);\n",y,y); // utolso elvalasztovonal
+  printf("  \\draw (-1,%f) -- (%f,%f);\n",y,paperWidth,y); // utolso elvalasztovonal
 
   printf("  \\draw (0,0) -- (0,%f);\n",y); // bal fuggoleges vonal
 
@@ -194,13 +210,13 @@ int main() {
     xmin=0,
     xmax=%lld,
     xlabel=Time (sec),
-    width=9.58cm,
+    width=%fcm,
     height=5.21cm,
     ymin=0,
     ymax=0.4,
     legend columns=2,
-    legend style={font=\small, at={(0.5,-.3)}, anchor=north, row sep=-2pt,},
-    ])",(maxTime-minTime)/1000);
+    legend style={font=\small, at={(0.43,-.3)}, anchor=north, row sep=-2pt,},
+    ])",(maxTime-minTime)/1000,9.58-(8-paperWidth));
   for(boperator &op: ops){
     printf(R"(
     \addlegendimage{mycolor%d,line width=0.8mm}
@@ -210,7 +226,7 @@ int main() {
   printf(R"(  \end{axis})");
   printf("\n\n");    
 
-  printf(R"(  \node[anchor=east,text width=1.1cm] at (0,0.29) {\small \begin{tabular}{c} Before \\ loop \end{tabular}};)");
+  //printf(R"(  \node[anchor=east,text width=1.1cm] at (0,0.29) {\small \begin{tabular}{c} Before \\ loop \end{tabular}};)");
 
   return 0;
 }
