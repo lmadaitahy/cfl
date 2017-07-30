@@ -67,6 +67,10 @@ public class BagOperatorHost<IN, OUT>
 
 	private boolean shouldLogStart;
 
+	private int barrierAllReachedCFLSize = 1;
+
+	private boolean workInProgress = false;
+
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID, TypeSerializer<IN> inSer) {
 		this.op = op;
 		this.bbId = bbId;
@@ -304,10 +308,11 @@ public class BagOperatorHost<IN, OUT>
 			numElements = 0;
 
 			outCFLSizesRemove();
+			workInProgress = false;
 			if(outCFLSizes.size() > 0) { // ha van jelenleg varakozo munka
 				if (CFLConfig.vlog) LOG.info("Out.closeBag starting a new out bag {" + name + "}");
 				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
-				startOutBag();
+				startOutBagCheckBarrier();
 			} else {
 				if (CFLConfig.vlog) LOG.info("Out.closeBag not starting a new out bag {" + name + "}");
                 if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
@@ -337,11 +342,28 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
-	synchronized protected void startOutBag() {
+	synchronized private void startOutBagCheckBarrier() {
+		if(!CFLManager.barrier) {
+			startOutBag();
+		} else {
+			assert !outCFLSizes.isEmpty();
+			int outCFLSize = outCFLSizes.peek();
+			if (outCFLSize <= barrierAllReachedCFLSize + 1) {
+				if (CFLConfig.vlog) LOG.info("startOutBagCheckBarrier starting a bag. {" + name + "} outCFLSize = " + outCFLSize + ", barrierAllReachedCFLSize + 1 = " + (barrierAllReachedCFLSize + 1));
+				startOutBag();
+			} else {
+				if (CFLConfig.vlog) LOG.info("startOutBagCheckBarrier not starting a bag. {" + name + "} outCFLSize = " + outCFLSize + ", barrierAllReachedCFLSize + 1 = " + (barrierAllReachedCFLSize + 1));
+			}
+		}
+	}
+
+	synchronized private void startOutBag() {
 		assert !outCFLSizes.isEmpty();
 		Integer outCFLSize = outCFLSizes.peek();
 
 		assert latestCFL.get(outCFLSize - 1).equals(bbId) || this instanceof MutableBagCC;
+
+		workInProgress = true;
 
 		consumed = false;
 
@@ -470,10 +492,10 @@ public class BagOperatorHost<IN, OUT>
 					o.notifyAppendToCFL(cfl);
 				}
 
-				boolean workInProgress = outCFLSizes.size() > 0;
+				//boolean workInProgress = outCFLSizes.size() > 0;
 				boolean hasAdded = updateOutCFLSizes(cfl);
 				if (!workInProgress && hasAdded) {
-					startOutBag();
+					startOutBagCheckBarrier();
 				} else {
 					if (CFLConfig.vlog) LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
 				}
@@ -514,6 +536,21 @@ public class BagOperatorHost<IN, OUT>
 
 							inp.closeCurrentInBag();
 						}
+					}
+				}
+			}
+		}
+
+		@Override
+		public void notifyBarrierAllReached(int cflSize) {
+			synchronized (BagOperatorHost.this) {
+				assert CFLManager.barrier;
+				barrierAllReachedCFLSize = cflSize;
+				LOG.info("notifyBarrierAllReached {" + name + "} cflSize = " + cflSize + ", workInProgress = " + workInProgress);
+				if (!workInProgress) {
+					if (!outCFLSizes.isEmpty()) {
+						LOG.info("notifyBarrierAllReached {" + name + "} calling startOutBagCheckBarrier");
+						startOutBagCheckBarrier();
 					}
 				}
 			}
