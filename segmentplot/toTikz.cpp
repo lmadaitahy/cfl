@@ -16,6 +16,12 @@ const double yScale = 0.08;
 
 
 
+
+// Az input file-t igy lehet csinalni a logbol:
+// cat flink-cfl/log/* |grep === |sed 's/.*=== \(.*\)/\1/' >x
+
+
+
 typedef long long int ll;
 typedef pair<int,int> bagid; // cflSize, opID
 

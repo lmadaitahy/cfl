@@ -546,10 +546,10 @@ public class BagOperatorHost<IN, OUT>
 			synchronized (BagOperatorHost.this) {
 				assert CFLManager.barrier;
 				barrierAllReachedCFLSize = cflSize;
-				LOG.info("notifyBarrierAllReached {" + name + "} cflSize = " + cflSize + ", workInProgress = " + workInProgress);
+				if (CFLConfig.vlog) LOG.info("notifyBarrierAllReached {" + name + "} cflSize = " + cflSize + ", workInProgress = " + workInProgress);
 				if (!workInProgress) {
 					if (!outCFLSizes.isEmpty()) {
-						LOG.info("notifyBarrierAllReached {" + name + "} calling startOutBagCheckBarrier");
+						if (CFLConfig.vlog) LOG.info("notifyBarrierAllReached {" + name + "} calling startOutBagCheckBarrier");
 						startOutBagCheckBarrier();
 					}
 				}
