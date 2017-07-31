@@ -148,6 +148,8 @@ int main() {
       maxTime=cl.time;
   }
 
+  fprintf(stderr,"minTime: %lld, maxTime: %lld\n", minTime, maxTime);
+
 
   double y = 0;
   for(auto &e: cflSizes) {
