@@ -15,6 +15,8 @@ const double paperWidth = 7.4;
 const double yScale = 0.08;
 
 
+#define fixXAxisLength 339155
+
 
 
 // Az input file-t igy lehet csinalni a logbol:
@@ -147,6 +149,10 @@ int main() {
     if (cl.time>maxTime)
       maxTime=cl.time;
   }
+
+#ifdef fixXAxisLength
+  maxTime = minTime + fixXAxisLength;
+#endif
 
   fprintf(stderr,"minTime: %lld, maxTime: %lld\n", minTime, maxTime);
 
