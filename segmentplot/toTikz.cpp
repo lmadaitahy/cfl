@@ -15,7 +15,7 @@ const double paperWidth = 7.4;
 const double yScale = 0.08;
 
 
-#define fixXAxisLength 339155
+#define fixXAxisLength 343110
 
 
 
@@ -154,7 +154,8 @@ int main() {
   maxTime = minTime + fixXAxisLength;
 #endif
 
-  fprintf(stderr,"minTime: %lld, maxTime: %lld\n", minTime, maxTime);
+  fprintf(stderr,"minTime: %lld , maxTime: %lld\n", minTime, maxTime);
+  fprintf(stderr,"maxTime-minTime: %lld\n", maxTime-minTime);
 
 
   double y = 0;
