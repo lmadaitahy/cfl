@@ -221,10 +221,11 @@ int main() {
   \begin{axis}[
     hide y axis,
     xtick style={draw=none},
+    xticklabels={,,},
     axis x line*=bottom,
     xmin=0,
     xmax=%lld,
-    xlabel=Time (sec),
+    %%xlabel=Time (sec),
     width=%fcm,
     height=5.21cm,
     ymin=0,
