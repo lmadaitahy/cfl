@@ -56,7 +56,7 @@ public class BagOperatorHost<IN, OUT>
 
 	protected ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
-    private volatile boolean terminalBBReached;
+	private volatile boolean terminalBBReached;
 
 	private HashSet<BagID> notifyCloseInputs = new HashSet<>();
 	private HashSet<BagID> notifyCloseInputEmpties = new HashSet<>();
@@ -132,7 +132,7 @@ public class BagOperatorHost<IN, OUT>
 
 		outCFLSizes = new ArrayDeque<>();
 
-        terminalBBReached = false;
+		terminalBBReached = false;
 
 		op.giveOutputCollector(new MyCollector());
 
@@ -315,10 +315,10 @@ public class BagOperatorHost<IN, OUT>
 				startOutBagCheckBarrier();
 			} else {
 				if (CFLConfig.vlog) LOG.info("Out.closeBag not starting a new out bag {" + name + "}");
-                if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
-                    cflMan.unsubscribe(cb);
-                }
-            }
+				if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
+					cflMan.unsubscribe(cb);
+				}
+			}
 		}
 
 		@Override
@@ -502,8 +502,8 @@ public class BagOperatorHost<IN, OUT>
 			}
 		}
 
-        @Override
-        public void notifyTerminalBB() {
+		@Override
+		public void notifyTerminalBB() {
 			LOG.info("CFL notifyTerminalBB");
 			synchronized (BagOperatorHost.this) {
 				terminalBBReached = true;
@@ -511,7 +511,7 @@ public class BagOperatorHost<IN, OUT>
 					cflMan.unsubscribe(cb);
 				}
 			}
-        }
+		}
 
 		@Override
 		public void notifyCloseInput(BagID bagID, int opID) {
@@ -557,7 +557,7 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
-    // `normal` means not conditional.
+	// `normal` means not conditional.
 	// If `normal` is false, then we set to damming until we reach its BB.
 	// (This means that for example if targetBbId is the same as the operator's BbId, then we wait for the next iteration step.)
 	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {

@@ -1,6 +1,8 @@
 package gg.util;
 
+import org.apache.flink.api.common.typeutils.CompatibilityResult;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.common.typeutils.TypeSerializerConfigSnapshot;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 
@@ -56,6 +58,16 @@ public final class TupleIntInt implements Serializable {
     // ------------------------- Serializers -------------------------
 
     public static final class TupleIntIntSerializer extends TypeSerializer<TupleIntInt> {
+
+        @Override
+        public TypeSerializerConfigSnapshot snapshotConfiguration() {
+            return null;
+        }
+
+        @Override
+        public CompatibilityResult<TupleIntInt> ensureCompatibility(TypeSerializerConfigSnapshot configSnapshot) {
+            return null;
+        }
 
         @Override
         public boolean isImmutableType() {

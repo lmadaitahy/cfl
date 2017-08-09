@@ -2,7 +2,9 @@ package gg;
 
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeutils.CompatibilityResult;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.common.typeutils.TypeSerializerConfigSnapshot;
 import org.apache.flink.api.java.typeutils.PojoTypeInfo;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
@@ -125,6 +127,16 @@ public class ElementOrEvent<T> implements Serializable, CanForceFlush {
 
 		public ElementOrEventSerializer(TypeSerializer<T> elementSerializer) {
 			this.elementSerializer = elementSerializer;
+		}
+
+		@Override
+		public TypeSerializerConfigSnapshot snapshotConfiguration() {
+			return null;
+		}
+
+		@Override
+		public CompatibilityResult<ElementOrEvent<T>> ensureCompatibility(TypeSerializerConfigSnapshot configSnapshot) {
+			return null;
 		}
 
 		@Override
