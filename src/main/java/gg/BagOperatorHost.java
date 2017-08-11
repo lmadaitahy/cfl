@@ -22,10 +22,10 @@ import java.io.Serializable;
 import java.util.*;
 
 
-public class BagOperatorHost<IN, OUT>
+public class BagOperatorHost<IN, OUT, RIN>
 		extends AbstractStreamOperator<ElementOrEvent<OUT>>
-		implements OneInputStreamOperator<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
-			InputParaSettable<ElementOrEvent<IN>,ElementOrEvent<OUT>>,
+		implements OneInputStreamOperator<RIN,ElementOrEvent<OUT>>,
+			InputParaSettable<RIN,ElementOrEvent<OUT>>,
 			NoAutoClose,
 			Serializable {
 
@@ -95,7 +95,7 @@ public class BagOperatorHost<IN, OUT>
 		// warning: this runs in the driver, so we shouldn't access CFLManager here
 	}
 
-	public BagOperatorHost<IN,OUT> addInput(int id, int bbId, boolean inputInSameBlock, int opID) {
+	public BagOperatorHost<IN,OUT,RIN> addInput(int id, int bbId, boolean inputInSameBlock, int opID) {
 		assert id == inputs.size();
 		inputs.add(new Input(id, bbId, inputInSameBlock, opID));
 		return this;
@@ -189,11 +189,11 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	@Override
-	synchronized public void processElement(StreamRecord<ElementOrEvent<IN>> streamRecord) throws Exception {
+	synchronized public void processElement(StreamRecord<RIN> streamRecord) throws Exception {
 
 		if (CFLConfig.vlog) LOG.info("Operator {" + name + "}[" + subpartitionId +"] processElement " + streamRecord.getValue());
 
-		ElementOrEvent<IN> eleOrEvent = streamRecord.getValue();
+		ElementOrEvent<IN> eleOrEvent = (ElementOrEvent<IN>) streamRecord.getValue();
 		if (inputs.size() == 1) {
 			assert eleOrEvent.logicalInputId == -1 || eleOrEvent.logicalInputId == 0;
 			eleOrEvent.logicalInputId = 0; // This is to avoid having to have an extra map to set this for even one-input operators
@@ -558,7 +558,7 @@ public class BagOperatorHost<IN, OUT>
 	}
 
 	// This overload is for manual job building. The auto builder uses the other one.
-	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
+	public BagOperatorHost<IN, OUT, RIN> out(int splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
 		assert splitId == outs.size();
 		outs.add(new Out((byte)splitId, targetBbId, normal, partitioner));
 		return this;

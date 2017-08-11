@@ -110,7 +110,7 @@ public class SimpleCFDataSize {
 
 		SplitStream<ElementOrEvent<Integer>> incedSplit_i = phi_i
 				.bt("inc-map_i",inputBag_i.getType(),
-						new BagOperatorHost<>(
+						new BagOperatorHost<Integer, Integer, ElementOrEvent<Integer>>(
 								new IncMap(), 1, 2, integerSer)
 								.addInput(0, 1, true, 1)
 								.out(0,1,false, new Random<>(env.getParallelism())) // back edge

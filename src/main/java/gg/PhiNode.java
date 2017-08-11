@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Serializable;
 
 
-public class PhiNode<T> extends BagOperatorHost<T,T> implements Serializable {
+public class PhiNode<T> extends BagOperatorHost<T,T, ElementOrEvent<T>> implements Serializable {
 
 	protected static final Logger LOG = LoggerFactory.getLogger(PhiNode.class);
 

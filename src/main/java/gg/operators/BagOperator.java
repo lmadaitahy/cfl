@@ -18,9 +18,9 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 
 	protected String name;
 
-	protected BagOperatorHost<IN, OUT> host;
+	protected BagOperatorHost<IN, OUT, ?> host;
 
-	public void giveHost(BagOperatorHost<IN, OUT> host) {
+	public <RIN> void giveHost(BagOperatorHost<IN, OUT, RIN> host) {
 		this.host = host;
 	}
 

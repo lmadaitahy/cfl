@@ -32,7 +32,7 @@ public class LabyNode<IN, OUT> {
 
     // --- Initialized in ctor ---
 
-    private final BagOperatorHost<IN, OUT> bagOpHost; // This is null in LabySource
+    private final BagOperatorHost<IN, OUT, ElementOrEvent<IN>> bagOpHost; // This is null in LabySource
 
     private final Partitioner<IN> inputPartitioner;
 

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
 
-public class MutableBagCC extends BagOperatorHost<TupleIntInt, TupleIntInt> {
+public class MutableBagCC extends BagOperatorHost<TupleIntInt, TupleIntInt, ElementOrEvent<TupleIntInt>> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(MutableBagCC.class);
 
