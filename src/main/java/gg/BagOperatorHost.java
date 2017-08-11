@@ -32,12 +32,12 @@ public class BagOperatorHost<IN, OUT>
 	private static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
 
 	protected BagOperator<IN,OUT> op;
-	protected int bbId;
+	public int bbId;
 	private int inputParallelism = -1;
-	private String name;
+	public String name;
 	private int terminalBBId = -2;
 	private CFLConfig cflConfig;
-	private int opID = -1;
+	public int opID = -1;
 	private TypeSerializer<IN> inSer;
 
 	// ---------------------- Initialized in setup (i.e., on TM):
@@ -54,7 +54,7 @@ public class BagOperatorHost<IN, OUT>
 	protected List<Integer> latestCFL; //majd vigyazni, hogy ez valszeg ugyanaz az objektumpeldany, mint ami a CFLManagerben van
 	protected Queue<Integer> outCFLSizes; // ha nem ures, akkor epp az elson dolgozunk; ha ures, akkor nem dolgozunk
 
-	protected ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
+	public ArrayList<Out> outs = new ArrayList<>(); // conditional and normal outputs
 
 	private volatile boolean terminalBBReached;
 
@@ -557,13 +557,20 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
-	// `normal` means not conditional.
-	// If `normal` is false, then we set to damming until we reach its BB.
-	// (This means that for example if targetBbId is the same as the operator's BbId, then we wait for the next iteration step.)
+	// This overload is for manual job building. The auto builder uses the other one.
 	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
 		assert splitId == outs.size();
 		outs.add(new Out((byte)splitId, targetBbId, normal, partitioner));
 		return this;
+	}
+
+	// `normal` means not conditional.
+	// If `normal` is false, then we set to damming until we reach its BB.
+	// (This means that for example if targetBbId is the same as the operator's BbId, then we wait for the next iteration step.)
+	public int out(int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
+		int splitId = outs.size();
+		outs.add(new Out((byte)splitId, targetBbId, normal, partitioner));
+		return splitId;
 	}
 
 	private enum OutState {IDLE, DAMMING, WAITING, FORWARDING}
@@ -591,7 +598,7 @@ public class BagOperatorHost<IN, OUT>
 
 		private byte splitId = -1;
 		private int targetBbId = -1;
-		private boolean normal = false; // jelzi ha nem conditional
+		public boolean normal = false; // jelzi ha nem conditional
 		private final Partitioner<OUT> partitioner;
 
 		private ArrayList<OUT> buffer = null;

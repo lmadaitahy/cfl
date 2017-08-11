@@ -42,6 +42,12 @@ public class Bagify<T>
         this.opID = opID;
     }
 
+    public void setPartitioner(Partitioner<T> partitioner) {
+        assert partitioner != null;
+        assert this.partitioner == null; // Ez pl. olyankor durranhat el, ha ketszer akarnank hasznalni a jobban. Ilyenkor inkabb be kell rakni egy kozbulso LabyNode-ot
+        this.partitioner = partitioner;
+    }
+
     @Override
     public void setup(StreamTask<?, ?> containingTask, StreamConfig config, Output<StreamRecord<ElementOrEvent<T>>> output) {
         super.setup(containingTask, config, output);

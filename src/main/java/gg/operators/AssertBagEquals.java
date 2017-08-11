@@ -1,12 +1,13 @@
 package gg.operators;
 
+import gg.util.Nothing;
 import gg.util.TestFailedException;
 import gg.util.Unit;
 
 import java.util.HashMap;
 
 // !!! Don't forget to set the parallelism to 1 !!!
-public class AssertBagEquals<IN> extends BagOperator<IN, Unit> {
+public class AssertBagEquals<IN> extends BagOperator<IN, Nothing> {
 
     private final HashMap<IN, Integer> expected;
 

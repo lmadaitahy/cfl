@@ -1,10 +1,17 @@
 package gg.jobs;
 
-import gg.*;
+import gg.BagOperatorHost;
+import gg.CFLConfig;
+import gg.ElementOrEvent;
+import gg.KickoffSource;
+import gg.LabyNode;
+import gg.LabySource;
 import gg.operators.AssertBagEquals;
-import gg.operators.IdMap;
 import gg.operators.Bagify;
+import gg.operators.IdMap;
+import gg.partitioners.Always0;
 import gg.partitioners.RoundRobin;
+import gg.util.Nothing;
 import gg.util.Util;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -35,33 +42,38 @@ public class NoCF {
 
 		String[] words = new String[]{"alma", "korte", "alma", "b", "b", "b", "c", "d", "d"};
 
-//		DataStream<ElementOrEvent<String>> input = env.fromElements(
-//				new ElementOrEvent<String>((byte)0, new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, 1)),
-//				new ElementOrEvent<String>((byte)0, "alma"),
-//				new ElementOrEvent<String>((byte)0, new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, 1))
-//		);
 
+//		DataStream<ElementOrEvent<String>> input =
+//				env.fromCollection(Arrays.asList(words))
+//						.transform("bagify", Util.tpe(), new Bagify<>(new RoundRobin<>(para), 0))
+//                        .setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
-		DataStream<ElementOrEvent<String>> input =
-				env.fromCollection(Arrays.asList(words))
-						.transform("bagify", Util.tpe(), new Bagify<>(new RoundRobin<>(para), 0))
-                        .setConnectionType(new gg.partitioners.FlinkPartitioner<>());
+		LabySource<String> input = new LabySource<>(env.fromCollection(Arrays.asList(words)), 0);
 
-		System.out.println(input.getParallelism());
+		//System.out.println(input.getParallelism());
 
-		DataStream<ElementOrEvent<String>> output = input
-				//.setConnectionType(new gg.partitioners.Forward<>())
-				.bt("id-map",input.getType(),
-				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1, stringSer)
-						.addInput(0, 0, true, 0)
-						.out(0,0,true, new gg.partitioners.Always0<>(1)))
-				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
+//		DataStream<ElementOrEvent<String>> output = input
+//				//.setConnectionType(new gg.partitioners.Forward<>())
+//				.bt("id-map",input.getType(),
+//				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1, stringSer)
+//						.addInput(0, 0, true, 0)
+//						.out(0,0,true, new gg.partitioners.Always0<>(1)))
+//				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
-		output
-				//.setConnectionType(new gg.partitioners.Forward<>())
-				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0, 2, stringSer)
-						.addInput(0, 0, true, 1))
-				.setParallelism(1);
+		LabyNode<String, String> output = new LabyNode<>("id-map", new IdMap<>(), 0, new RoundRobin<>(para), stringSer);
+
+//		output
+//				//.setConnectionType(new gg.partitioners.Forward<>())
+//				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0, 2, stringSer)
+//						.addInput(0, 0, true, 1))
+//				.setParallelism(1);
+
+		LabyNode<String, Nothing> sink =
+				new LabyNode<String, Nothing>(
+						"assert",
+						new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"),
+						0,
+						new Always0<String>(1), stringSer);
 
 		CFLConfig.getInstance().setNumToSubscribe();
 

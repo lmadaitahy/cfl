@@ -1,6 +1,6 @@
 package gg;
 
-import gg.jobs.ConnectedComponentsMB;
+import gg.jobsold.ConnectedComponentsMB;
 import gg.operators.BagOperator;
 import gg.util.TupleIntInt;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 
 import java.util.ArrayDeque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
 import java.util.function.Consumer;
