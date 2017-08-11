@@ -1,6 +1,6 @@
 package gg;
 
-import gg.jobs.*;
+import gg.jobsold.*;
 import org.apache.flink.runtime.client.JobCancellationException;
 import org.junit.Test;
 

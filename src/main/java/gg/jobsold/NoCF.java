@@ -1,13 +1,9 @@
-package gg.jobs;
+package gg.jobsold;
 
-import gg.BagOperatorHost;
-import gg.CFLConfig;
-import gg.ElementOrEvent;
-import gg.KickoffSource;
-import gg.LabyNode;
+import gg.*;
 import gg.operators.AssertBagEquals;
-import gg.operators.Bagify;
 import gg.operators.IdMap;
+import gg.operators.Bagify;
 import gg.partitioners.RoundRobin;
 import gg.util.Util;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -51,23 +47,21 @@ public class NoCF {
 						.transform("bagify", Util.tpe(), new Bagify<>(new RoundRobin<>(para), 0))
                         .setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
-		//System.out.println(input.getParallelism());
+		System.out.println(input.getParallelism());
 
-//		DataStream<ElementOrEvent<String>> output = input
-//				//.setConnectionType(new gg.partitioners.Forward<>())
-//				.bt("id-map",input.getType(),
-//				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1, stringSer)
-//						.addInput(0, 0, true, 0)
-//						.out(0,0,true, new gg.partitioners.Always0<>(1)))
-//				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
+		DataStream<ElementOrEvent<String>> output = input
+				//.setConnectionType(new gg.partitioners.Forward<>())
+				.bt("id-map",input.getType(),
+				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1, stringSer)
+						.addInput(0, 0, true, 0)
+						.out(0,0,true, new gg.partitioners.Always0<>(1)))
+				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
-		///////////LabyNode<String, String> output =
-
-//		output
-//				//.setConnectionType(new gg.partitioners.Forward<>())
-//				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0, 2, stringSer)
-//						.addInput(0, 0, true, 1))
-//				.setParallelism(1);
+		output
+				//.setConnectionType(new gg.partitioners.Forward<>())
+				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0, 2, stringSer)
+						.addInput(0, 0, true, 1))
+				.setParallelism(1);
 
 		CFLConfig.getInstance().setNumToSubscribe();
 
