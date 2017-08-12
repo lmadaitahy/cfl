@@ -136,15 +136,18 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
             }
 
             assert inputStream != null;
-            SingleOutputStreamOperator<ElementOrEvent<OUT>> tmpFlinkStream = inputStream
-                    .transform(bagOpHost.name, Util.tpe(), bagOpHost)
-                    .setConnectionType(new FlinkPartitioner<>());
+            SingleOutputStreamOperator<ElementOrEvent<OUT>> tmpFlinkStream =
+                    inputStream.transform(bagOpHost.name, Util.tpe(), bagOpHost);
 
             if (parallelism != -1) {
                 tmpFlinkStream.setParallelism(parallelism);
             }
 
+            tmpFlinkStream = tmpFlinkStream.setConnectionType(new FlinkPartitioner<>()); // this has to be after setting the para
+
             flinkStream = tmpFlinkStream;
+
+            DataStream.btStreams.add(flinkStream); // todo: replace with own list and own setNumToSubscribe
 
             boolean needSplit = false;
             if (bagOpHost.outs.size() > 1) {

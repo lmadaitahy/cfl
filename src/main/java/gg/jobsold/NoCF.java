@@ -65,6 +65,7 @@ public class NoCF {
 
 		CFLConfig.getInstance().setNumToSubscribe();
 
+		System.out.println(env.getExecutionPlan());
 		env.execute();
 	}
 }

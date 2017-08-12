@@ -60,7 +60,9 @@ public class NoCF {
 //						.out(0,0,true, new gg.partitioners.Always0<>(1)))
 //				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
-		LabyNode<String, String> output = new LabyNode<>("id-map", new IdMap<>(), 0, new RoundRobin<>(para), stringSer);
+		LabyNode<String, String> output =
+				new LabyNode<>("id-map", new IdMap<>(), 0, new RoundRobin<>(para), stringSer)
+				.addInput(input);
 
 //		output
 //				//.setConnectionType(new gg.partitioners.Forward<>())
@@ -73,10 +75,15 @@ public class NoCF {
 						"assert",
 						new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"),
 						0,
-						new Always0<String>(1), stringSer);
+						new Always0<String>(1), stringSer)
+				.addInput(output, true, false)
+				.setParallelism(1);
 
-		CFLConfig.getInstance().setNumToSubscribe();
+		LabyNode.translateAll();
 
+		CFLConfig.getInstance().setNumToSubscribe(); //todo: ez most azert nem jo, mert nem bt-t hivunk
+
+		System.out.println(env.getExecutionPlan());
 		env.execute();
 	}
 }
