@@ -3,6 +3,7 @@ package gg;
 import org.apache.flink.streaming.api.datastream.DataStream;
 
 import java.io.Serializable;
+import java.util.List;
 
 public class CFLConfig implements Serializable {
     private static CFLConfig sing = new CFLConfig();
@@ -26,8 +27,12 @@ public class CFLConfig implements Serializable {
         for (DataStream<?> ds: DataStream.btStreams) {
             totalPara += ds.getParallelism();
         }
-        this.numToSubscribe = totalPara;
         DataStream.btStreams.clear();
+        setNumToSubscribe(totalPara);
+    }
+
+    public void setNumToSubscribe(int totalPara) {
+        this.numToSubscribe = totalPara;
     }
 
 

@@ -38,6 +38,7 @@ public class NoCF {
 		CFLConfig.getInstance().terminalBBId = 0;
 		KickoffSource kickoffSrc = new KickoffSource(0);
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
+
         final int para = env.getParallelism();
 
 		String[] words = new String[]{"alma", "korte", "alma", "b", "b", "b", "c", "d", "d"};
@@ -81,7 +82,7 @@ public class NoCF {
 
 		LabyNode.translateAll();
 
-		CFLConfig.getInstance().setNumToSubscribe(); //todo: ez most azert nem jo, mert nem bt-t hivunk
+		//CFLConfig.getInstance().setNumToSubscribe(); //translateAll does this
 
 		System.out.println(env.getExecutionPlan());
 		env.execute();

@@ -12,6 +12,7 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
+import javax.xml.crypto.Data;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -97,6 +98,14 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
             ln.translate(needIter);
         }
+
+        int totalPara = 0;
+        for (AbstractLabyNode<?, ?> ln: labyNodes) {
+            if (ln instanceof LabyNode) {
+                totalPara += ln.getFlinkStream().getParallelism();
+            }
+        }
+        CFLConfig.getInstance().setNumToSubscribe(totalPara);
     }
 
     protected void translate(boolean needIter) {
@@ -121,7 +130,8 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
                 for (AbstractLabyNode<?, IN> inp : inputs) {
                     DataStream<ElementOrEvent<IN>> inpStreamFilledAndSelected;
                     if (inp.getFlinkStream() instanceof SplitStream) {
-                        inpStreamFilledAndSelected = ((SplitStream<ElementOrEvent<IN>>) inp.getFlinkStream()).select(splitIDs.get(i).toString());
+                        inpStreamFilledAndSelected = ((SplitStream<ElementOrEvent<IN>>) inp.getFlinkStream())
+                                .select(splitIDs.get(i).toString());
                     } else {
                         inpStreamFilledAndSelected = inp.getFlinkStream();
                     }
@@ -146,8 +156,6 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
             tmpFlinkStream = tmpFlinkStream.setConnectionType(new FlinkPartitioner<>()); // this has to be after setting the para
 
             flinkStream = tmpFlinkStream;
-
-            DataStream.btStreams.add(flinkStream); // todo: replace with own list and own setNumToSubscribe
 
             boolean needSplit = false;
             if (bagOpHost.outs.size() > 1) {
