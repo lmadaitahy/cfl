@@ -54,7 +54,6 @@ public class NoCF {
 		//System.out.println(input.getParallelism());
 
 //		DataStream<ElementOrEvent<String>> output = input
-//				//.setConnectionType(new gg.partitioners.Forward<>())
 //				.bt("id-map",input.getType(),
 //				new BagOperatorHost<String, String>(new IdMap<>(), 0, 1, stringSer)
 //						.addInput(0, 0, true, 0)
@@ -66,7 +65,6 @@ public class NoCF {
 				.addInput(input);
 
 //		output
-//				//.setConnectionType(new gg.partitioners.Forward<>())
 //				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0, 2, stringSer)
 //						.addInput(0, 0, true, 1))
 //				.setParallelism(1);

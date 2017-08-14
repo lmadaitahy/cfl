@@ -226,7 +226,7 @@ public class BagOperatorHost<IN, OUT>
 					// A kov ertekadas azert nem jo, mert igy a notifyCloseInput azt hinne, hogy mar aktivalva lett.
 					// De lehet, hogy csak kesobb lesz aktivalva (es akkor majd persze megnezzuk, hogy kaptunk-e mar notifyCloseInput-ot ra).
 					//input.currentBagID = ev.bagID;
-					// Note: Sometimes the buffer is not really needed: we could check some tricky condition on the
+					// Note: Sometimes the buffer would not be really needed: we could check some tricky condition on the
 					// control flow graph, but this is not so important for the experiments in the paper.
 					if(input.inputCFLSize != -1) {
 						if(input.inputCFLSize == ev.bagID.cflSize){ // It is just what we need for the current out bag
