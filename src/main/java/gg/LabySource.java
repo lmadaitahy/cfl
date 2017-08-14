@@ -5,6 +5,9 @@ import gg.util.Nothing;
 import gg.util.Util;
 import org.apache.flink.streaming.api.datastream.DataStream;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
 
     public final int bbId;
@@ -23,6 +26,11 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
         this.inputStream = inputStream;
         bagify = new Bagify<>(null, opID);
         labyNodes.add(this);
+    }
+
+    @Override
+    protected List<AbstractLabyNode<?, Nothing>> getInputs() {
+        return new ArrayList<>();
     }
 
     @Override

@@ -34,7 +34,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
     // --- Initialized in builder methods (addInput, setParallelism) ---
 
-    // ('inputs' is inherited)
+    private List<AbstractLabyNode<?, IN>> inputs = new ArrayList<>();
 
     private List<Integer> splitIDs = new ArrayList<>();
 
@@ -73,6 +73,11 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     }
 
     @Override
+    protected List<AbstractLabyNode<?, IN>> getInputs() {
+        return inputs;
+    }
+
+    @Override
     public DataStream<ElementOrEvent<OUT>> getFlinkStream() {
         return flinkStream;
     }
@@ -90,7 +95,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
             seen.add(ln);
 
             boolean needIter = false;
-            for (AbstractLabyNode<?, ?> inp: ln.inputs) {
+            for (AbstractLabyNode<?, ?> inp: ln.getInputs()) {
                 if (!seen.contains(inp)) {
                     needIter = true;
                 }
@@ -116,7 +121,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
         Integer inputPara = null;
         assert !inputs.isEmpty();
         for (AbstractLabyNode<?, IN> inp : inputs) {
-                assert inputPara == null || inputPara.equals(inp.getFlinkStream().getParallelism());
+            assert inputPara == null || inputPara.equals(inp.getFlinkStream().getParallelism());
             inputPara = inp.getFlinkStream().getParallelism();
         }
         bagOpHost.setInputPara(inputPara);
