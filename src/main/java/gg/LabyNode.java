@@ -10,9 +10,7 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.datastream.SplitStream;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
-import javax.xml.crypto.Data;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -34,9 +32,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
     // --- Initialized in builder methods (addInput, setParallelism) ---
 
-    private List<AbstractLabyNode<?, IN>> inputs = new ArrayList<>();
-
-    private List<Integer> splitIDs = new ArrayList<>();
+    private List<Input> inputs = new ArrayList<>();
 
     private int parallelism = -1;
 
@@ -58,8 +54,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     public LabyNode<IN, OUT> addInput(LabyNode<?, IN> inputLabyNode, boolean insideBlock, boolean condOut) {
         bagOpHost.addInput(inputs.size(), inputLabyNode.bagOpHost.bbId, insideBlock, inputLabyNode.bagOpHost.opID);
         int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, inputPartitioner);
-        splitIDs.add(splitID);
-        inputs.add(inputLabyNode);
+        inputs.add(new Input(inputLabyNode, splitID));
         return this;
     }
 
@@ -67,14 +62,17 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     public LabyNode<IN, OUT> addInput(LabySource<IN> inputLabySource) {
         bagOpHost.addInput(inputs.size(), inputLabySource.bbId, true, inputLabySource.opID);
         inputLabySource.bagify.setPartitioner(inputPartitioner);
-        splitIDs.add(0);
-        inputs.add(inputLabySource);
+        inputs.add(new Input(inputLabySource, 0));
         return this;
     }
 
     @Override
-    protected List<AbstractLabyNode<?, IN>> getInputs() {
-        return inputs;
+    protected List<AbstractLabyNode<?, IN>> getInputNodes() {
+        List<AbstractLabyNode<?, IN>> ret = new ArrayList<>();
+        for (Input in: inputs) {
+            ret.add(in.node);
+        }
+        return ret;
     }
 
     @Override
@@ -89,19 +87,8 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     }
 
     public static void translateAll() {
-        Set<AbstractLabyNode<?, ?>> seen = new HashSet<>();
         for (AbstractLabyNode<?, ?> ln: labyNodes) {
-
-            seen.add(ln);
-
-            boolean needIter = false;
-            for (AbstractLabyNode<?, ?> inp: ln.getInputs()) {
-                if (!seen.contains(inp)) {
-                    needIter = true;
-                }
-            }
-
-            ln.translate(needIter);
+            ln.translate();
         }
 
         int totalPara = 0;
@@ -113,32 +100,42 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
         CFLConfig.getInstance().setNumToSubscribe(totalPara);
     }
 
-    protected void translate(boolean needIter) {
-        boolean needUnion = inputs.size() > 1;
+    @Override
+    protected void translate() {
 
-        assert !(needIter && !needUnion);
+        // We need an iteration if we have at least one such input that hasn't been translated yet
+        boolean needIter = false;
+        for (AbstractLabyNode<?, ?> inp: getInputNodes()) {
+            if (inp.getFlinkStream() == null) {
+                needIter = true;
+            }
+        }
 
+        // Determine input parallelism (and make sure all inputs have the same para)
         Integer inputPara = null;
-        assert !inputs.isEmpty();
-        for (AbstractLabyNode<?, IN> inp : inputs) {
+        List<AbstractLabyNode<?, IN>> inpNodes = getInputNodes();
+        assert !inpNodes.isEmpty();
+        for (AbstractLabyNode<?, IN> inp : inpNodes) {
             assert inputPara == null || inputPara.equals(inp.getFlinkStream().getParallelism());
             inputPara = inp.getFlinkStream().getParallelism();
         }
         bagOpHost.setInputPara(inputPara);
 
         if (!needIter) {
+            boolean needUnion = inputs.size() > 1;
+
             DataStream<ElementOrEvent<IN>> inputStream = null;
             if (!needUnion) {
-                inputStream = inputs.get(0).getFlinkStream();
+                inputStream = inpNodes.get(0).getFlinkStream();
             } else {
                 int i = 0;
-                for (AbstractLabyNode<?, IN> inp : inputs) {
+                for (Input inp : inputs) {
                     DataStream<ElementOrEvent<IN>> inpStreamFilledAndSelected;
-                    if (inp.getFlinkStream() instanceof SplitStream) {
-                        inpStreamFilledAndSelected = ((SplitStream<ElementOrEvent<IN>>) inp.getFlinkStream())
-                                .select(splitIDs.get(i).toString());
+                    if (inp.node.getFlinkStream() instanceof SplitStream) {
+                        inpStreamFilledAndSelected = ((SplitStream<ElementOrEvent<IN>>) inp.node.getFlinkStream())
+                                .select(((Integer)inp.splitID).toString());
                     } else {
-                        inpStreamFilledAndSelected = inp.getFlinkStream();
+                        inpStreamFilledAndSelected = inp.node.getFlinkStream();
                     }
                     inpStreamFilledAndSelected = inpStreamFilledAndSelected.map(new LogicalInputIdFiller<>(i));
                     if (inputStream == null) {
@@ -180,7 +177,23 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
             }
         } else {
             //todo
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
+
+            assert inputs.size() > 1;
+
+        }
+    }
+
+    private class Input {
+
+        public AbstractLabyNode<?, IN> node;
+        public int splitID;
+        public boolean backEdge;
+
+        public Input(AbstractLabyNode<?, IN> node, int splitID) {
+            this.node = node;
+            this.splitID = splitID;
+            this.backEdge = false;
         }
     }
 }

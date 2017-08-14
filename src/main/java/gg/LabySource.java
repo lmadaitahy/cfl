@@ -7,6 +7,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
 
@@ -29,7 +30,7 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
     }
 
     @Override
-    protected List<AbstractLabyNode<?, Nothing>> getInputs() {
+    protected List<AbstractLabyNode<?, Nothing>> getInputNodes() {
         return new ArrayList<>();
     }
 
@@ -39,7 +40,7 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
     }
 
     @Override
-    protected void translate(boolean needIter) {
+    protected void translate() {
         flinkStream = inputStream
                 .transform("bagify", Util.tpe(), bagify)
                 .setConnectionType(new gg.partitioners.FlinkPartitioner<>());
