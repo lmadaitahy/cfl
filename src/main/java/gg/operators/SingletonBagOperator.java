@@ -1,7 +1,7 @@
 package gg.operators;
 
 /**
- * Verifies that input bags contain exactly one element.
+ * Verifies that input bags contain exactly one element, and closes out bag when the in bag is closed.
  */
 public abstract class SingletonBagOperator<IN, OUT> extends BagOperator<IN, OUT> {
 
