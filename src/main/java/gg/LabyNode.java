@@ -7,6 +7,7 @@ import gg.partitioners.Forward;
 import gg.partitioners.Partitioner;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Util;
+import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
@@ -67,6 +68,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     // Az insideBlock ugy ertve, hogy ugyanabban a blockban van, es elotte a kodban.
     // Azaz ha ugyanabban a blockban van, de utana, akkor "block-ot lepunk".
     public LabyNode<IN, OUT> addInput(LabyNode<?, IN> inputLabyNode, boolean insideBlock, boolean condOut) {
+        assert !(insideBlock && condOut); // This case is impossible, right?
         bagOpHost.addInput(inputs.size(), inputLabyNode.bagOpHost.bbId, insideBlock, inputLabyNode.bagOpHost.opID);
         int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, inputPartitioner);
         inputs.add(new Input(inputLabyNode, splitID, inputs.size()));
@@ -74,8 +76,9 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     }
 
     // This overload is for adding a LabySource as input
-    public LabyNode<IN, OUT> addInput(LabySource<IN> inputLabySource) {
-        bagOpHost.addInput(inputs.size(), inputLabySource.bbId, true, inputLabySource.opID);
+    // (Does not support condOut at the moment, which would need full-blown BagOperatorHost.Out functionality in Bagify)
+    public LabyNode<IN, OUT> addInput(LabySource<IN> inputLabySource, boolean insideBlock) {
+        bagOpHost.addInput(inputs.size(), inputLabySource.bbId, insideBlock, inputLabySource.opID);
         inputLabySource.bagify.setPartitioner(inputPartitioner);
         inputs.add(new Input(inputLabySource, 0, inputs.size()));
         return this;
@@ -116,6 +119,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void translate() {
 
         // We need an iteration if we have at least one such input that hasn't been translated yet
@@ -226,10 +230,9 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 //                }
 //            }
             needSplit = true;  //todo: el kene donteni, hogy ez hogy legyen. Az a baj, hogy itt mar tul keso eldonteni, mert ha az addInput-ban mar tobb out-ot hozunk letre, akkor mindenkeppen splittelni kell. Viszont ez ugyebar igy esetleg lassithat kicsit a regi jobokhoz kepest, bar remelhetoleg nem sokat. Le kene majd merni, hogy mennyit.
+                // De varjunk: el tudjuk donteni az addInput-ban! Szoval a needSplit member variable lenne, amit az addInputban settelnenk, es minden nem conditional out egyetlen out-ban lenne. (Csak le kell ellenorizni, hogy a splitteles logikaja tudja-e ezt a setupot kezelni megfeleloen)
         }
         if (needSplit) {
-            assert parallelism == -1; // ez azert van, mert nem vagyok benne biztos, hogy a fentebbi para beallitas nem vesz-e itt el
-            //   (amugy gondolom ezt meg lehetne oldani, hogy ne kelljen, ha fontos lenne)
             flinkStream = flinkStream.split(new CondOutputSelector<>());
         }
 
@@ -239,7 +242,18 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
             if (flinkStream instanceof SplitStream) {
                 maybeSelected = ((SplitStream<ElementOrEvent<OUT>>)maybeSelected).select(((Integer)c.splitID).toString());
             }
-            c.iterativeStream.closeWith(maybeSelected.map(new LogicalInputIdFiller<>(c.index)));
+            DataStream<ElementOrEvent<OUT>> toCloseWith = maybeSelected.map(new LogicalInputIdFiller<>(c.index));
+            try {
+                c.iterativeStream.closeWith(toCloseWith);
+            } catch (UnsupportedOperationException ex) {
+                // Introduce dummy edge from the IterativeStream to avoid this issue
+                c.iterativeStream.closeWith(c.iterativeStream.filter(new FilterFunction() {
+                    @Override
+                    public boolean filter(Object value) throws Exception {
+                        return false;
+                    }
+                }).union(toCloseWith));
+            }
         }
     }
 

@@ -27,7 +27,7 @@ public class ClickCountDiffs {
 				.lineDelimiter("\n")
 				.types(Integer.class, Integer.class);
 
-		final int days = 2; // 365
+		final int days = Integer.parseInt(args[1]); // 365
 		for (int day = 1; day <= days; day++) {
 
 			DataSet<Tuple1<Integer>> visits = env.readCsvFile(pref + "in/clickLog_" + day)
@@ -38,7 +38,7 @@ public class ClickCountDiffs {
 			DataSet<Integer> visitsFiltered = visits.join(pageAttributes).where(0).equalTo(0).with(new FlatJoinFunction<Tuple1<Integer>, Tuple2<Integer, Integer>, Integer>() {
 				@Override
 				public void join(Tuple1<Integer> first, Tuple2<Integer, Integer> second, Collector<Integer> out) throws Exception {
-					if (second.f1.equals(0)) {
+					if (second.f1.equals(0)) { // (Mondjuk a Labyrinth jobban ez egy kulon operator, szoval lehet, hogy itt is ugy kene)
 						out.collect(first.f0);
 					}
 				}

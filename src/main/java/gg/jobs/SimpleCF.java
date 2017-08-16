@@ -91,7 +91,7 @@ public class SimpleCF {
 
 		LabyNode<Integer, Integer> phi =
 				LabyNode.phi("phi", 1, new Random<>(env.getParallelism()), integerSer)
-						.addInput(inputBag);
+						.addInput(inputBag, false);
 
 
 //		SplitStream<ElementOrEvent<Integer>> incedSplit = phi

@@ -62,7 +62,7 @@ public class NoCF {
 
 		LabyNode<String, String> output =
 				new LabyNode<>("id-map", new IdMap<>(), 0, new RoundRobin<>(para), stringSer)
-				.addInput(input);
+				.addInput(input, true);
 
 //		output
 //				.bt("assert", Util.tpe(), new BagOperatorHost<>(new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"), 0, 2, stringSer)

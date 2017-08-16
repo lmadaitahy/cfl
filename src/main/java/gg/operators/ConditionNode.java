@@ -4,23 +4,27 @@ import gg.util.Unit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
-
 public class ConditionNode extends SingletonBagOperator<Boolean, Unit> {
 
 	protected static final Logger LOG = LoggerFactory.getLogger(ConditionNode.class);
 
-	private final int trueBranchBbId;
-	private final int falseBranchBbId;
+	private final int[] trueBranchBbIds;
+	private final int[] falseBranchBbIds;
+	
+	public ConditionNode(int trueBranchBbId, int falseBranchBbId) {
+		this(new int[]{trueBranchBbId}, new int[]{falseBranchBbId});
+	}
 
-	public ConditionNode(int trueBranchBbId, int falseBranchBbId) { //todo: ideally, these would be arrays
-		this.trueBranchBbId = trueBranchBbId;
-		this.falseBranchBbId = falseBranchBbId;
+	public ConditionNode(int[] trueBranchBbIds, int[] falseBranchBbIds) {
+		this.trueBranchBbIds = trueBranchBbIds;
+		this.falseBranchBbIds = falseBranchBbIds;
 	}
 
 	@Override
 	public void pushInElement(Boolean e, int logicalInputId) {
 		super.pushInElement(e, logicalInputId);
-		out.appendToCfl(e ? trueBranchBbId : falseBranchBbId);
+		for (int b: e ? trueBranchBbIds : falseBranchBbIds) {
+			out.appendToCfl(b);
+		}
 	}
 }

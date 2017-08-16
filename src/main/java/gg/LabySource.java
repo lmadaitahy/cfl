@@ -4,6 +4,7 @@ import gg.operators.Bagify;
 import gg.util.Nothing;
 import gg.util.Util;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,9 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
 
     public final Bagify<T> bagify;
 
-    private DataStream<ElementOrEvent<T>> flinkStream;
+    private SingleOutputStreamOperator<ElementOrEvent<T>> flinkStream;
+
+    private int parallelism = -1;
 
     public LabySource(DataStream<T> inputStream, int bbId) {
         assert bbId == 0; // ezt majd akkor lehet kivenni, hogyha megcsinaltam, hogy a Bagify tudjon tobbszor kuldeni (ez ugyebar kelleni fog a PageRank-hez)
@@ -27,6 +30,11 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
         this.inputStream = inputStream;
         bagify = new Bagify<>(null, opID);
         labyNodes.add(this);
+    }
+
+    public LabySource<T> setParallelism(int parallelism) {
+        this.parallelism = parallelism;
+        return this;
     }
 
     @Override
@@ -42,7 +50,12 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
     @Override
     protected void translate() {
         flinkStream = inputStream
-                .transform("bagify", Util.tpe(), bagify)
-                .setConnectionType(new gg.partitioners.FlinkPartitioner<>());
+                .transform("bagify", Util.tpe(), bagify);
+
+        if (parallelism != -1) {
+            flinkStream = flinkStream.setParallelism(parallelism);
+        }
+
+        flinkStream = flinkStream.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
     }
 }

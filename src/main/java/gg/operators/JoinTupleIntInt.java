@@ -7,8 +7,10 @@ import org.slf4j.LoggerFactory;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
-import java.util.ArrayList;
-
+/**
+ * Joins (key,b) (build) with (key,c) (probe), giving (b, key, c) to the udf.
+ * The first input is the build side.
+ */
 public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> implements ReusingBagOperator {
 
     private static final Logger LOG = LoggerFactory.getLogger(JoinTupleIntInt.class);
@@ -101,5 +103,6 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
         }
     }
 
+    // b is the `value' in the build-side, p is the whole probe-side record (the key is p.f0)
     protected abstract void udf(int b, TupleIntInt p); // Uses out
 }
