@@ -497,7 +497,7 @@ public class BagOperatorHost<IN, OUT>
 				if (!workInProgress && hasAdded) {
 					startOutBagCheckBarrier();
 				} else {
-					if (CFLConfig.vlog) LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because outCFLSizes.size()=" + outCFLSizes.size());
+					if (CFLConfig.vlog) LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because workInProgress=" + workInProgress + ", hasAdded=" + hasAdded + ", outCFLSizes.size()=" + outCFLSizes.size());
 				}
 			}
 		}

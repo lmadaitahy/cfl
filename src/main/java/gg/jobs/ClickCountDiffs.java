@@ -44,6 +44,8 @@ public class ClickCountDiffs {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+        env.setParallelism(1);///////////////////////////////////////////////////////
+
         final String pref = args[0] + "/";
 
 
@@ -118,7 +120,7 @@ public class ClickCountDiffs {
                     @Override
                     public void pushInElement(TupleIntInt e, int logicalInputId) {
                         super.pushInElement(e, logicalInputId);
-                        if (e.f0 == 0) {
+                        if (e.f1 == 0) {
                             out.collectElement(e);
                         }
                     }
