@@ -48,6 +48,7 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 		assert open[logicalInputId];
 	}
 
+	// Warning: Overriding methods should pay attention to closing the out bag.
 	public void closeInBag(int inputId) {
 		if (CFLConfig.vlog) LOG.info("closeInBag[" + name + "]: inputId: " + inputId);
 		assert open[inputId];

@@ -683,7 +683,7 @@ public class BagOperatorHost<IN, OUT>
 		}
 
 		void notifyAppendToCFL(List<Integer> cfl) {
-			// Itt azert nem jo az isActive, mert van, hogy egy korabban aktivat kene meg csak msot elkuldeni a notify hatasara.
+			// Itt azert nem jo az isActive, mert van, hogy egy korabban aktivat kene meg csak most elkuldeni a notify hatasara.
 			if (!normal && (state == OutState.DAMMING || state == OutState.WAITING)) {
 				if (cfl.get(cfl.size() - 1).equals(targetBbId)) {
 					// Leellenorizzuk, hogy nem irodik-e felul, mielott meg a jelenleg hozzaadottat elerne

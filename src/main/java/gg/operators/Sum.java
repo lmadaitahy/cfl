@@ -24,5 +24,6 @@ public class Sum extends BagOperator<Integer, Integer> {
     public void closeInBag(int inputId) {
         super.closeInBag(inputId);
         out.collectElement(sum);
+        out.closeBag();
     }
 }
