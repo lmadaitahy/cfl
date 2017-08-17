@@ -14,6 +14,7 @@ import gg.operators.Print;
 import gg.operators.SingletonBagOperator;
 import gg.operators.SmallerThan;
 import gg.operators.Sum;
+import gg.operators.SumCombiner;
 import gg.partitioners.Always0;
 import gg.partitioners.Forward;
 import gg.partitioners.TupleIntIntBy0;
@@ -44,7 +45,7 @@ public class ClickCountDiffs {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        env.setParallelism(1);///////////////////////////////////////////////////////
+        //env.setParallelism(1);
 
         final String pref = args[0] + "/";
 
@@ -181,7 +182,7 @@ public class ClickCountDiffs {
                 .addInput(diffs, true, false);
 
         LabyNode<Integer, Integer> sumCombiner =
-                new LabyNode<>("sumCombiner", new Sum(), 2, new Forward<>(para), integerSer)
+                new LabyNode<>("sumCombiner", new SumCombiner(), 2, new Forward<>(para), integerSer)
                 .addInput(diffsInt, true, false);
 
         LabyNode<Integer, Integer> sum =
@@ -218,7 +219,7 @@ public class ClickCountDiffs {
 
         // -- Iteration ends here   BB 4
 
-        // Itt nincs semmi operator. (A kiirast a BB 2-ben csinaljuk.) Remelem ez nem ront el semmit.
+        // Itt nincs semmi operator. (A kiirast a BB 2-ben csinaljuk.)
 
         LabyNode.translateAll();
 
