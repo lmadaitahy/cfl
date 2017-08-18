@@ -336,8 +336,12 @@ public class BagOperatorHost<IN, OUT>
 	synchronized private void giveBufferToBagOperator(InputSubpartition<IN> sp, int i, int logicalInputId) {
 		consumed = true;
 		notifyLogStart();
-		for (IN e : sp.buffers.get(i).elements) {
-			op.pushInElement(e, logicalInputId);
+		try {
+			for (IN e : sp.buffers.get(i).elements) {
+				op.pushInElement(e, logicalInputId);
+			}
+		} catch (NullPointerException npe) {
+			throw new RuntimeException();
 		}
 	}
 
@@ -838,7 +842,10 @@ public class BagOperatorHost<IN, OUT>
 				// Old buffers are hopefully not needed. (Ideally, we would actually check some complicated condition in the control flow graph.)
 				// Setting elements to null instead of throwing the buffer away ensures that we easily notice if this assumption is violated.
 				for (int i = 0; i < buffers.size() - 2; i++) {
-					buffers.get(i).elements = null;
+					Buffer bufI = buffers.get(i);
+					if (bufI.elements != null && bufI.elements.consumeStarted) { // throw away only if it was already used
+						bufI.elements = null;
+					}
 				}
 			}
 

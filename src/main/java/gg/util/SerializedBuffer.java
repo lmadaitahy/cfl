@@ -21,7 +21,7 @@ public class SerializedBuffer<T> implements Iterable<T> {
 
     private final SimpleCollectingOutputView outView = new SimpleCollectingOutputView(segs, new ConjuringSegmentSource(), segSize);
 
-    private boolean consumeStarted = false;
+    public boolean consumeStarted = false;
 
     private int numWritten = 0;
 

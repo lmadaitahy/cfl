@@ -1,6 +1,5 @@
 package nocfl;
 
-import gg.util.TupleIntInt;
 import org.apache.flink.api.common.functions.FlatJoinFunction;
 import org.apache.flink.api.common.functions.JoinFunction;
 import org.apache.flink.api.common.functions.MapFunction;
