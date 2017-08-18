@@ -52,14 +52,33 @@ public class ClickCountDiffs {
 			}).groupBy(0).sum(1);
 
 			if (day != 1) {
+
 				DataSet<Tuple2<Integer, Integer>> yesterdayCounts = env.readCsvFile(yesterdayCountsTmpFilename).types(Integer.class, Integer.class);
-				DataSet<Tuple1<Integer>> diffs = counts.join(yesterdayCounts).where(0).equalTo(0).with(new JoinFunction<Tuple2<Integer,Integer>, Tuple2<Integer,Integer>, Tuple1<Integer>>() {
+
+//				DataSet<Tuple1<Integer>> diffs = counts.join(yesterdayCounts).where(0).equalTo(0).with(new JoinFunction<Tuple2<Integer,Integer>, Tuple2<Integer,Integer>, Tuple1<Integer>>() {
+//					@Override
+//					public Tuple1<Integer> join(Tuple2<Integer, Integer> first, Tuple2<Integer, Integer> second) throws Exception {
+//						return Tuple1.of(Math.abs(first.f1 - second.f1));
+//					}
+//				});
+
+				DataSet<Tuple1<Integer>> diffs = counts.fullOuterJoin(yesterdayCounts).where(0).equalTo(0).with(new JoinFunction<Tuple2<Integer,Integer>, Tuple2<Integer,Integer>, Tuple1<Integer>>() {
+
+					Tuple2<Integer, Integer> nulla = Tuple2.of(0,0);
+
 					@Override
 					public Tuple1<Integer> join(Tuple2<Integer, Integer> first, Tuple2<Integer, Integer> second) throws Exception {
+						if (first == null) {
+							first = nulla;
+						}
+						if (second == null) {
+							second = nulla;
+						}
 						return Tuple1.of(Math.abs(first.f1 - second.f1));
 					}
 				});
-				diffs.sum(0).setParallelism(1).writeAsText(pref + "out/diff_" + day);
+
+				diffs.sum(0).setParallelism(1).writeAsText(pref + "out/expected/diff_" + day, FileSystem.WriteMode.OVERWRITE);
 			}
 
 			counts.writeAsCsv(yesterdayCountsTmpFilename, FileSystem.WriteMode.OVERWRITE);

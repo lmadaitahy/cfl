@@ -2,7 +2,7 @@ package gg.operators;
 
 /**
  * Sums the elements in the bag. (non-grouped)
- * This can be used both as a combiner and a final reduce step, it just depends on its parallelism.
+ * Parallelism should be 1. (there is a separate SumCombiner)
  */
 public class Sum extends BagOperator<Integer, Integer> {
 
@@ -11,6 +11,7 @@ public class Sum extends BagOperator<Integer, Integer> {
     @Override
     public void openInBag(int logicalInputId) {
         super.openInBag(logicalInputId);
+        assert host.subpartitionId == 0; // Parallelism should be 1.
         sum = 0;
     }
 

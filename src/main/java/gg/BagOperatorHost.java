@@ -1,7 +1,9 @@
 package gg;
 
 
+import com.typesafe.config.ConfigException;
 import gg.operators.BagOperator;
+import gg.operators.DontThrowAwayInputBufs;
 import gg.operators.ReusingBagOperator;
 import gg.partitioners.Partitioner;
 import gg.util.SerializedBuffer;
@@ -126,7 +128,7 @@ public class BagOperatorHost<IN, OUT>
 		for(Input inp: inputs) {
 			inp.inputSubpartitions = new InputSubpartition[inputParallelism];
 			for (int i = 0; i < inp.inputSubpartitions.length; i++) {
-				inp.inputSubpartitions[i] = new InputSubpartition<>(inSer);
+				inp.inputSubpartitions[i] = new InputSubpartition<>(inSer, !(op instanceof DontThrowAwayInputBufs));
 			}
 		}
 
@@ -289,6 +291,9 @@ public class BagOperatorHost<IN, OUT>
 					assert inp.currentBagID != null;
 					inputBagIDs.add(inp.currentBagID);
 				}
+
+				// Ez megint csak elvileg elromolhat olyan short-circuit-es operatornal, ami nem varja meg, hogy minden inputja lezaraodjon, mielott lezarna az out-ot.
+				assert inp.inputCFLSize == -1;
 			}
 			BagID[] inputBagIDsArr = new BagID[inputBagIDs.size()];
 			int i = 0;
@@ -331,7 +336,7 @@ public class BagOperatorHost<IN, OUT>
 	synchronized private void giveBufferToBagOperator(InputSubpartition<IN> sp, int i, int logicalInputId) {
 		consumed = true;
 		notifyLogStart();
-		for(IN e: sp.buffers.get(i).elements) {
+		for (IN e : sp.buffers.get(i).elements) {
 			op.pushInElement(e, logicalInputId);
 		}
 	}
@@ -817,8 +822,11 @@ public class BagOperatorHost<IN, OUT>
 
 		TypeSerializer<T> ser;
 
-		InputSubpartition(TypeSerializer<T> ser) {
+		private final boolean throwAwayOldBufs;
+
+		InputSubpartition(TypeSerializer<T> ser, boolean throwAwayOldBufs) {
 			this.ser = ser;
+			this.throwAwayOldBufs = throwAwayOldBufs;
 			buffers = new ArrayList<>();
 			status = Status.CLOSED;
 			damming = false;
@@ -826,10 +834,12 @@ public class BagOperatorHost<IN, OUT>
 
 		void addNewBuffer(BagID bagID) {
 
-			// Olf buffers are hopefully not needed. (Ideally, we would actually check some complicated condition in the control flow graph.)
-			// Setting elements to null instead of throwing the buffer away ensures that we easily notice if this assumption is violated.
-			for (int i = 0; i < buffers.size() - 2; i++) {
-				buffers.get(i).elements = null;
+			if (throwAwayOldBufs) {
+				// Old buffers are hopefully not needed. (Ideally, we would actually check some complicated condition in the control flow graph.)
+				// Setting elements to null instead of throwing the buffer away ensures that we easily notice if this assumption is violated.
+				for (int i = 0; i < buffers.size() - 2; i++) {
+					buffers.get(i).elements = null;
+				}
 			}
 
 			buffers.add(new Buffer(bagID));

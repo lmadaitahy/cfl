@@ -4,12 +4,14 @@ import gg.CFLConfig;
 import gg.KickoffSource;
 import gg.LabyNode;
 import gg.LabySource;
+import gg.operators.CFAwareFileSink;
 import gg.operators.ClickLogReader;
 import gg.operators.ConditionNode;
 import gg.operators.FlatMap;
 import gg.operators.GroupBy0Sum1TupleIntInt;
 import gg.operators.IncMap;
 import gg.operators.JoinTupleIntInt;
+import gg.operators.OuterJoinTupleIntInt;
 import gg.operators.Print;
 import gg.operators.SingletonBagOperator;
 import gg.operators.SmallerThan;
@@ -162,10 +164,20 @@ public class ClickCountDiffs {
 
         // The join of joinedYesterday is merged into this operator
         LabyNode<TupleIntInt, TupleIntInt> diffs =
-                new LabyNode<>("diffs", new JoinTupleIntInt() {
+                new LabyNode<>("diffs", new OuterJoinTupleIntInt() {
                     @Override
-                    protected void udf(int b, TupleIntInt p) {
+                    protected void inner(int b, TupleIntInt p) {
                         out.collectElement(TupleIntInt.of(p.f0, Math.abs(b - p.f1)));
+                    }
+
+                    @Override
+                    protected void right(TupleIntInt p) {
+                        out.collectElement(p);
+                    }
+
+                    @Override
+                    protected void left(int b) {
+                        out.collectElement(TupleIntInt.of(-1, b));
                     }
                 }, 2, new TupleIntIntBy0(para), tupleIntIntSer)
                 .addInput(yesterdayCounts_2, false, true)
@@ -191,7 +203,8 @@ public class ClickCountDiffs {
                 .setParallelism(1);
 
         LabyNode<Integer, Unit> printSum =
-                new LabyNode<>("printSum", new Print<>("printSum"), 2, new Always0<>(1), integerSer)
+                new LabyNode<>("printSum", new CFAwareFileSink(pref + "out/diff_"), 2, new Always0<>(1), integerSer)
+                .addInput(day_2, false, true)
                 .addInput(sum, true, false)
                 .setParallelism(1);
 
