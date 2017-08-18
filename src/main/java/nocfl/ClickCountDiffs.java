@@ -18,6 +18,8 @@ public class ClickCountDiffs {
 
 		//env.getConfig().setParallelism(1);
 
+		env.getConfig().enableObjectReuse();
+
 		String pref = args[0] + "/";
 		String yesterdayCountsTmpFilename = pref + "tmp/yesterdayCounts";
 
@@ -44,9 +46,14 @@ public class ClickCountDiffs {
 			});
 
 			DataSet<Tuple2<Integer, Integer>> counts = visitsFiltered.map(new MapFunction<Integer, Tuple2<Integer, Integer>>() {
+
+				Tuple2<Integer, Integer> reuse = Tuple2.of(-1,-1);
+
 				@Override
 				public Tuple2<Integer, Integer> map(Integer value) throws Exception {
-					return Tuple2.of(value, 1);
+					reuse.f0 = value;
+					reuse.f1 = 1;
+					return reuse;
 				}
 			}).groupBy(0).sum(1);
 
@@ -65,6 +72,8 @@ public class ClickCountDiffs {
 
 					Tuple2<Integer, Integer> nulla = Tuple2.of(0,0);
 
+					Tuple1<Integer> reuse = Tuple1.of(-1);
+
 					@Override
 					public Tuple1<Integer> join(Tuple2<Integer, Integer> first, Tuple2<Integer, Integer> second) throws Exception {
 						if (first == null) {
@@ -73,7 +82,8 @@ public class ClickCountDiffs {
 						if (second == null) {
 							second = nulla;
 						}
-						return Tuple1.of(Math.abs(first.f1 - second.f1));
+						reuse.f0 = Math.abs(first.f1 - second.f1);
+						return reuse;
 					}
 				});
 
