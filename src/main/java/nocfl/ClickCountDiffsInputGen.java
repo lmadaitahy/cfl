@@ -2,21 +2,29 @@ package nocfl;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Random;
 
 public class ClickCountDiffsInputGen {
 
     public static void main(String[] args) throws Exception {
-        Random rnd = new Random();
-
         final String pref = args[0] + "/";
-        final String pageAttributesFile = pref + "in/pageAttributes.tsv";
+        generate(100000, 365, pref, new Random());
+    }
 
-        final int numProducts = 100000000;
-        final int numDays = 365;
+    public static String generate(int numProducts, int numDays, String pref, Random rnd) throws IOException {
+
+        pref = pref + Integer.toString(numProducts) + "/";
+
         final double clicksPerDayRatio = 1.0 / 100;
         final int numClicksPerDay = (int)(numProducts * clicksPerDayRatio);
+
+        final String pageAttributesFile = pref + "in/pageAttributes.tsv";
 
         new File(pref + "in").mkdirs();
         new File(pref + "out").mkdirs();
@@ -38,6 +46,34 @@ public class ClickCountDiffsInputGen {
             }
             wr2.close();
         }
+
+        return pref;
     }
 
+    static public void checkLabyOut(String path, int numDays, int[] expected) throws IOException {
+        for (int i = 2; i <= numDays; i++) {
+            String actString = readFile(path + "/out/diff_" + Integer.toString(i), StandardCharsets.UTF_8);
+            int act = Integer.parseInt(actString.trim());
+            if (act != expected[i - 2]) {
+                throw new RuntimeException("ClickCountDiffs output is incorrect on day " + i);
+            }
+        }
+    }
+
+    static public void checkNocflOut(String path, int numDays, int[] expected) throws IOException {
+        for (int i = 2; i <= numDays; i++) {
+            String actString = readFile(path + "/out/expected/diff_" + Integer.toString(i), StandardCharsets.UTF_8);
+            int act = Integer.parseInt(actString.trim());
+            if (act != expected[i - 2]) {
+                throw new RuntimeException("ClickCountDiffs output is incorrect on day " + i);
+            }
+        }
+    }
+
+    static String readFile(String path, Charset encoding)
+            throws IOException
+    {
+        byte[] encoded = Files.readAllBytes(Paths.get(path));
+        return new String(encoded, encoding);
+    }
 }

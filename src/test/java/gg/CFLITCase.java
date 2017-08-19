@@ -1,8 +1,14 @@
 package gg;
 
+import gg.jobs.ClickCountDiffs;
 import gg.jobsold.*;
+import nocfl.ClickCountDiffsInputGen;
+import org.apache.commons.io.FileUtils;
 import org.apache.flink.runtime.client.JobCancellationException;
 import org.junit.Test;
+
+import java.io.File;
+import java.util.Random;
 
 public class CFLITCase {
 
@@ -46,5 +52,33 @@ public class CFLITCase {
     @Test(expected=JobCancellationException.class)
     public void testConnectedComponentsMB() throws Exception {
         ConnectedComponentsMB.main(new String[]{});
+    }
+
+    @Test()
+    public void testClickCountDiffs() throws Exception {
+        String path = "/tmp/ClickCountITCase/";
+        FileUtils.deleteQuietly(new File(path));
+
+        int size = 100000;
+        int numDays = 30;
+
+        path = ClickCountDiffsInputGen.generate(size, numDays, path, new Random(1234));
+
+        boolean exceptionReceived = false;
+        try {
+            ClickCountDiffs.main(new String[]{path, Integer.toString(numDays)});
+        } catch (JobCancellationException ex) {
+            exceptionReceived = true;
+        }
+        if (!exceptionReceived) {
+            throw new RuntimeException("testClickCountDiffs job failed");
+        }
+
+        int[] exp = new int[]{1010, 1032, 981, 977, 978, 981, 988, 987, 958, 997, 985, 994, 1001, 987, 1007, 971, 960, 976, 1025, 1022, 971, 993, 997, 996, 1038, 985, 974, 999, 1020};
+        ClickCountDiffsInputGen.checkLabyOut(path, numDays, exp);
+
+        int nocflNumDays = numDays/6;
+        nocfl.ClickCountDiffs.main(new String[]{"/tmp/ClickCountITCase/" + size, Integer.toString(nocflNumDays)});
+        ClickCountDiffsInputGen.checkNocflOut(path, nocflNumDays, exp);
     }
 }

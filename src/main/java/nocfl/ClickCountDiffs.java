@@ -87,7 +87,12 @@ public class ClickCountDiffs {
 					}
 				});
 
-				diffs.sum(0).setParallelism(1).writeAsText(pref + "out/expected/diff_" + day, FileSystem.WriteMode.OVERWRITE);
+				diffs.sum(0).map(new MapFunction<Tuple1<Integer>, String>() {
+					@Override
+					public String map(Tuple1<Integer> integerTuple1) throws Exception {
+						return integerTuple1.f0.toString();
+					}
+				}).setParallelism(1).writeAsText(pref + "out/expected/diff_" + day, FileSystem.WriteMode.OVERWRITE);
 			}
 
 			counts.writeAsCsv(yesterdayCountsTmpFilename, FileSystem.WriteMode.OVERWRITE);
