@@ -12,6 +12,12 @@ public class CFLITCase {
     }
 
     @Test(expected=JobCancellationException.class)
+    public void testNoCFNew() throws Exception {
+        LabyNode.labyNodes.clear();
+        gg.jobs.NoCF.main(null);
+    }
+
+    @Test(expected=JobCancellationException.class)
     public void testEmptyBags() throws Exception {
         EmptyBags.main(null);
     }
@@ -19,6 +25,12 @@ public class CFLITCase {
     @Test(expected=JobCancellationException.class)
     public void testSimpleCF() throws Exception {
         SimpleCF.main(new String[]{"100"});
+    }
+
+    @Test(expected=JobCancellationException.class)
+    public void testSimpleCFNew() throws Exception {
+        LabyNode.labyNodes.clear();
+        gg.jobs.SimpleCF.main(new String[]{"100"});
     }
 
     @Test(expected=JobCancellationException.class)
