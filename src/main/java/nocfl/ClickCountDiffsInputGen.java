@@ -12,9 +12,12 @@ import java.util.Random;
 
 public class ClickCountDiffsInputGen {
 
+    /**
+     * args: path, numProducts
+     */
     public static void main(String[] args) throws Exception {
         final String pref = args[0] + "/";
-        generate(100000, 365, pref, new Random());
+        generate(Integer.parseInt(args[1]), 365, pref, new Random());
     }
 
     public static String generate(int numProducts, int numDays, String pref, Random rnd) throws IOException {
@@ -31,9 +34,14 @@ public class ClickCountDiffsInputGen {
         new File(pref + "tmp").mkdirs();
 
         Writer wr1 = new FileWriter(pageAttributesFile);
+        int j = 0;
         for (int i=0; i<numProducts; i++) {
             int type = rnd.nextInt(2);
             wr1.write(Integer.toString(i) + "\t" + Integer.toString(type) + "\n");
+            if (j++ == 1000000) {
+                System.out.println(i);
+                j = 0;
+            }
         }
         wr1.close();
 
