@@ -1,7 +1,6 @@
 package gg;
 
 
-import com.typesafe.config.ConfigException;
 import gg.operators.BagOperator;
 import gg.operators.DontThrowAwayInputBufs;
 import gg.operators.ReusingBagOperator;

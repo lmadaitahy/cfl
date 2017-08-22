@@ -10,9 +10,13 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.fs.FileSystem;
 import org.apache.flink.types.IntValue;
 import org.apache.flink.util.Collector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class ClickCountDiffs {
+
+	private static final Logger LOG = LoggerFactory.getLogger(ClickCountDiffs.class);
 
 	public static void main(String[] args) throws Exception {
 		ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
@@ -31,6 +35,8 @@ public class ClickCountDiffs {
 
 		final int days = Integer.parseInt(args[1]); // 365
 		for (int day = 1; day <= days; day++) {
+
+			LOG.info("### Day " + day);
 
 			DataSet<Tuple1<IntValue>> visits = env.readCsvFile(pref + "in/clickLog_" + day)
 					.fieldDelimiter("\t")
