@@ -56,6 +56,8 @@ public class CFLITCase {
 
     @Test()
     public void testClickCountDiffs() throws Exception {
+        LabyNode.labyNodes.clear();
+
         String path = "/tmp/ClickCountITCase/";
         FileUtils.deleteQuietly(new File(path));
 

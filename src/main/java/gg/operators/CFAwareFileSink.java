@@ -5,10 +5,16 @@ import gg.util.Unit;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Each time when the control flow reaches the operator, we create a new out file.
@@ -67,13 +73,18 @@ public class CFAwareFileSink extends BagOperator<Integer, Unit> implements DontT
 
         if (closed[0] && closed[1]) {
             try {
-                PrintWriter writer = new PrintWriter(currentFileName, "UTF-8");
+
+                FileSystem fs = FileSystem.get(new URI(currentFileName));
+                //BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(new Path(currentFileName))));
+
+                //PrintWriter writer = new PrintWriter(currentFileName, "UTF-8");
+                PrintWriter writer = new PrintWriter(fs.create(new Path(currentFileName), FileSystem.WriteMode.OVERWRITE));
                 for (Integer e : buffer) {
                     writer.println(Integer.toString(e));
                 }
                 buffer = null;
                 writer.close();
-            } catch (FileNotFoundException | UnsupportedEncodingException e) {
+            } catch (URISyntaxException | IOException e) {
                 throw new RuntimeException(e);
             }
 
