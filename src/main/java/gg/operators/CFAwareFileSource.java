@@ -1,8 +1,11 @@
 package gg.operators;
 
+import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
+
 import java.io.*;
-import org.apache.hadoop.fs.*;
-import org.apache.hadoop.conf.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 // Don't forget to set the parallelism to 1!
 public abstract class CFAwareFileSource<T> extends SingletonBagOperator<Integer, T> {
@@ -42,17 +45,18 @@ public abstract class CFAwareFileSource<T> extends SingletonBagOperator<Integer,
 
     private void readFromHDFS(int e) {
         try {
-            Path pt = new Path(baseName + e);
-            FileSystem fs = FileSystem.get(new Configuration());
-            BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(pt)));
+            String path = baseName + e;
+            FileSystem fs = FileSystem.get(new URI(path));
+            BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(new Path(path))));
+
             String line;
             line = br.readLine();
-            while (line != null){
+            while (line != null) {
                 out.collectElement(parseLine(line));
                 line = br.readLine();
             }
-        } catch (IOException e1) {
-            throw new RuntimeException(e1);
+        } catch (URISyntaxException | IOException e2) {
+            throw new RuntimeException(e2);
         }
     }
 
