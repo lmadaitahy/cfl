@@ -19,6 +19,7 @@ import gg.operators.Sum;
 import gg.operators.SumCombiner;
 import gg.partitioners.Always0;
 import gg.partitioners.Forward;
+import gg.partitioners.IntegerBy0;
 import gg.partitioners.TupleIntIntBy0;
 import gg.util.TupleIntInt;
 import gg.util.Unit;
@@ -105,7 +106,7 @@ public class ClickCountDiffs {
                         super.pushInElement(e, logicalInputId);
                         out.collectElement(TupleIntInt.of(e, -1));
                     }
-                }, 1, new Forward<>(para), integerSer)
+                }, 1, new IntegerBy0(para), integerSer)
                 .addInput(visits_1, true, false);
 
         LabyNode<TupleIntInt, TupleIntInt> joinedWithAttrs =
