@@ -330,6 +330,7 @@ public class BagOperatorHost<IN, OUT>
 				if (CFLConfig.vlog) LOG.info("Out.closeBag not starting a new out bag {" + name + "}");
 				if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
 					cflMan.unsubscribe(cb);
+					es.shutdown();
 				}
 			}
 		}
@@ -537,6 +538,7 @@ public class BagOperatorHost<IN, OUT>
 				terminalBBReached = true;
 				if (outCFLSizes.isEmpty()) {
 					cflMan.unsubscribe(cb);
+					es.shutdown();
 				}
 			}
 		}
