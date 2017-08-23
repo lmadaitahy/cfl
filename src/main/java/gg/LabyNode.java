@@ -8,6 +8,7 @@ import gg.partitioners.Partitioner;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Util;
 import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
@@ -31,6 +32,8 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
     private final Partitioner<IN> inputPartitioner;
 
+    private final TypeInformation<ElementOrEvent<OUT>> typeInfo;
+
     // --- Initialized in builder methods (addInput, setParallelism) ---
 
     private List<Input> inputs = new ArrayList<>();
@@ -47,21 +50,23 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     private List<Close> closeTo = new ArrayList<>();
 
 
-    public LabyNode(String name, BagOperator<IN,OUT> op, int bbId, Partitioner<IN> inputPartitioner, TypeSerializer<IN> inSer) {
+    public LabyNode(String name, BagOperator<IN,OUT> op, int bbId, Partitioner<IN> inputPartitioner, TypeSerializer<IN> inSer, TypeInformation<ElementOrEvent<OUT>> typeInfo) {
         this.inputPartitioner = inputPartitioner;
         this.bagOpHost = new BagOperatorHost<>(op, bbId, labyNodes.size(), inSer);
         this.bagOpHost.setName(name);
+        this.typeInfo = typeInfo;
         labyNodes.add(this);
     }
 
-    public static <T> LabyNode<T, T> phi(String name, int bbId, Partitioner<T> inputPartitioner, TypeSerializer<T> inSer) {
-        return new LabyNode<>(name, bbId, inputPartitioner, inSer);
+    public static <T> LabyNode<T, T> phi(String name, int bbId, Partitioner<T> inputPartitioner, TypeSerializer<T> inSer, TypeInformation<ElementOrEvent<T>> typeInfo) {
+        return new LabyNode<>(name, bbId, inputPartitioner, inSer, typeInfo);
     }
 
-    private LabyNode(String name, int bbId, Partitioner<IN> inputPartitioner, TypeSerializer<IN> inSer) {
+    private LabyNode(String name, int bbId, Partitioner<IN> inputPartitioner, TypeSerializer<IN> inSer, TypeInformation<ElementOrEvent<OUT>> typeInfo) {
         this.inputPartitioner = inputPartitioner;
         this.bagOpHost = (BagOperatorHost<IN, OUT>) new PhiNode<>(bbId, labyNodes.size(), inSer);
         this.bagOpHost.setName(name);
+        this.typeInfo = typeInfo;
         labyNodes.add(this);
     }
 
@@ -216,6 +221,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
         }
         assert inputPartitioner.targetPara == tmpFlinkStream.getParallelism();
 
+        tmpFlinkStream.returns(typeInfo);
         tmpFlinkStream = tmpFlinkStream.setConnectionType(new FlinkPartitioner<>()); // this has to be after setting the para
 
         flinkStream = tmpFlinkStream;

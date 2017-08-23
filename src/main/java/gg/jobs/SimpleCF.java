@@ -18,12 +18,14 @@ import gg.partitioners.Forward;
 import gg.partitioners.Random;
 import gg.partitioners.RoundRobin;
 import gg.util.LogicalInputIdFiller;
+import gg.util.TupleIntInt;
 import gg.util.Unit;
 import gg.util.Util;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.typeutils.PojoTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.IterativeStream;
 import org.apache.flink.streaming.api.datastream.SplitStream;
@@ -61,6 +63,9 @@ public class SimpleCF {
 
 		final int n = Integer.parseInt(args[0]);
 
+		PojoTypeInfo.registerCustomSerializer(ElementOrEvent.class, new ElementOrEvent.ElementOrEventSerializerFactory());
+		PojoTypeInfo.registerCustomSerializer(TupleIntInt.class, TupleIntInt.TupleIntIntSerializer.class);
+
 		CFLConfig.getInstance().terminalBBId = 2;
 		KickoffSource kickoffSrc = new KickoffSource(0,1);
 		//KickoffSource kickoffSrc = new KickoffSource(0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2);
@@ -76,7 +81,7 @@ public class SimpleCF {
 //						.returns(TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
 //						.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
-		LabySource<Integer> inputBag = new LabySource<>(env.fromCollection(Arrays.asList(input)), 0);
+		LabySource<Integer> inputBag = new LabySource<>(env.fromCollection(Arrays.asList(input)), 0, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}));
 
 		//IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(1000000000);
 
@@ -90,7 +95,7 @@ public class SimpleCF {
 //				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		LabyNode<Integer, Integer> phi =
-				LabyNode.phi("phi", 1, new Random<>(env.getParallelism()), integerSer)
+				LabyNode.phi("phi", 1, new Random<>(env.getParallelism()), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
 						.addInput(inputBag, false);
 
 
@@ -111,7 +116,7 @@ public class SimpleCF {
 //		it.closeWith(incedSplitL);
 
 		LabyNode<Integer, Integer> inced =
-				new LabyNode<>("inc-map", new IncMap(), 1, new Random<>(env.getParallelism()), integerSer)
+				new LabyNode<>("inc-map", new IncMap(), 1, new Random<>(env.getParallelism()), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
 						.addInput(phi, true, false);
 
 		phi.addInput(inced, false, true);
@@ -128,7 +133,7 @@ public class SimpleCF {
 //				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert 1->1
 
 		LabyNode<Integer, Boolean> smallerThan =
-				new LabyNode<>("smaller-than", new SmallerThan(n), 1, new Always0<>(1), integerSer)
+				new LabyNode<>("smaller-than", new SmallerThan(n), 1, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
 						.addInput(inced, true, false)
 						.setParallelism(1);
 
@@ -140,7 +145,7 @@ public class SimpleCF {
 //				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert nincs output
 
 		LabyNode<Boolean, Unit> exitCond =
-				new LabyNode<>("exit-cond", new ConditionNode(1,2), 1, new Always0<>(1), booleanSer)
+				new LabyNode<>("exit-cond", new ConditionNode(1,2), 1, new Always0<>(1), booleanSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
 						.addInput(smallerThan, true, false)
 						.setParallelism(1);
 
@@ -154,7 +159,7 @@ public class SimpleCF {
 //				//.setConnectionType(new gg.partitioners2.FlinkPartitioner<>()); // ez itt azert nem kell, mert nincs output
 
 		LabyNode<Integer, Unit> assertEquals =
-				new LabyNode<>("Check i == " + n, new AssertEquals<>(n), 2, new Always0<>(1), integerSer)
+				new LabyNode<>("Check i == " + n, new AssertEquals<>(n), 2, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
 					.addInput(inced, false, true)
 					.setParallelism(1);
 

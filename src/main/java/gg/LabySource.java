@@ -3,6 +3,7 @@ package gg;
 import gg.operators.Bagify;
 import gg.util.Nothing;
 import gg.util.Util;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 
@@ -23,11 +24,14 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
 
     private int parallelism = -1;
 
-    public LabySource(DataStream<T> inputStream, int bbId) {
+    private final TypeInformation<ElementOrEvent<T>> typeInfo;
+
+    public LabySource(DataStream<T> inputStream, int bbId, TypeInformation<ElementOrEvent<T>> typeInfo) {
         assert bbId == 0; // ezt majd akkor lehet kivenni, hogyha megcsinaltam, hogy a Bagify tudjon tobbszor kuldeni (ez ugyebar kelleni fog a PageRank-hez)
         this.bbId = bbId;
         this.opID = labyNodes.size();
         this.inputStream = inputStream;
+        this.typeInfo = typeInfo;
         bagify = new Bagify<>(null, opID);
         labyNodes.add(this);
     }
@@ -50,7 +54,8 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
     @Override
     protected void translate() {
         flinkStream = inputStream
-                .transform("bagify", Util.tpe(), bagify);
+                .transform("bagify", Util.tpe(), bagify)
+                .returns(typeInfo);
 
         if (parallelism != -1) {
             flinkStream = flinkStream.setParallelism(parallelism);

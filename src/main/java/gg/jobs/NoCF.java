@@ -12,10 +12,13 @@ import gg.operators.IdMap;
 import gg.partitioners.Always0;
 import gg.partitioners.RoundRobin;
 import gg.util.Nothing;
+import gg.util.TupleIntInt;
 import gg.util.Util;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.typeutils.PojoTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
@@ -35,6 +38,9 @@ public class NoCF {
 
 		//env.getConfig().setParallelism(1);
 
+//		PojoTypeInfo.registerCustomSerializer(ElementOrEvent.class, new ElementOrEvent.ElementOrEventSerializerFactory());
+//		PojoTypeInfo.registerCustomSerializer(TupleIntInt.class, TupleIntInt.TupleIntIntSerializer.class);
+
 		CFLConfig.getInstance().terminalBBId = 0;
 		KickoffSource kickoffSrc = new KickoffSource(0);
 		env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
@@ -49,7 +55,7 @@ public class NoCF {
 //						.transform("bagify", Util.tpe(), new Bagify<>(new RoundRobin<>(para), 0))
 //                        .setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
-		LabySource<String> input = new LabySource<>(env.fromCollection(Arrays.asList(words)), 0);
+		LabySource<String> input = new LabySource<>(env.fromCollection(Arrays.asList(words)), 0, TypeInformation.of(new TypeHint<ElementOrEvent<String>>(){}));
 
 		//System.out.println(input.getParallelism());
 
@@ -61,7 +67,7 @@ public class NoCF {
 //				.setConnectionType(new gg.partitioners.FlinkPartitioner<>());
 
 		LabyNode<String, String> output =
-				new LabyNode<>("id-map", new IdMap<>(), 0, new RoundRobin<>(para), stringSer)
+				new LabyNode<>("id-map", new IdMap<>(), 0, new RoundRobin<>(para), stringSer, TypeInformation.of(new TypeHint<ElementOrEvent<String>>(){}))
 				.addInput(input, true);
 
 //		output
@@ -74,7 +80,7 @@ public class NoCF {
 						"assert",
 						new AssertBagEquals<>("alma", "korte", "alma", "b", "b", "b", "c", "d", "d"),
 						0,
-						new Always0<String>(1), stringSer)
+						new Always0<String>(1), stringSer, TypeInformation.of(new TypeHint<ElementOrEvent<Nothing>>(){}))
 				.addInput(output, true, false)
 				.setParallelism(1);
 

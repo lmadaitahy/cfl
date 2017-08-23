@@ -1,5 +1,6 @@
 package gg;
 
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.datastream.DataStream;
 
 import java.util.ArrayList;

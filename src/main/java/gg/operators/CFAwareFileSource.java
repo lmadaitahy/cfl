@@ -47,7 +47,7 @@ public abstract class CFAwareFileSource<T> extends SingletonBagOperator<Integer,
         try {
             String path = baseName + e;
             FileSystem fs = FileSystem.get(new URI(path));
-            BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(new Path(path))));
+            BufferedReader br = new BufferedReader(new InputStreamReader(fs.open(new Path(path))), 131072);
 
             String line;
             line = br.readLine();
