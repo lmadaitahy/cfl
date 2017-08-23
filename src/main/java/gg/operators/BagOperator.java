@@ -39,6 +39,8 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 	}
 
 
+	public void setup() {}
+
 	public void openOutBag() {
 		if (CFLConfig.vlog) LOG.info("openOutBag[" + name + "]");
 	}

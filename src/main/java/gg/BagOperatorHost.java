@@ -141,6 +141,8 @@ public class BagOperatorHost<IN, OUT>
 
 		op.giveHost(this);
 
+		op.setup();
+
 		cflMan = CFLManager.getSing();
 
 		cflMan.specifyTerminalBB(terminalBBId);
