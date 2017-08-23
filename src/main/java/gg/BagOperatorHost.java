@@ -21,6 +21,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class BagOperatorHost<IN, OUT>
@@ -71,6 +74,8 @@ public class BagOperatorHost<IN, OUT>
 	private int barrierAllReachedCFLSize = 1;
 
 	private boolean workInProgress = false;
+
+	private ExecutorService es;
 
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID, TypeSerializer<IN> inSer) {
 		this.op = op;
@@ -140,6 +145,8 @@ public class BagOperatorHost<IN, OUT>
 		op.giveOutputCollector(new MyCollector());
 
 		op.giveHost(this);
+
+		es = Executors.newSingleThreadExecutor();
 
 		cflMan = CFLManager.getSing();
 
@@ -489,26 +496,37 @@ public class BagOperatorHost<IN, OUT>
 
 	private class MyCFLCallback implements CFLCallback {
 
-		public void notify(List<Integer> cfl) {
-			synchronized (BagOperatorHost.this) {
-				latestCFL = cfl;
+		public void notify(List<Integer> cfl0) {
+			synchronized (es) {
+				List<Integer> cfl = new ArrayList<>(cfl0);
+				es.submit(new Runnable() {
+					@Override
+					public void run() {
+						synchronized (BagOperatorHost.this) {
+							latestCFL = cfl;
 
-				if (CFLConfig.vlog) LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
+							if (CFLConfig.vlog) LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
 
-				// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
-				// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
+							// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
+							// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
 
-				for(Out o: outs) {
-					o.notifyAppendToCFL(cfl);
-				}
+							for (Out o : outs) {
+								o.notifyAppendToCFL(cfl);
+							}
 
-				//boolean workInProgress = outCFLSizes.size() > 0;
-				boolean hasAdded = updateOutCFLSizes(cfl);
-				if (!workInProgress && hasAdded) {
-					startOutBagCheckBarrier();
-				} else {
-					if (CFLConfig.vlog) LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because workInProgress=" + workInProgress + ", hasAdded=" + hasAdded + ", outCFLSizes.size()=" + outCFLSizes.size());
-				}
+							//boolean workInProgress = outCFLSizes.size() > 0;
+							boolean hasAdded = updateOutCFLSizes(cfl);
+							if (!workInProgress && hasAdded) {
+
+								startOutBagCheckBarrier();
+
+							} else {
+								if (CFLConfig.vlog)
+									LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because workInProgress=" + workInProgress + ", hasAdded=" + hasAdded + ", outCFLSizes.size()=" + outCFLSizes.size());
+							}
+						}
+					}
+				});
 			}
 		}
 
@@ -525,29 +543,38 @@ public class BagOperatorHost<IN, OUT>
 
 		@Override
 		public void notifyCloseInput(BagID bagID, int opID) {
-			synchronized (BagOperatorHost.this) {
-				if (opID == BagOperatorHost.this.opID || opID == CFLManager.CloseInputBag.emptyBag) {
-					assert !notifyCloseInputs.contains(bagID);
-					notifyCloseInputs.add(bagID);
+			synchronized (es) {
+				es.submit(new Runnable() {
+					@Override
+					public void run() {
 
-					if (opID == CFLManager.CloseInputBag.emptyBag) {
-						notifyCloseInputEmpties.add(bagID);
-					}
+						synchronized (BagOperatorHost.this) {
+							if (opID == BagOperatorHost.this.opID || opID == CFLManager.CloseInputBag.emptyBag) {
+								assert !notifyCloseInputs.contains(bagID);
+								notifyCloseInputs.add(bagID);
 
-					for (Input inp : inputs) {
-						//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
-						if (bagID.equals(inp.currentBagID)) {
+								if (opID == CFLManager.CloseInputBag.emptyBag) {
+									notifyCloseInputEmpties.add(bagID);
+								}
 
-							if (opID == CFLManager.CloseInputBag.emptyBag) {
-								// Itt az EmptyFromEmpty marker interface azert nem kell, mert nem rontja ez el a dolgokat a consumed = true
-								// akkor sem, ha nem empty lesz az eredmeny bag.
-								consumed = true;
+								for (Input inp : inputs) {
+									//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
+									if (bagID.equals(inp.currentBagID)) {
+
+										if (opID == CFLManager.CloseInputBag.emptyBag) {
+											// Itt az EmptyFromEmpty marker interface azert nem kell, mert nem rontja ez el a dolgokat a consumed = true
+											// akkor sem, ha nem empty lesz az eredmeny bag.
+											consumed = true;
+										}
+
+										inp.closeCurrentInBag();
+									}
+								}
 							}
-
-							inp.closeCurrentInBag();
 						}
+
 					}
-				}
+				});
 			}
 		}
 
