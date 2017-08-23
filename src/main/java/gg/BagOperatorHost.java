@@ -565,6 +565,11 @@ public class BagOperatorHost<IN, OUT>
 				}
 			}
 		}
+
+		@Override
+		public int getOpID() {
+			return BagOperatorHost.this.opID;
+		}
 	}
 
 	// This overload is for manual job building. The auto builder uses the other one.
