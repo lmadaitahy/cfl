@@ -21,6 +21,7 @@ import gg.partitioners.Always0;
 import gg.partitioners.Forward;
 import gg.partitioners.IntegerBy0;
 import gg.partitioners.Random;
+import gg.partitioners.RoundRobin;
 import gg.partitioners.TupleIntIntBy0;
 import gg.util.TupleIntInt;
 import gg.util.Unit;
@@ -101,7 +102,7 @@ public class ClickCountDiffs {
                 .setParallelism(1);
 
         LabyNode<Integer, Integer> visits_1 =
-                new LabyNode<>("visits_1", new ClickLogReader(pref + "in/clickLog_"), 1, new Random<>(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
+                new LabyNode<>("visits_1", new ClickLogReader(pref + "in/clickLog_"), 1, new RoundRobin<>(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
                         .addInput(day_2, true, false);
                         //.setParallelism(1);
 
