@@ -120,6 +120,8 @@ public class BagOperatorHost<IN, OUT>
 
 		this.subpartitionId = (short)getRuntimeContext().getIndexOfThisSubtask();
 
+		//LOG.info("subpartitionId [" + name + "]: " + subpartitionId);
+
 		if (inputParallelism == -1) {
 			throw new RuntimeException("inputParallelism is not set. Use bt instead of transform!");
 		}
