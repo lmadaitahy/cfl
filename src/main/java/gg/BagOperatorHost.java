@@ -530,6 +530,8 @@ public class BagOperatorHost<IN, OUT>
 
 		@Override
 		public void notifyTerminalBB() {
+			// ha ez nem az es-en keresztul megy, akkor az a gond, hogy subscribe-nal a notify submittel,
+			// es ennek a notify-nak kene beraknia vmit az outCFLSizes-ba, de meg nem rakta be, amikor mar elerjuk a itt az outCFLSizes checket
 			synchronized (es) {
 				es.submit(new Runnable() {
 					@Override
