@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -518,9 +517,7 @@ public class BagOperatorHost<IN, OUT>
 							//boolean workInProgress = outCFLSizes.size() > 0;
 							boolean hasAdded = updateOutCFLSizes(cfl);
 							if (!workInProgress && hasAdded) {
-
 								startOutBagCheckBarrier();
-
 							} else {
 								if (CFLConfig.vlog)
 									LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because workInProgress=" + workInProgress + ", hasAdded=" + hasAdded + ", outCFLSizes.size()=" + outCFLSizes.size());
@@ -533,13 +530,24 @@ public class BagOperatorHost<IN, OUT>
 
 		@Override
 		public void notifyTerminalBB() {
-			LOG.info("CFL notifyTerminalBB");
-			synchronized (BagOperatorHost.this) {
-				terminalBBReached = true;
-				if (outCFLSizes.isEmpty()) {
-					cflMan.unsubscribe(cb);
-					es.shutdown();
-				}
+			synchronized (es) {
+				es.submit(new Runnable() {
+					@Override
+					public void run() {
+
+						LOG.info("CFL notifyTerminalBB {" + name + "}");
+						synchronized (BagOperatorHost.this) {
+							terminalBBReached = true;
+							if (outCFLSizes.isEmpty()) {
+								// azert kell elobb unsubscribe-olni, mint shutdown-olni, mert a olyankor is kapunk mindenfele
+								// broadcast jellegu notificationoket, amikor mi mar vegeztunk, de a tobbiek meg dolgoznak.
+								cflMan.unsubscribe(cb);
+								es.shutdown();
+							}
+						}
+
+					}
+				});
 			}
 		}
 
@@ -549,7 +557,6 @@ public class BagOperatorHost<IN, OUT>
 				es.submit(new Runnable() {
 					@Override
 					public void run() {
-
 						synchronized (BagOperatorHost.this) {
 							if (opID == BagOperatorHost.this.opID || opID == CFLManager.CloseInputBag.emptyBag) {
 								assert !notifyCloseInputs.contains(bagID);

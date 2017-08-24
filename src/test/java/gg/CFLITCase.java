@@ -83,4 +83,17 @@ public class CFLITCase {
         nocfl.ClickCountDiffs.main(new String[]{"/tmp/ClickCountITCase/" + size, Integer.toString(nocflNumDays)});
         ClickCountDiffsInputGen.checkNocflOut(path, nocflNumDays, exp);
     }
+
+//    @Test()
+//    public void debug() throws Exception {
+//        for(int i=0; i<100; i++) {
+//            LabyNode.labyNodes.clear();
+//            try {
+//                //gg.jobs.NoCF.main(null);
+//                ConnectedComponentsMB.main(new String[]{});
+//            } catch (JobCancellationException ex) {
+//                //ok
+//            }
+//        }
+//    }
 }
