@@ -27,7 +27,7 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
     private final TypeInformation<ElementOrEvent<T>> typeInfo;
 
     public LabySource(DataStream<T> inputStream, int bbId, TypeInformation<ElementOrEvent<T>> typeInfo) {
-        assert bbId == 0; // ezt majd akkor lehet kivenni, hogyha megcsinaltam, hogy a Bagify tudjon tobbszor kuldeni (ez ugyebar kelleni fog a PageRank-hez)
+        assert bbId == 0; // ezt majd akkor lehet kivenni, hogyha megcsinaltam, hogy a Bagify tudjon tobbszor kuldeni (bar ezt kozben maskepp csinalom, ld. CFAwareFileSource)
         this.bbId = bbId;
         this.opID = labyNodes.size();
         this.inputStream = inputStream;

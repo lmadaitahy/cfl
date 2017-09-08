@@ -18,7 +18,7 @@ import java.util.Arrays;
 // Ezt most egyelore felbehagyom, es inkabb a wordcount-ot rakom be az inner loop helyett
 
 
-public class PageRank {
+public class PageRankDiffs {
 
 	public static void main(String[] args) throws Exception {
 		ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
