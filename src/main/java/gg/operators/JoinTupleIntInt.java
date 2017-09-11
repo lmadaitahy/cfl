@@ -13,7 +13,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
  */
 public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> implements ReusingBagOperator {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JoinTupleIntInt.class);
+//    private static final Logger LOG = LoggerFactory.getLogger(JoinTupleIntInt.class);
 
     private Int2ObjectOpenHashMap<IntArrayList> ht;
     private SerializedBuffer<TupleIntInt> probeBuffered;
@@ -75,7 +75,7 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
         super.closeInBag(inputId);
         if (inputId == 0) { // build side
             assert !buildDone;
-            LOG.info("Build side finished");
+//            LOG.info("Build side finished");
             buildDone = true;
             for (TupleIntInt e: probeBuffered) {
                 probe(e);
@@ -86,7 +86,7 @@ public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntI
         } else { // probe side
             assert inputId == 1;
             assert !probeDone;
-            LOG.info("Probe side finished");
+//            LOG.info("Probe side finished");
             probeDone = true;
             if (buildDone) {
                 out.closeBag();

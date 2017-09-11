@@ -11,7 +11,7 @@ import java.io.UnsupportedEncodingException;
 
 public class FileSink<T> extends BagOperator<T, Unit> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Print.class);
+//    private static final Logger LOG = LoggerFactory.getLogger(Print.class);
 
     private final String path;
     protected PrintWriter writer;

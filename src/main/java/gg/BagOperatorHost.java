@@ -32,7 +32,7 @@ public class BagOperatorHost<IN, OUT>
 			NoAutoClose,
 			Serializable {
 
-	private static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
+//	private static final Logger LOG = LoggerFactory.getLogger(BagOperatorHost.class);
 
 	protected BagOperator<IN,OUT> op;
 	public int bbId;
@@ -124,7 +124,7 @@ public class BagOperatorHost<IN, OUT>
 
 		this.subpartitionId = (short)getRuntimeContext().getIndexOfThisSubtask();
 
-		//LOG.info("subpartitionId [" + name + "]: " + subpartitionId);
+//		//LOG.info("subpartitionId [" + name + "]: " + subpartitionId);
 
 		if (inputParallelism == -1) {
 			throw new RuntimeException("inputParallelism is not set. Use bt instead of transform!");
@@ -191,16 +191,16 @@ public class BagOperatorHost<IN, OUT>
 	private void notifyLogStart() {
 		if (shouldLogStart) {
 			shouldLogStart = false;
-			if (CFLConfig.logStartEnd) {
-				LOG.info("=== " + System.currentTimeMillis() + " S " + outCFLSizes.peek() + " " + opID * getMul());
-			}
+//			if (CFLConfig.logStartEnd) {
+//				LOG.info("=== " + System.currentTimeMillis() + " S " + outCFLSizes.peek() + " " + opID * getMul());
+//			}
 		}
 	}
 
 	@Override
 	synchronized public void processElement(StreamRecord<ElementOrEvent<IN>> streamRecord) throws Exception {
 
-		if (CFLConfig.vlog) LOG.info("Operator {" + name + "}[" + subpartitionId +"] processElement " + streamRecord.getValue());
+//		if (CFLConfig.vlog) LOG.info("Operator {" + name + "}[" + subpartitionId +"] processElement " + streamRecord.getValue());
 
 		ElementOrEvent<IN> eleOrEvent = streamRecord.getValue();
 		if (inputs.size() == 1) {
@@ -285,9 +285,9 @@ public class BagOperatorHost<IN, OUT>
 				o.closeBag();
 			}
 
-			if (CFLConfig.logStartEnd) {
-				LOG.info("=== " + System.currentTimeMillis() + " E " + outCFLSizes.peek() + " " + opID * getMul());
-			}
+//			if (CFLConfig.logStartEnd) {
+//				LOG.info("=== " + System.currentTimeMillis() + " E " + outCFLSizes.peek() + " " + opID * getMul());
+//			}
 
 			ArrayList<BagID> inputBagIDs = new ArrayList<>();
 			for (Input inp: inputs) {
@@ -322,14 +322,20 @@ public class BagOperatorHost<IN, OUT>
 			outCFLSizesRemove();
 			workInProgress = false;
 			if(outCFLSizes.size() > 0) { // ha van jelenleg varakozo munka
-				if (CFLConfig.vlog) LOG.info("Out.closeBag starting a new out bag {" + name + "}");
+//				if (CFLConfig.vlog) LOG.info("Out.closeBag starting a new out bag {" + name + "}");
 				// Note: ettol el fog dobodni az Outok buffere, de ez nem baj, mert aminek el kellett mennie az mar elment
 				startOutBagCheckBarrier();
 			} else {
-				if (CFLConfig.vlog) LOG.info("Out.closeBag not starting a new out bag {" + name + "}");
+//				if (CFLConfig.vlog) LOG.info("Out.closeBag not starting a new out bag {" + name + "}");
 				if (terminalBBReached) { // ha nincs jelenleg varakozo munka es mar nem is jon tobb
 					cflMan.unsubscribe(cb);
 					es.shutdown();
+
+					//
+					inputs = null;
+					outs = null;
+					//
+
 				}
 			}
 		}
@@ -366,10 +372,10 @@ public class BagOperatorHost<IN, OUT>
 			assert !outCFLSizes.isEmpty();
 			int outCFLSize = outCFLSizes.peek();
 			if (outCFLSize <= barrierAllReachedCFLSize + 1) {
-				if (CFLConfig.vlog) LOG.info("startOutBagCheckBarrier starting a bag. {" + name + "} outCFLSize = " + outCFLSize + ", barrierAllReachedCFLSize + 1 = " + (barrierAllReachedCFLSize + 1));
+//				if (CFLConfig.vlog) LOG.info("startOutBagCheckBarrier starting a bag. {" + name + "} outCFLSize = " + outCFLSize + ", barrierAllReachedCFLSize + 1 = " + (barrierAllReachedCFLSize + 1));
 				startOutBag();
 			} else {
-				if (CFLConfig.vlog) LOG.info("startOutBagCheckBarrier not starting a bag. {" + name + "} outCFLSize = " + outCFLSize + ", barrierAllReachedCFLSize + 1 = " + (barrierAllReachedCFLSize + 1));
+//				if (CFLConfig.vlog) LOG.info("startOutBagCheckBarrier not starting a bag. {" + name + "} outCFLSize = " + outCFLSize + ", barrierAllReachedCFLSize + 1 = " + (barrierAllReachedCFLSize + 1));
 			}
 		}
 	}
@@ -505,7 +511,7 @@ public class BagOperatorHost<IN, OUT>
 						synchronized (BagOperatorHost.this) {
 							latestCFL = cfl;
 
-							if (CFLConfig.vlog) LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
+//							if (CFLConfig.vlog) LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
 
 							// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
 							// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
@@ -519,8 +525,8 @@ public class BagOperatorHost<IN, OUT>
 							if (!workInProgress && hasAdded) {
 								startOutBagCheckBarrier();
 							} else {
-								if (CFLConfig.vlog)
-									LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because workInProgress=" + workInProgress + ", hasAdded=" + hasAdded + ", outCFLSizes.size()=" + outCFLSizes.size());
+//								if (CFLConfig.vlog)
+//									LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because workInProgress=" + workInProgress + ", hasAdded=" + hasAdded + ", outCFLSizes.size()=" + outCFLSizes.size());
 							}
 						}
 					}
@@ -537,7 +543,7 @@ public class BagOperatorHost<IN, OUT>
 					@Override
 					public void run() {
 
-						LOG.info("CFL notifyTerminalBB {" + name + "}");
+//						LOG.info("CFL notifyTerminalBB {" + name + "}");
 						synchronized (BagOperatorHost.this) {
 							terminalBBReached = true;
 							if (outCFLSizes.isEmpty()) {
@@ -593,10 +599,10 @@ public class BagOperatorHost<IN, OUT>
 			synchronized (BagOperatorHost.this) {
 				assert CFLManager.barrier;
 				barrierAllReachedCFLSize = cflSize;
-				if (CFLConfig.vlog) LOG.info("notifyBarrierAllReached {" + name + "} cflSize = " + cflSize + ", workInProgress = " + workInProgress);
+//				if (CFLConfig.vlog) LOG.info("notifyBarrierAllReached {" + name + "} cflSize = " + cflSize + ", workInProgress = " + workInProgress);
 				if (!workInProgress) {
 					if (!outCFLSizes.isEmpty()) {
-						if (CFLConfig.vlog) LOG.info("notifyBarrierAllReached {" + name + "} calling startOutBagCheckBarrier");
+//						if (CFLConfig.vlog) LOG.info("notifyBarrierAllReached {" + name + "} calling startOutBagCheckBarrier");
 						startOutBagCheckBarrier();
 					}
 				}
@@ -786,7 +792,7 @@ public class BagOperatorHost<IN, OUT>
 			if (!sentStart[part]) {
 				sendStart(part);
 			}
-			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending element to " + part + ": " + new ElementOrEvent<>(subpartitionId, e, splitId, part));
+//			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending element to " + part + ": " + new ElementOrEvent<>(subpartitionId, e, splitId, part));
 
 			//output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
 			output.collect(reuseStreamRecord.replace(reuseEleOrEvent.replace(subpartitionId, e, splitId, part), 0));
@@ -810,12 +816,12 @@ public class BagOperatorHost<IN, OUT>
 		private void sendStart(short part) {
 			sentStart[part] = true;
 			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.START, partitioner.targetPara, new BagID(outCFLSize, opID));
-			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending START to " + part + ": " + new ElementOrEvent<>(subpartitionId, event, splitId, part));
+//			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending START to " + part + ": " + new ElementOrEvent<>(subpartitionId, event, splitId, part));
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, part), 0));
 		}
 
 		private void sendEnd(short part) {
-			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending END to " + part);
+//			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending END to " + part);
 			ElementOrEvent.Event event = new ElementOrEvent.Event(ElementOrEvent.Event.Type.END, partitioner.targetPara, new BagID(outCFLSize, opID));
 			output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, event, splitId, part), 0));
 		}

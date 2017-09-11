@@ -8,8 +8,6 @@ import java.util.HashMap;
 
 public class GroupBy0Min1 extends BagOperator<Tuple2<Integer, Integer>, Tuple2<Integer, Integer>> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(GroupBy0Min1.class);
-
     private HashMap<Integer, Integer> hm;
 
     @Override

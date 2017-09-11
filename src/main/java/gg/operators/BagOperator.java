@@ -10,7 +10,7 @@ import java.io.Serializable;
 
 public abstract class BagOperator<IN, OUT> implements Serializable {
 
-	private static final Logger LOG = LoggerFactory.getLogger(BagOperator.class);
+//	private static final Logger LOG = LoggerFactory.getLogger(BagOperator.class);
 
 	protected BagOperatorOutputCollector<OUT> out;
 
@@ -25,7 +25,7 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 	}
 
 	public void openInBag(int logicalInputId) {
-		if (CFLConfig.vlog) LOG.info("openInBag[" + name + "]: logicalInputId: " + logicalInputId);
+//		if (CFLConfig.vlog) LOG.info("openInBag[" + name + "]: logicalInputId: " + logicalInputId);
 		assert !open[logicalInputId];
 		open[logicalInputId] = true;
 	}
@@ -40,17 +40,17 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 
 
 	public void openOutBag() {
-		if (CFLConfig.vlog) LOG.info("openOutBag[" + name + "]");
+//		if (CFLConfig.vlog) LOG.info("openOutBag[" + name + "]");
 	}
 
 	public void pushInElement(IN e, int logicalInputId) {
-		if (CFLConfig.vlog) LOG.info("pushInElement[" + name + "]: e: " + e + " logicalInputId: " + logicalInputId);
+//		if (CFLConfig.vlog) LOG.info("pushInElement[" + name + "]: e: " + e + " logicalInputId: " + logicalInputId);
 		assert open[logicalInputId];
 	}
 
 	// Warning: Overriding methods should pay attention to closing the out bag.
 	public void closeInBag(int inputId) {
-		if (CFLConfig.vlog) LOG.info("closeInBag[" + name + "]: inputId: " + inputId);
+//		if (CFLConfig.vlog) LOG.info("closeInBag[" + name + "]: inputId: " + inputId);
 		assert open[inputId];
 		open[inputId] = false;
 	}

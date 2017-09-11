@@ -9,7 +9,7 @@ import java.util.HashMap;
 
 public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Integer,Integer>> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Join.class);
+//    private static final Logger LOG = LoggerFactory.getLogger(Join.class);
 
     private HashMap<Integer, Integer> ht;
     private ArrayList<Tuple2<Integer, Integer>> probeBuffered;
@@ -53,7 +53,7 @@ public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Inte
         super.closeInBag(inputId);
         if (inputId == 0) { // build side
             assert !buildDone;
-            LOG.info("Build side finished");
+//            LOG.info("Build side finished");
             buildDone = true;
             for (Tuple2<Integer, Integer> e: probeBuffered) {
                 probe(e);
@@ -64,7 +64,7 @@ public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Inte
         } else { // probe side
             assert inputId == 1;
             assert !probeDone;
-            LOG.info("Probe side finished");
+//            LOG.info("Probe side finished");
             probeDone = true;
             if (buildDone) {
                 emitAndClose();
@@ -81,7 +81,7 @@ public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Inte
         for (HashMap.Entry e: ht.entrySet()) {
             out.collectElement(Tuple2.of((Integer)e.getKey(), (Integer)e.getValue()));
         }
-        LOG.info("buildCnt: " + buildCnt + ", probeCnt: " + probeCnt);
+//        LOG.info("buildCnt: " + buildCnt + ", probeCnt: " + probeCnt);
         out.closeBag();
     }
 }

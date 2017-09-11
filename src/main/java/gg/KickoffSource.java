@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 // that these calls to the CFLManager happen on the TMs.
 public class KickoffSource implements SourceFunction<Unit> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(KickoffSource.class);
+//	private static final Logger LOG = LoggerFactory.getLogger(KickoffSource.class);
 
 	private final int[] kickoffBBs;
 	private int terminalBBId = -2;
@@ -25,7 +25,7 @@ public class KickoffSource implements SourceFunction<Unit> {
 
 	@Override
 	public void run(SourceContext sourceContext) throws Exception {
-		LOG.info("KickoffSource kicking off");
+//		LOG.info("KickoffSource kicking off");
 		CFLManager cflManager = CFLManager.getSing();
 
 		//cflManager.resetCFL(); // Ezt atmozgattam a TaskManager.scala-ba

@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 
 public class ConditionNode extends SingletonBagOperator<Boolean, Unit> {
 
-	protected static final Logger LOG = LoggerFactory.getLogger(ConditionNode.class);
+//	protected static final Logger LOG = LoggerFactory.getLogger(ConditionNode.class);
 
 	private final int[] trueBranchBbIds;
 	private final int[] falseBranchBbIds;

@@ -11,7 +11,7 @@ import java.io.Serializable;
 
 public class PhiNode<T> extends BagOperatorHost<T,T> implements Serializable {
 
-	protected static final Logger LOG = LoggerFactory.getLogger(PhiNode.class);
+//	protected static final Logger LOG = LoggerFactory.getLogger(PhiNode.class);
 
 	public PhiNode(int bbId, int opID, TypeSerializer<T> inSer) {
 		super(new IdMap<T>(), bbId, opID, inSer);

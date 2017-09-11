@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 
 public class Print<T> extends BagOperator<T, Unit> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Print.class);
+//    private static final Logger LOG = LoggerFactory.getLogger(Print.class);
 
     private final String name;
 
@@ -17,7 +17,7 @@ public class Print<T> extends BagOperator<T, Unit> {
     @Override
     public void pushInElement(T e, int logicalInputId) {
         super.pushInElement(e, logicalInputId);
-        LOG.info("Print("+name+") element: " + e);
+//        LOG.info("Print("+name+") element: " + e);
     }
 
     @Override

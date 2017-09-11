@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 
 public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Join.class);
+//    private static final Logger LOG = LoggerFactory.getLogger(Join.class);
 
     private Int2IntOpenHashMap ht; // TODO: use fastutils
     private SerializedBuffer<TupleIntInt> probeBuffered;
@@ -59,7 +59,7 @@ public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt>
         super.closeInBag(inputId);
         if (inputId == 0) { // build side
             assert !buildDone;
-            LOG.info("Build side finished");
+//            LOG.info("Build side finished");
             buildDone = true;
             for (TupleIntInt e: probeBuffered) {
                 probe(e);
@@ -70,7 +70,7 @@ public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt>
         } else { // probe side
             assert inputId == 1;
             assert !probeDone;
-            LOG.info("Probe side finished");
+//            LOG.info("Probe side finished");
             probeDone = true;
             if (buildDone) {
                 emitAndClose();
@@ -90,7 +90,7 @@ public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt>
                 out.collectElement(TupleIntInt.of(e.getIntKey(), e.getIntValue()));
             }
         });
-        LOG.info("buildCnt: " + buildCnt + ", probeCnt: " + probeCnt);
+//        LOG.info("buildCnt: " + buildCnt + ", probeCnt: " + probeCnt);
         out.closeBag();
     }
 }
