@@ -20,7 +20,6 @@ import gg.operators.SumCombiner;
 import gg.partitioners.Always0;
 import gg.partitioners.Forward;
 import gg.partitioners.IntegerBy0;
-import gg.partitioners.Random;
 import gg.partitioners.RoundRobin;
 import gg.partitioners.TupleIntIntBy0;
 import gg.util.TupleIntInt;
@@ -117,37 +116,51 @@ public class ClickCountDiffs {
                 }, 1, new IntegerBy0(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
                 .addInput(visits_1, true, false);
 
-        LabyNode<TupleIntInt, TupleIntInt> joinedWithAttrs =
+//        LabyNode<TupleIntInt, TupleIntInt> joinedWithAttrs =
+//                new LabyNode<>("joinedWithAttrs", new JoinTupleIntInt() {
+//                    @Override
+//                    protected void udf(int b, TupleIntInt p) {
+//                        out.collectElement(TupleIntInt.of(p.f0, b));
+//                    }
+//                }, 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(pageAttributes, false)
+//                .addInput(visits_1_tupleized, true, false);
+//
+//        LabyNode<TupleIntInt, TupleIntInt> visits_2 =
+//                new LabyNode<>("visits_2", new FlatMap<TupleIntInt, TupleIntInt>() {
+//                    @Override
+//                    public void pushInElement(TupleIntInt e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        if (e.f1 == 0) {
+//                            out.collectElement(e);
+//                        }
+//                    }
+//                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(joinedWithAttrs, true, false);
+//
+//        LabyNode<TupleIntInt, TupleIntInt> clicksMapped =
+//                new LabyNode<>("clicksMapped", new FlatMap<TupleIntInt, TupleIntInt>() {
+//                    @Override
+//                    public void pushInElement(TupleIntInt e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        out.collectElement(TupleIntInt.of(e.f0, 1));
+//                    }
+//                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(visits_2, true, false);
+
+        // The previous three operators merged into one
+        LabyNode<TupleIntInt, TupleIntInt> clicksMapped =
                 new LabyNode<>("joinedWithAttrs", new JoinTupleIntInt() {
                     @Override
                     protected void udf(int b, TupleIntInt p) {
-                        out.collectElement(TupleIntInt.of(p.f0, b));
+                        if (b == 0) {
+                            out.collectElement(TupleIntInt.of(p.f0, 1));
+                        }
                     }
                 }, 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
                 .addInput(pageAttributes, false)
                 .addInput(visits_1_tupleized, true, false);
 
-        LabyNode<TupleIntInt, TupleIntInt> visits_2 =
-                new LabyNode<>("visits_2", new FlatMap<TupleIntInt, TupleIntInt>() {
-                    @Override
-                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        if (e.f1 == 0) {
-                            out.collectElement(e);
-                        }
-                    }
-                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(joinedWithAttrs, true, false);
-
-        LabyNode<TupleIntInt, TupleIntInt> clicksMapped =
-                new LabyNode<>("clicksMapped", new FlatMap<TupleIntInt, TupleIntInt>() {
-                    @Override
-                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        out.collectElement(TupleIntInt.of(e.f0, 1));
-                    }
-                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(visits_2, true, false);
 
         LabyNode<TupleIntInt, TupleIntInt> counts =
                 new LabyNode<>("counts", new GroupBy0Sum1TupleIntInt(), 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
@@ -172,39 +185,29 @@ public class ClickCountDiffs {
         // -- then branch   BB 2
 
         // The join of joinedYesterday is merged into this operator
-        LabyNode<TupleIntInt, TupleIntInt> diffs =
-                new LabyNode<>("diffs", new OuterJoinTupleIntInt() {
+        LabyNode<TupleIntInt, Integer> diffs =
+                new LabyNode<>("diffs", new OuterJoinTupleIntInt<Integer>() {
                     @Override
                     protected void inner(int b, TupleIntInt p) {
-                        out.collectElement(TupleIntInt.of(p.f0, Math.abs(b - p.f1)));
+                        out.collectElement(Math.abs(b - p.f1));
                     }
 
                     @Override
                     protected void right(TupleIntInt p) {
-                        out.collectElement(p);
+                        out.collectElement(p.f1);
                     }
 
                     @Override
                     protected void left(int b) {
-                        out.collectElement(TupleIntInt.of(-1, b));
+                        out.collectElement(b);
                     }
-                }, 2, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+                }, 2, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
                 .addInput(yesterdayCounts_2, false, true)
                 .addInput(counts, false, true);
 
-        LabyNode<TupleIntInt, Integer> diffsInt =
-                new LabyNode<>("diffsInt", new FlatMap<TupleIntInt, Integer>() {
-                    @Override
-                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        out.collectElement(e.f1);
-                    }
-                }, 2, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-                .addInput(diffs, true, false);
-
         LabyNode<Integer, Integer> sumCombiner =
                 new LabyNode<>("sumCombiner", new SumCombiner(), 2, new Forward<>(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-                .addInput(diffsInt, true, false);
+                .addInput(diffs, true, false);
 
         LabyNode<Integer, Integer> sum =
                 new LabyNode<>("sum", new Sum(), 2, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))

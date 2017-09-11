@@ -15,7 +15,7 @@ import java.util.function.Consumer;
  * Joins (key,b) (build) with (key,c) (probe), giving (b, key, c) to the udf.
  * The first input is the build side.
  */
-public abstract class OuterJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> implements ReusingBagOperator {
+public abstract class OuterJoinTupleIntInt<T> extends BagOperator<TupleIntInt, T> implements ReusingBagOperator {
 
     private static final Logger LOG = LoggerFactory.getLogger(OuterJoinTupleIntInt.class);
 
