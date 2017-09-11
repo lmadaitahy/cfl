@@ -555,12 +555,12 @@ public class BagOperatorHost<IN, OUT>
 
 		@Override
 		public void notifyCloseInput(BagID bagID, int opID) {
-			synchronized (es) {
-				es.submit(new Runnable() {
-					@Override
-					public void run() {
-						synchronized (BagOperatorHost.this) {
-							if (opID == BagOperatorHost.this.opID || opID == CFLManager.CloseInputBag.emptyBag) {
+			if (opID == BagOperatorHost.this.opID || opID == CFLManager.CloseInputBag.emptyBag) {
+				synchronized (es) {
+					es.submit(new Runnable() {
+						@Override
+						public void run() {
+							synchronized (BagOperatorHost.this) {
 								assert !notifyCloseInputs.contains(bagID);
 								notifyCloseInputs.add(bagID);
 
@@ -583,9 +583,8 @@ public class BagOperatorHost<IN, OUT>
 								}
 							}
 						}
-
-					}
-				});
+					});
+				}
 			}
 		}
 
