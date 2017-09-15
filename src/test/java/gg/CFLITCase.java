@@ -64,7 +64,7 @@ public class CFLITCase {
         int size = 100000;
         int numDays = 30;
 
-        path = ClickCountDiffsInputGen.generate(size, numDays, path, new Random(1234));
+        path = ClickCountDiffsInputGen.generate(size, numDays, path, new Random(1234), 0.01);
 
         boolean exceptionReceived = false;
         try {

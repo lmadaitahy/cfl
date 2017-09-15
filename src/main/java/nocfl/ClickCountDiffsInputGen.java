@@ -17,14 +17,13 @@ public class ClickCountDiffsInputGen {
      */
     public static void main(String[] args) throws Exception {
         final String pref = args[0] + "/";
-        generate(Integer.parseInt(args[1]), 365, pref, new Random());
+        generate(Integer.parseInt(args[1]), 365, pref, new Random(), Double.parseDouble(args[2]));
     }
 
-    public static String generate(int numProducts, int numDays, String pref, Random rnd) throws IOException {
+    public static String generate(int numProducts, int numDays, String pref, Random rnd, double clicksPerDayRatio) throws IOException {
 
         pref = pref + Integer.toString(numProducts) + "/";
 
-        final double clicksPerDayRatio = 1.0 / 100;
         final int numClicksPerDay = (int)(numProducts * clicksPerDayRatio);
 
         final String pageAttributesFile = pref + "in/pageAttributes.tsv";
