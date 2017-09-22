@@ -70,13 +70,6 @@ public class ClickCountDiffs {
 
 				DataSet<Tuple2<IntValue, IntValue>> yesterdayCounts = env.readCsvFile(yesterdayCountsTmpFilename).types(IntValue.class, IntValue.class);
 
-//				DataSet<Tuple1<Integer>> diffs = counts.join(yesterdayCounts).where(0).equalTo(0).with(new JoinFunction<Tuple2<Integer,Integer>, Tuple2<Integer,Integer>, Tuple1<Integer>>() {
-//					@Override
-//					public Tuple1<Integer> join(Tuple2<Integer, Integer> first, Tuple2<Integer, Integer> second) throws Exception {
-//						return Tuple1.of(Math.abs(first.f1 - second.f1));
-//					}
-//				});
-
 				DataSet<Tuple1<IntValue>> diffs = counts.fullOuterJoin(yesterdayCounts).where(0).equalTo(0).with(new JoinFunction<Tuple2<IntValue,IntValue>, Tuple2<IntValue,IntValue>, Tuple1<IntValue>>() {
 
 					Tuple2<IntValue, IntValue> nulla = Tuple2.of(new IntValue(0),new IntValue(0));
