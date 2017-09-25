@@ -2,7 +2,7 @@ package gg;
 
 import gg.jobs.ClickCountDiffs;
 import gg.jobsold.*;
-import nocfl.ClickCountDiffsInputGen;
+import inputgen.ClickCountDiffsInputGen;
 import org.apache.commons.io.FileUtils;
 import org.apache.flink.runtime.client.JobCancellationException;
 import org.junit.Test;

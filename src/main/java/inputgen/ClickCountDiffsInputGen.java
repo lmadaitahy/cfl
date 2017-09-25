@@ -1,4 +1,4 @@
-package nocfl;
+package inputgen;
 
 import java.io.File;
 import java.io.FileWriter;
