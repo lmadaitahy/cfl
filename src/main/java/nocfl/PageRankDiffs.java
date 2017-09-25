@@ -40,7 +40,7 @@ public class PageRankDiffs {
 		env.getConfig().enableObjectReuse();
 
 		final double d = 0.85;
-		final double epsilon = 0.0001;
+		final double epsilon = 0.001;
 
 		String pref = args[0] + "/";
 		final String yesterdayPRTmpFilename = pref + "tmp/yesterdayCounts";
@@ -50,7 +50,7 @@ public class PageRankDiffs {
 
 			LOG.info("### Day " + day);
 
-			DataSet<Tuple2<IntValue, IntValue>> edges = env.readCsvFile("clickLog" + day)
+			DataSet<Tuple2<IntValue, IntValue>> edges = env.readCsvFile(pref + "/input/" + day)
 					.fieldDelimiter("\t")
 					.lineDelimiter("\n")
 					.types(IntValue.class, IntValue.class);
@@ -88,13 +88,19 @@ public class PageRankDiffs {
 				}
 			}).distinct();
 
-			DataSet<Tuple1<IntValue>> numPages = pages.map(new MapFunction<IntValue, Tuple1<IntValue>>() {
+			DataSet<Double> initWeight = pages.map(new MapFunction<IntValue, Tuple1<IntValue>>() {
 				Tuple1<IntValue> reuse = Tuple1.of(new IntValue(1));
 				@Override
 				public Tuple1<IntValue> map(IntValue value) throws Exception {
 					return reuse;
 				}
-			}).sum(0);
+			}).sum(0)
+			.map(new MapFunction<Tuple1<IntValue>, Double>() {
+				@Override
+				public Double map(Tuple1<IntValue> value) throws Exception {
+					return 1.0d / value.f0.getValue();
+				}
+			});
 
 			DataSet<Tuple2<IntValue, DoubleValue>> initPR = pages.map(new RichMapFunction<IntValue, Tuple2<IntValue, DoubleValue>>() {
 
@@ -105,10 +111,9 @@ public class PageRankDiffs {
 				@Override
 				public void open(Configuration parameters) throws Exception {
 					super.open(parameters);
-					List<IntValue> bv = getRuntimeContext().getBroadcastVariable("numPages");
+					List<Double> bv = getRuntimeContext().getBroadcastVariable("initWeight");
 					assert bv.size() == 1;
-					int numPages = bv.get(0).getValue();
-					initWeight = 1.0d / numPages;
+					initWeight = bv.get(0);
 				}
 
 				@Override
@@ -118,7 +123,7 @@ public class PageRankDiffs {
 					return reuse;
 				}
 
-			}).withBroadcastSet(numPages, "numPages");
+			}).withBroadcastSet(initWeight, "initWeight");
 
 			// --- PageRank Iteration ---
 
@@ -148,10 +153,9 @@ public class PageRankDiffs {
 				@Override
 				public void open(Configuration parameters) throws Exception {
 					super.open(parameters);
-					List<IntValue> bv = getRuntimeContext().getBroadcastVariable("numPages");
+					List<Double> bv = getRuntimeContext().getBroadcastVariable("initWeight");
 					assert bv.size() == 1;
-					int numPages = bv.get(0).getValue();
-					jump  = (1-d) * numPages;
+					jump  = (1-d) * bv.get(0);
 				}
 
 				@Override
@@ -161,13 +165,13 @@ public class PageRankDiffs {
 					if (first == null) {
 						return second;
 					} else {
-						// d * newrank + (1-d) * numPages)
+						// d * newrank + (1-d) * initWeight)
 						reuse.f0.setValue(first.f0);
 						reuse.f1.setValue(d * first.f1.getValue() + jump);
 						return reuse;
 					}
 				}
-			}).withBroadcastSet(numPages, "numPages");
+			}).withBroadcastSet(initWeight, "initWeight");
 
 			DataSet<Tuple1<DoubleValue>> termCrit = newPR.join(PR).where(0).equalTo(0)
 					.with(new JoinFunction<Tuple2<IntValue, DoubleValue>, Tuple2<IntValue, DoubleValue>, Tuple1<DoubleValue>>() {
@@ -181,6 +185,7 @@ public class PageRankDiffs {
 					.flatMap(new FlatMapFunction<Tuple1<DoubleValue>, Tuple1<DoubleValue>>() {
 						@Override
 						public void flatMap(Tuple1<DoubleValue> value, Collector<Tuple1<DoubleValue>> out) throws Exception {
+							System.out.println("=== Delta in PageRank: " + value.f0.getValue());
 							if (value.f0.getValue() > epsilon) {
 								out.collect(value);
 							}
@@ -195,29 +200,29 @@ public class PageRankDiffs {
 
 				DataSet<Tuple2<IntValue, DoubleValue>> yesterdayPR = env.readCsvFile(yesterdayPRTmpFilename).types(IntValue.class, DoubleValue.class);
 
-				DataSet<DoubleValue> diffs = finalPR.fullOuterJoin(yesterdayPR).where(0).equalTo(0).with(new JoinFunction<Tuple2<IntValue,DoubleValue>, Tuple2<IntValue,DoubleValue>, DoubleValue>() {
+				DataSet<Tuple1<DoubleValue>> diffs = finalPR.fullOuterJoin(yesterdayPR).where(0).equalTo(0).with(new JoinFunction<Tuple2<IntValue,DoubleValue>, Tuple2<IntValue,DoubleValue>, Tuple1<DoubleValue>>() {
 
 					Tuple2<IntValue, DoubleValue> nulla = Tuple2.of(new IntValue(), new DoubleValue());
 
-					DoubleValue reuse = new DoubleValue();
+					Tuple1<DoubleValue> reuse = Tuple1.of(new DoubleValue());
 
 					@Override
-					public DoubleValue join(Tuple2<IntValue, DoubleValue> first, Tuple2<IntValue, DoubleValue> second) throws Exception {
+					public Tuple1<DoubleValue> join(Tuple2<IntValue, DoubleValue> first, Tuple2<IntValue, DoubleValue> second) throws Exception {
 						if (first == null) {
 							first = nulla;
 						}
 						if (second == null) {
 							second = nulla;
 						}
-						reuse.setValue(Math.abs(first.f1.getValue() - second.f1.getValue()));
+						reuse.f0.setValue(Math.abs(first.f1.getValue() - second.f1.getValue()));
 						return reuse;
 					}
 				});
 
-				diffs.sum(0).map(new MapFunction<DoubleValue, String>() {
+				diffs.sum(0).map(new MapFunction<Tuple1<DoubleValue>, String>() {
 					@Override
-					public String map(DoubleValue dv) throws Exception {
-						return dv.toString();
+					public String map(Tuple1<DoubleValue> dv) throws Exception {
+						return dv.f0.toString();
 					}
 				}).setParallelism(1).writeAsText(pref + "out/expected/diff_" + day, FileSystem.WriteMode.OVERWRITE);
 			}

@@ -46,7 +46,7 @@ import java.util.Collections;
  *
  * yesterdayPR = null // the previous day's PageRank
  * d = 0.85 // damping factor
- * epsilon = 0.0001
+ * epsilon = 0.001
  * For day = 1 .. 365
  *   edges = readFile("click_log_" + day) // (from,to) pairs
  *   // Compute out-degrees and attach to edges
@@ -67,7 +67,7 @@ import java.util.Collections;
  *          if (newrank == null)
  *            (id, oldrank)
  *          else
- *            (id, d * newrank + (1-d) * numPages)) // apply the received msgs with damping
+ *            (id, d * newrank + (1-d) * initWeight)) // apply the received msgs with damping
  *     change = (newPR join PR).map((id, rank) => rank).sum() // Compute differences and sum them
  *     PR = newPR
  *   While (change > epsilon)
