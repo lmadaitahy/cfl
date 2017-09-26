@@ -76,12 +76,15 @@ public class BagOperatorHost<IN, OUT>
 
 	private ExecutorService es;
 
+	private final boolean reuseInputs;
+
 	public BagOperatorHost(BagOperator<IN,OUT> op, int bbId, int opID, TypeSerializer<IN> inSer) {
 		this.op = op;
 		this.bbId = bbId;
 		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
 		this.cflConfig = CFLConfig.getInstance();
+		this.reuseInputs = this.cflConfig.reuseInputs;
 		assert this.terminalBBId >= 0;
 		this.opID = opID;
 		this.inSer = inSer;
@@ -94,6 +97,7 @@ public class BagOperatorHost<IN, OUT>
 		this.inputs = new ArrayList<>();
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
 		this.cflConfig = CFLConfig.getInstance();
+		this.reuseInputs = this.cflConfig.reuseInputs;
 		assert this.terminalBBId >= 0;
 		this.opID = opID;
 		this.inSer = inSer;
@@ -443,7 +447,7 @@ public class BagOperatorHost<IN, OUT>
 
 		boolean reuse = false;
 		if (!inputUses.add(Tuple2.of(id, inputCFLSize))) {
-			if (op instanceof ReusingBagOperator) {
+			if (op instanceof ReusingBagOperator && this.reuseInputs) {
 				((ReusingBagOperator) op).signalReuse();
 				reuse = true;
 			}

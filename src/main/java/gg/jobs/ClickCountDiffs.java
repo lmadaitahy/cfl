@@ -60,6 +60,7 @@ public class ClickCountDiffs {
         PojoTypeInfo.registerCustomSerializer(TupleIntInt.class, TupleIntInt.TupleIntIntSerializer.class);
 
 
+        CFLConfig.getInstance().reuseInputs = Boolean.parseBoolean(args[2]);
         CFLConfig.getInstance().terminalBBId = 4;
         KickoffSource kickoffSrc = new KickoffSource(0, 1);
         env.addSource(kickoffSrc).addSink(new DiscardingSink<>());

@@ -36,6 +36,8 @@ public class CFLConfig implements Serializable {
     }
 
 
+    public boolean reuseInputs = true;
+
 
 
     public static final boolean vlog = false;
