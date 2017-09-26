@@ -22,6 +22,7 @@ import gg.partitioners.Forward;
 import gg.partitioners.IntegerBy0;
 import gg.partitioners.RoundRobin;
 import gg.partitioners.TupleIntIntBy0;
+import gg.util.TupleIntDouble;
 import gg.util.TupleIntInt;
 import gg.util.Unit;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -68,9 +69,9 @@ import java.util.Collections;
  *            (id, oldrank)
  *          else
  *            (id, d * newrank + (1-d) * initWeight)) // apply the received msgs with damping
- *     change = (newPR join PR).map((id, rank) => rank).sum() // Compute differences and sum them
+ *     totalChange = (newPR join PR).map((id, newRank, oldRank) => abs(newRank - oldRank)).sum() // Compute differences and sum them
  *     PR = newPR
- *   While (change > epsilon)
+ *   While (totalChange > epsilon)
  *   If (day != 1)
  *     diffs = (PR join yesterdayPR).map((id,today,yesterday) => abs(today - yesterday))
  *     printLine(diffs.sum)
@@ -78,6 +79,62 @@ import java.util.Collections;
  *   yesterdayPR = PR
  * End for
  *
+ * SSA:
+ *
+ * // BB 0
+ * yesterdayPR_1 = null // the previous day's PageRank
+ * d = 0.85 // damping factor
+ * epsilon = 0.001
+ * day_1 = 1
+ * Do
+ *   // BB 1
+ *   day_2 = phi(day_1, day_3)
+ *   yesterdayPR_2 = phi(yesterdayPR_1, yesterdayPR_3)
+ *   edges = readFile("click_log_" + day) // (from,to) pairs
+ *   edgesMapped = edges.map((from, to) => (from, 1))
+ *   edgesMappedReduced = edgesMapped.reduceByKey(_ + _)
+ *   edgesWithDeg = edgesMappedReduced.join(edges) // (from, to, degree) triples
+ *   // Get all pages and init PageRank computation
+ *   edgesFromMapped = edges.map(_.from)
+ *   edgesToMapped = edges.map(_.to)
+ *   pagesFromToUnioned = edgesFromMapped union edgesToMapped
+ *   pages = pagesFromToUnioned.distinct
+ *   numPages = pages.count
+ *   initWeight = 1.0 / numPages
+ *   PR_1 = pages.map(id => (id, initWeight))
+ *   Do
+ *     // BB 2
+ *     PR_2 = phi(PR_1, PR_3)
+ *     PR_2_Joined = PR_2.join(edgesWithDeg)
+ *     msgs = PR_2_Joined.map((from, to, degree, rank) => (to, rank/degree))
+ *     msgsReduced = msgs.reduceByKey(_ + _)
+ *     msgsJoined = msgsReduced.rightOuterJoin(PR)
+ *     newPR = msgsJoined.map((id, newrank, oldrank) =>
+ *       if (newrank == null)
+ *         (id, oldrank)
+ *       else
+ *         (id, d * newrank + (1-d) * initWeight))
+ *     newOldJoin = newPR join PR
+ *     changes = newOldJoin.map((id, newRank, oldRank) => abs(newRank - oldRank))
+ *     totalChange = changes.sum()
+ *     PR_3 = newPR
+ *     innerExitCond = totalChange > epsilon
+ *   While innerExitCond
+ *   // BB 3
+ *   ifCond = day_2 != 1
+ *   If (ifCond)
+ *     // BB 4
+ *     joinedYesterday = PR_3 join yesterdayPR_2
+ *     diffs = joinedYesterday.map((id,today,yesterday) => abs(today - yesterday))
+ *     summed = diffs.sum
+ *     printLine(summed)
+ *   End if
+ *   // BB 5
+ *   yesterdayPR_3 = PR_2
+ *   day_3 = day_2 + 1
+ *   outerExitCond = day_3 < 365
+ * While outerExitCond
+ * // BB 6
  */
 
 public class PageRankDiffs {
@@ -87,6 +144,7 @@ public class PageRankDiffs {
     private static TypeSerializer<Integer> integerSer = TypeInformation.of(Integer.class).createSerializer(new ExecutionConfig());
     private static TypeSerializer<Boolean> booleanSer = TypeInformation.of(Boolean.class).createSerializer(new ExecutionConfig());
     private static TypeSerializer<TupleIntInt> tupleIntIntSer = new TupleIntInt.TupleIntIntSerializer();
+    private static TypeSerializer<TupleIntDouble> tupleIntDoubleSer = new TupleIntDouble.TupleIntDoubleSerializer();
 
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
@@ -109,20 +167,8 @@ public class PageRankDiffs {
 
         // BB 0
 
-        DataStream<TupleIntInt> pageAttributesStream = env.createInput(new TupleCsvInputFormat<Tuple2<Integer, Integer>>(
-                new Path(pref + "in/pageAttributes.tsv"),"\n", "\t", typeInfoTupleIntInt), typeInfoTupleIntInt)
-                .map(new MapFunction<Tuple2<Integer, Integer>, TupleIntInt>() {
-            @Override
-            public TupleIntInt map(Tuple2<Integer, Integer> value) throws Exception {
-                return TupleIntInt.of(value.f0, value.f1);
-            }
-        });
-
-        LabySource<TupleIntInt> pageAttributes =
-                new LabySource<>(pageAttributesStream, 0, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}));
-
         @SuppressWarnings("unchecked")
-        LabySource<TupleIntInt> yesterdayCounts_1 =
+        LabySource<TupleIntInt> yesterdayPR_1 =
                 new LabySource<>(env.fromCollection(Collections.emptyList(), TypeInformation.of(TupleIntInt.class)), 0, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}));
 
         LabySource<Integer> day_1 =
@@ -131,159 +177,159 @@ public class PageRankDiffs {
 
         // -- Iteration starts here --   BB 1
 
-        LabyNode<TupleIntInt, TupleIntInt> yesterdayCounts_2 =
-                LabyNode.phi("yesterdayCounts_2", 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(yesterdayCounts_1, false);
-
-        LabyNode<Integer, Integer> day_2 =
-                LabyNode.phi("day_2", 1, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-                .addInput(day_1, false)
-                .setParallelism(1);
-
-        LabyNode<Integer, Integer> visits_1 =
-                new LabyNode<>("visits_1", new ClickLogReader(pref + "in/clickLog_"), 1, new RoundRobin<>(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-                        .addInput(day_2, true, false);
-                        //.setParallelism(1);
-
-        // The inputs of the join have to be the same type (because of the union stuff), so we add a dummy tuple element.
-        LabyNode<Integer, TupleIntInt> visits_1_tupleized =
-                new LabyNode<>("visits_1_tupleized", new FlatMap<Integer, TupleIntInt>() {
-                    @Override
-                    public void pushInElement(Integer e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        out.collectElement(TupleIntInt.of(e, -1));
-                    }
-                }, 1, new IntegerBy0(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(visits_1, true, false);
-
-        LabyNode<TupleIntInt, TupleIntInt> joinedWithAttrs =
-                new LabyNode<>("joinedWithAttrs", new JoinTupleIntInt() {
-                    @Override
-                    protected void udf(int b, TupleIntInt p) {
-                        out.collectElement(TupleIntInt.of(p.f0, b));
-                    }
-                }, 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(pageAttributes, false)
-                .addInput(visits_1_tupleized, true, false);
-
-        LabyNode<TupleIntInt, TupleIntInt> visits_2 =
-                new LabyNode<>("visits_2", new FlatMap<TupleIntInt, TupleIntInt>() {
-                    @Override
-                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        if (e.f1 == 0) {
-                            out.collectElement(e);
-                        }
-                    }
-                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(joinedWithAttrs, true, false);
-
-        LabyNode<TupleIntInt, TupleIntInt> clicksMapped =
-                new LabyNode<>("clicksMapped", new FlatMap<TupleIntInt, TupleIntInt>() {
-                    @Override
-                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        out.collectElement(TupleIntInt.of(e.f0, 1));
-                    }
-                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(visits_2, true, false);
-
-        LabyNode<TupleIntInt, TupleIntInt> counts =
-                new LabyNode<>("counts", new GroupBy0Sum1TupleIntInt(), 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(clicksMapped, true, false);
-
-        LabyNode<Integer, Boolean> notFirstDay =
-                new LabyNode<>("notFirstDay", new SingletonBagOperator<Integer, Boolean>() {
-                    @Override
-                    public void pushInElement(Integer e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        out.collectElement(!e.equals(1));
-                    }
-                }, 1, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
-                .addInput(day_2, true, false)
-                .setParallelism(1);
-
-        LabyNode<Boolean, Unit> ifCond =
-                new LabyNode<>("ifCond", new ConditionNode(new int[]{2,3}, new int[]{3}), 1, new Always0<>(1), booleanSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
-                .addInput(notFirstDay, true, false)
-                .setParallelism(1);
-
-        // -- then branch   BB 2
-
-        // The join of joinedYesterday is merged into this operator
-        LabyNode<TupleIntInt, TupleIntInt> diffs =
-                new LabyNode<>("diffs", new OuterJoinTupleIntInt() {
-                    @Override
-                    protected void inner(int b, TupleIntInt p) {
-                        out.collectElement(TupleIntInt.of(p.f0, Math.abs(b - p.f1)));
-                    }
-
-                    @Override
-                    protected void right(TupleIntInt p) {
-                        out.collectElement(p);
-                    }
-
-                    @Override
-                    protected void left(int b) {
-                        out.collectElement(TupleIntInt.of(-1, b));
-                    }
-                }, 2, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-                .addInput(yesterdayCounts_2, false, true)
-                .addInput(counts, false, true);
-
-        LabyNode<TupleIntInt, Integer> diffsInt =
-                new LabyNode<>("diffsInt", new FlatMap<TupleIntInt, Integer>() {
-                    @Override
-                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        out.collectElement(e.f1);
-                    }
-                }, 2, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-                .addInput(diffs, true, false);
-
-        LabyNode<Integer, Integer> sumCombiner =
-                new LabyNode<>("sumCombiner", new SumCombiner(), 2, new Forward<>(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-                .addInput(diffsInt, true, false);
-
-        LabyNode<Integer, Integer> sum =
-                new LabyNode<>("sum", new Sum(), 2, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-                .addInput(sumCombiner, true, false)
-                .setParallelism(1);
-
-        LabyNode<Integer, Unit> printSum =
-                new LabyNode<>("printSum", new CFAwareFileSink(pref + "out/diff_"), 2, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
-                .addInput(day_2, false, true)
-                .addInput(sum, true, false)
-                .setParallelism(1);
-
-        // -- end of then branch   BB 3
-
-        // (We "optimize away" yesterdayCounts_3, since it would be an IdMap)
-        yesterdayCounts_2.addInput(counts, false, true);
-
-        LabyNode<Integer, Integer> day_3 =
-                new LabyNode<>("day_3", new IncMap(), 3, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-                .addInput(day_2, false, false)
-                .setParallelism(1);
-
-        day_2.addInput(day_3, false, true);
-
-        LabyNode<Integer, Boolean> notLastDay =
-                new LabyNode<>("notLastDay", new SmallerThan(Integer.parseInt(args[1]) + 1), 3, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
-                .addInput(day_3, true, false)
-                .setParallelism(1);
-
-        LabyNode<Boolean, Unit> exitCond =
-                new LabyNode<>("exitCond", new ConditionNode(1, 4), 3, new Always0<>(1), booleanSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
-                .addInput(notLastDay, true, false)
-                .setParallelism(1);
-
-        // -- Iteration ends here   BB 4
-
-        // Itt nincs semmi operator. (A kiirast a BB 2-ben csinaljuk.)
-
-        LabyNode.translateAll();
-
-        env.execute();
+//        LabyNode<TupleIntInt, TupleIntInt> yesterdayCounts_2 =
+//                LabyNode.phi("yesterdayCounts_2", 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(yesterdayCounts_1, false);
+//
+//        LabyNode<Integer, Integer> day_2 =
+//                LabyNode.phi("day_2", 1, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
+//                .addInput(day_1, false)
+//                .setParallelism(1);
+//
+//        LabyNode<Integer, Integer> visits_1 =
+//                new LabyNode<>("visits_1", new ClickLogReader(pref + "in/clickLog_"), 1, new RoundRobin<>(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
+//                        .addInput(day_2, true, false);
+//                        //.setParallelism(1);
+//
+//        // The inputs of the join have to be the same type (because of the union stuff), so we add a dummy tuple element.
+//        LabyNode<Integer, TupleIntInt> visits_1_tupleized =
+//                new LabyNode<>("visits_1_tupleized", new FlatMap<Integer, TupleIntInt>() {
+//                    @Override
+//                    public void pushInElement(Integer e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        out.collectElement(TupleIntInt.of(e, -1));
+//                    }
+//                }, 1, new IntegerBy0(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(visits_1, true, false);
+//
+//        LabyNode<TupleIntInt, TupleIntInt> joinedWithAttrs =
+//                new LabyNode<>("joinedWithAttrs", new JoinTupleIntInt() {
+//                    @Override
+//                    protected void udf(int b, TupleIntInt p) {
+//                        out.collectElement(TupleIntInt.of(p.f0, b));
+//                    }
+//                }, 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(pageAttributes, false)
+//                .addInput(visits_1_tupleized, true, false);
+//
+//        LabyNode<TupleIntInt, TupleIntInt> visits_2 =
+//                new LabyNode<>("visits_2", new FlatMap<TupleIntInt, TupleIntInt>() {
+//                    @Override
+//                    public void pushInElement(TupleIntInt e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        if (e.f1 == 0) {
+//                            out.collectElement(e);
+//                        }
+//                    }
+//                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(joinedWithAttrs, true, false);
+//
+//        LabyNode<TupleIntInt, TupleIntInt> clicksMapped =
+//                new LabyNode<>("clicksMapped", new FlatMap<TupleIntInt, TupleIntInt>() {
+//                    @Override
+//                    public void pushInElement(TupleIntInt e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        out.collectElement(TupleIntInt.of(e.f0, 1));
+//                    }
+//                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(visits_2, true, false);
+//
+//        LabyNode<TupleIntInt, TupleIntInt> counts =
+//                new LabyNode<>("counts", new GroupBy0Sum1TupleIntInt(), 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(clicksMapped, true, false);
+//
+//        LabyNode<Integer, Boolean> notFirstDay =
+//                new LabyNode<>("notFirstDay", new SingletonBagOperator<Integer, Boolean>() {
+//                    @Override
+//                    public void pushInElement(Integer e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        out.collectElement(!e.equals(1));
+//                    }
+//                }, 1, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
+//                .addInput(day_2, true, false)
+//                .setParallelism(1);
+//
+//        LabyNode<Boolean, Unit> ifCond =
+//                new LabyNode<>("ifCond", new ConditionNode(new int[]{2,3}, new int[]{3}), 1, new Always0<>(1), booleanSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
+//                .addInput(notFirstDay, true, false)
+//                .setParallelism(1);
+//
+//        // -- then branch   BB 2
+//
+//        // The join of joinedYesterday is merged into this operator
+//        LabyNode<TupleIntInt, TupleIntInt> diffs =
+//                new LabyNode<>("diffs", new OuterJoinTupleIntInt() {
+//                    @Override
+//                    protected void inner(int b, TupleIntInt p) {
+//                        out.collectElement(TupleIntInt.of(p.f0, Math.abs(b - p.f1)));
+//                    }
+//
+//                    @Override
+//                    protected void right(TupleIntInt p) {
+//                        out.collectElement(p);
+//                    }
+//
+//                    @Override
+//                    protected void left(int b) {
+//                        out.collectElement(TupleIntInt.of(-1, b));
+//                    }
+//                }, 2, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
+//                .addInput(yesterdayCounts_2, false, true)
+//                .addInput(counts, false, true);
+//
+//        LabyNode<TupleIntInt, Integer> diffsInt =
+//                new LabyNode<>("diffsInt", new FlatMap<TupleIntInt, Integer>() {
+//                    @Override
+//                    public void pushInElement(TupleIntInt e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        out.collectElement(e.f1);
+//                    }
+//                }, 2, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
+//                .addInput(diffs, true, false);
+//
+//        LabyNode<Integer, Integer> sumCombiner =
+//                new LabyNode<>("sumCombiner", new SumCombiner(), 2, new Forward<>(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
+//                .addInput(diffsInt, true, false);
+//
+//        LabyNode<Integer, Integer> sum =
+//                new LabyNode<>("sum", new Sum(), 2, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
+//                .addInput(sumCombiner, true, false)
+//                .setParallelism(1);
+//
+//        LabyNode<Integer, Unit> printSum =
+//                new LabyNode<>("printSum", new CFAwareFileSink(pref + "out/diff_"), 2, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
+//                .addInput(day_2, false, true)
+//                .addInput(sum, true, false)
+//                .setParallelism(1);
+//
+//        // -- end of then branch   BB 3
+//
+//        // (We "optimize away" yesterdayCounts_3, since it would be an IdMap)
+//        yesterdayCounts_2.addInput(counts, false, true);
+//
+//        LabyNode<Integer, Integer> day_3 =
+//                new LabyNode<>("day_3", new IncMap(), 3, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
+//                .addInput(day_2, false, false)
+//                .setParallelism(1);
+//
+//        day_2.addInput(day_3, false, true);
+//
+//        LabyNode<Integer, Boolean> notLastDay =
+//                new LabyNode<>("notLastDay", new SmallerThan(Integer.parseInt(args[1]) + 1), 3, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
+//                .addInput(day_3, true, false)
+//                .setParallelism(1);
+//
+//        LabyNode<Boolean, Unit> exitCond =
+//                new LabyNode<>("exitCond", new ConditionNode(1, 4), 3, new Always0<>(1), booleanSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
+//                .addInput(notLastDay, true, false)
+//                .setParallelism(1);
+//
+//        // -- Iteration ends here   BB 4
+//
+//        // Itt nincs semmi operator. (A kiirast a BB 4-ben csinaljuk.)
+//
+//        LabyNode.translateAll();
+//
+//        env.execute();
     }
 }
