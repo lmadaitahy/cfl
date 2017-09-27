@@ -68,7 +68,7 @@ public class CFLITCase {
 
         boolean exceptionReceived = false;
         try {
-            ClickCountDiffs.main(new String[]{path, Integer.toString(numDays)});
+            ClickCountDiffs.main(new String[]{path, Integer.toString(numDays), "true"});
         } catch (JobCancellationException ex) {
             exceptionReceived = true;
         }
