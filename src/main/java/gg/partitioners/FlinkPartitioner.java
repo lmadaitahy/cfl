@@ -10,7 +10,10 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
  */
 public class FlinkPartitioner<T> extends StreamPartitioner<ElementOrEvent<T>> {
 
+    public static final short BROADCAST = -1;
+
     private final int[] arr = new int[1];
+    private int[] broadcastArr = null;
 
     @Override
     public StreamPartitioner<ElementOrEvent<T>> copy() {
@@ -19,8 +22,24 @@ public class FlinkPartitioner<T> extends StreamPartitioner<ElementOrEvent<T>> {
 
     @Override
     public int[] selectChannels(SerializationDelegate<StreamRecord<ElementOrEvent<T>>> record, int numChannels) {
-        arr[0] = record.getInstance().getValue().targetPart;
-        return arr;
+        short targetPart = record.getInstance().getValue().targetPart;
+        if (targetPart != BROADCAST) {
+            arr[0] = targetPart;
+            return arr;
+        } else {
+            return broadcast(numChannels);
+        }
+    }
+
+    private int[] broadcast(int numChannels) {
+        if (broadcastArr == null) {
+            broadcastArr = new int[numChannels];
+            for (int i=0; i<numChannels; i++) {
+                broadcastArr[i] = i;
+            }
+        }
+        assert broadcastArr.length == numChannels;
+        return broadcastArr;
     }
 
     @Override

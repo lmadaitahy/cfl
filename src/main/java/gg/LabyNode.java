@@ -3,7 +3,6 @@ package gg;
 import gg.operators.BagOperator;
 import gg.partitioners.Always0;
 import gg.partitioners.FlinkPartitioner;
-import gg.partitioners.Forward;
 import gg.partitioners.Partitioner;
 import gg.util.LogicalInputIdFiller;
 import gg.util.Util;
@@ -76,6 +75,16 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
         assert !(insideBlock && condOut); // This case is impossible, right?
         bagOpHost.addInput(inputs.size(), inputLabyNode.bagOpHost.bbId, insideBlock, inputLabyNode.bagOpHost.opID);
         int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, inputPartitioner);
+        inputs.add(new Input(inputLabyNode, splitID, inputs.size()));
+        return this;
+    }
+
+    // This overload is when your operator needs different partitioners on different inputs
+    public LabyNode<IN, OUT> addInput(LabyNode<?, IN> inputLabyNode, boolean insideBlock, boolean condOut, Partitioner<IN> partitioner) {
+        assert inputPartitioner == null;
+        assert !(insideBlock && condOut); // This case is impossible, right?
+        bagOpHost.addInput(inputs.size(), inputLabyNode.bagOpHost.bbId, insideBlock, inputLabyNode.bagOpHost.opID);
+        int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, partitioner);
         inputs.add(new Input(inputLabyNode, splitID, inputs.size()));
         return this;
     }
@@ -219,7 +228,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
         if (parallelism != -1) {
             tmpFlinkStream.setParallelism(parallelism);
         }
-        assert inputPartitioner.targetPara == tmpFlinkStream.getParallelism();
+        assert inputPartitioner == null || inputPartitioner.targetPara == tmpFlinkStream.getParallelism();
 
         tmpFlinkStream.returns(typeInfo);
         tmpFlinkStream = tmpFlinkStream.setConnectionType(new FlinkPartitioner<>()); // this has to be after setting the para

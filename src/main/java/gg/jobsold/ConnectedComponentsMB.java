@@ -207,7 +207,7 @@ public class ConnectedComponentsMB {
 				.map(new LogicalInputIdFiller<>(0))
 				.union(updates_1.map(new LogicalInputIdFiller<>(1)))
 				//.setConnectionType(new FlinkPartitioner<>()) // Ugy tunik, hogy enelkul is mukodik
-				.bt("msgs", Util.tpe(), new BagOperatorHost<>(new JoinTupleIntInt(){
+				.bt("msgs", Util.tpe(), new BagOperatorHost<>(new JoinTupleIntInt<TupleIntInt>(){
 					@Override
 					protected void udf(int b, TupleIntInt p) {
 						out.collectElement(TupleIntInt.of(b, p.f1));

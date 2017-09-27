@@ -11,7 +11,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
  * Joins (key,b) (build) with (key,c) (probe), giving (b, key, c) to the udf.
  * The first input is the build side.
  */
-public abstract class JoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> implements ReusingBagOperator {
+public abstract class JoinTupleIntInt<OUT> extends BagOperator<TupleIntInt, OUT> implements ReusingBagOperator {
 
     private static final Logger LOG = LoggerFactory.getLogger(JoinTupleIntInt.class);
 

@@ -151,7 +151,7 @@ public class ClickCountDiffs {
 
         // The previous three operators merged into one
         LabyNode<TupleIntInt, TupleIntInt> clicksMapped =
-                new LabyNode<>("joinedWithAttrs", new JoinTupleIntInt() {
+                new LabyNode<>("joinedWithAttrs", new JoinTupleIntInt<TupleIntInt>() {
                     @Override
                     protected void udf(int b, TupleIntInt p) {
                         if (b == 0) {
