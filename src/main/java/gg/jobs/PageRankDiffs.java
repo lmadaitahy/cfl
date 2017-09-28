@@ -20,6 +20,7 @@ import gg.operators.Join;
 import gg.operators.JoinTupleIntInt;
 import gg.operators.OpWithSideInput;
 import gg.operators.OpWithSingletonSide;
+import gg.operators.OuterJoinTupleIntDouble;
 import gg.operators.OuterJoinTupleIntInt;
 import gg.operators.SingletonBagOperator;
 import gg.operators.SmallerThan;
@@ -123,7 +124,7 @@ import java.util.Collections;
  *     PR_2_Joined = PR_2 join edgesWithDeg
  *     msgs = PR_2_Joined.map((from, to, degree, rank) => (to, rank/degree))
  *     msgsReduced = msgs.reduceByKey(_ + _)
- *     msgsJoined = msgsReduced.rightOuterJoin(PR)
+ *     msgsJoined = msgsReduced rightOuterJoin PR_2
  *     newPR = msgsJoined.map((id, newrank, oldrank) =>
  *       if (newrank == null)
  *         (id, oldrank)
@@ -393,6 +394,36 @@ public class PageRankDiffs {
             }, 2, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
                 .addInput(msgs, true, false);
 
+        /*
+ *     msgsJoined = msgsReduced rightOuterJoin PR_2
+ *     newPR = msgsJoined.map((id, newrank, oldrank) =>
+ *       if (newrank == null)
+ *         (id, oldrank)
+ *       else
+ *         (id, d * newrank + (1-d) * initWeight))
+         */
+//        LabyNode<TupleIntDouble, TupleIntDouble> newPR =
+//            new LabyNode<>("newPR", new OuterJoinTupleIntDouble<TupleIntDouble>() {
+//                @Override
+//                protected void inner(double b, TupleIntDouble p) {
+//                    double newRank = p.f1;
+//                    out.collectElement(TupleIntDouble.of(p.f0, d * newRank + (1-d) * initWeight));
+//                }
+//
+//                @Override
+//                protected void right(TupleIntDouble p) {
+//                    out.collectElement(p);
+//                }
+//
+//                @Override
+//                protected void left(double b) {
+//                    assert false;
+//                }
+//            }, 2, new TupleIntDoubleBy0(para), )
+//                .addInput(msgsReduced, true, false)
+//                .addInput(PR_2, true, false);
+
+
 
 
 
@@ -488,6 +519,7 @@ public class PageRankDiffs {
 //
         LabyNode.translateAll();
 
+        System.out.println(env.getExecutionPlan());
 //        env.execute();
     }
 }
