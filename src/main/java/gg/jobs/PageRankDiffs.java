@@ -12,9 +12,11 @@ import gg.operators.ConditionNode;
 import gg.operators.CountCombiner;
 import gg.operators.DistinctInt;
 import gg.operators.FlatMap;
+import gg.operators.GroupBy0ReduceTupleIntDouble;
 import gg.operators.GroupBy0Sum1TupleIntInt;
 import gg.operators.IdMap;
 import gg.operators.IncMap;
+import gg.operators.Join;
 import gg.operators.JoinTupleIntInt;
 import gg.operators.OpWithSideInput;
 import gg.operators.OpWithSingletonSide;
@@ -28,6 +30,8 @@ import gg.partitioners.Broadcast;
 import gg.partitioners.Forward;
 import gg.partitioners.IntegerBy0;
 import gg.partitioners.RoundRobin;
+import gg.partitioners.Tuple2by0;
+import gg.partitioners.TupleIntDoubleBy0;
 import gg.partitioners.TupleIntIntBy0;
 import gg.util.SerializedBuffer;
 import gg.util.TupleIntDouble;
@@ -48,6 +52,7 @@ import org.apache.flink.core.fs.Path;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
+import org.apache.flink.types.Either;
 
 import java.util.Collections;
 
@@ -103,7 +108,7 @@ import java.util.Collections;
  *   edges = readFile("click_log_" + day) // (from,to) pairs
  *   edgesMapped = edges.map((from, to) => (from, 1))
  *   edgesMappedReduced = edgesMapped.reduceByKey(_ + _)
- *   edgesWithDeg = edgesMappedReduced.join(edges) // (from, to, degree) triples
+ *   edgesWithDeg = edgesMappedReduced join edges // (from, to, degree) triples
  *   // Get all pages and init PageRank computation
  *   edgesFromMapped = edges.map(_.from)
  *   edgesToMapped = edges.map(_.to)
@@ -159,6 +164,7 @@ public class PageRankDiffs {
     private static TypeSerializer<Boolean> booleanSer = TypeInformation.of(Boolean.class).createSerializer(new ExecutionConfig());
     private static TypeSerializer<Double> doubleSer = TypeInformation.of(Double.class).createSerializer(new ExecutionConfig());
     private static TypeSerializer<TupleIntInt> tupleIntIntSer = new TupleIntInt.TupleIntIntSerializer();
+    private static TypeSerializer<TupleIntIntInt> tupleIntIntIntSer = new TupleIntIntInt.TupleIntIntIntSerializer();
     private static TypeSerializer<TupleIntDouble> tupleIntDoubleSer = new TupleIntDouble.TupleIntDoubleSerializer();
 
     public static void main(String[] args) throws Exception {
@@ -173,8 +179,8 @@ public class PageRankDiffs {
         PojoTypeInfo.registerCustomSerializer(TupleIntInt.class, TupleIntInt.TupleIntIntSerializer.class);
 
 
-        CFLConfig.getInstance().terminalBBId = 4;
-        KickoffSource kickoffSrc = new KickoffSource(0, 1);
+        CFLConfig.getInstance().terminalBBId = 6;
+        KickoffSource kickoffSrc = new KickoffSource(0, 1, 2);
         env.addSource(kickoffSrc).addSink(new DiscardingSink<>());
 
         final int para = env.getParallelism();
@@ -321,10 +327,9 @@ public class PageRankDiffs {
 
         /*
  *     PR_2 = phi(PR_1, PR_3)
- *     PR_2_Joined = PR_2.join(edgesWithDeg)
+ *     PR_2_Joined = PR_2 join edgesWithDeg
  *     msgs = PR_2_Joined.map((from, to, degree, rank) => (to, rank/degree))
  *     msgsReduced = msgs.reduceByKey(_ + _)
- *     msgsJoined = msgsReduced.rightOuterJoin(PR)
          */
 
         LabyNode<TupleIntDouble, TupleIntDouble> PR_2 =
@@ -332,59 +337,65 @@ public class PageRankDiffs {
                 .addInput(PR_1, false, false);
         //todo: add back edge
 
-        // TODO: kene egy altalanos join es altalanos outer join
-        //  JoinIntT, OuterJoinIntT
-        //  Es a Flink Either-jet kene itt hasznalni
+        TypeInformation<ElementOrEvent<Tuple2<Integer, Either<Double, TupleIntInt>>>> joinPrepTypeInfo =
+                TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Either<Double, TupleIntInt>>>>(){});
+
+        TypeSerializer<Tuple2<Integer, Either<Double, TupleIntInt>>> joinPrepSerializer =
+                TypeInformation.of(new TypeHint<Tuple2<Integer, Either<Double, TupleIntInt>>>(){}).createSerializer(new ExecutionConfig());
+
+        //TODO: majd leellenorizni, hogy a megfelelo serializerek jonnek elo:
+        // - nincs Kryo
+        // - az Either a sajat spec serializerevel van serializalva
+
+        LabyNode<TupleIntDouble, Tuple2<Integer, Either<Double, TupleIntInt>>> PR_2_prep =
+            new LabyNode<>("PR_2_prep", new FlatMap<TupleIntDouble, Tuple2<Integer, Either<Double, TupleIntInt>>>() {
+                @Override
+                public void pushInElement(TupleIntDouble e, int logicalInputId) {
+                    super.pushInElement(e, logicalInputId);
+                    out.collectElement(Tuple2.of(e.f0, Either.Left(e.f1)));
+                }
+            }, 2, new Forward<>(para), tupleIntDoubleSer, joinPrepTypeInfo)
+                .addInput(PR_2, true, false);
+
+        LabyNode<TupleIntIntInt, Tuple2<Integer, Either<Double, TupleIntInt>>> edgesWithDeg_prep =
+            new LabyNode<>("edgesWithDeg_prep", new FlatMap<TupleIntIntInt, Tuple2<Integer, Either<Double, TupleIntInt>>>() {
+                @Override
+                public void pushInElement(TupleIntIntInt e, int logicalInputId) {
+                    super.pushInElement(e, logicalInputId);
+                    out.collectElement(Tuple2.of(e.f0, Either.Right(TupleIntInt.of(e.f1, e.f2))));
+                }
+            }, 2, new Forward<>(para), tupleIntIntIntSer, joinPrepTypeInfo)
+            .addInput(edgesWithDeg, false, false);
+
+        // PR_2_Joined = PR_2 join edgesWithDeg
+        // msgs = PR_2_Joined.map((from, to, degree, rank) => (to, rank/degree))
+        LabyNode<Tuple2<Integer, Either<Double, TupleIntInt>>, TupleIntDouble> msgs =
+            new LabyNode<>("msgs", new Join<Either<Double, TupleIntInt>, TupleIntDouble>() {
+                @Override
+                protected void udf(Tuple2<Integer, Either<Double, TupleIntInt>> a, Tuple2<Integer, Either<Double, TupleIntInt>> b) {
+                    assert a.f1.isLeft();
+                    assert b.f1.isRight();
+                    int to = b.f1.right().f0;
+                    double rank = a.f1.left();
+                    int degree = b.f1.right().f1;
+                    out.collectElement(TupleIntDouble.of(to, rank/degree));
+                }
+            }, 2, new Tuple2by0<>(para), joinPrepSerializer, typeInfoTupleIntDouble)
+                .addInput(PR_2_prep, true, false)
+                .addInput(edgesWithDeg_prep, true, false);
+
+        LabyNode<TupleIntDouble, TupleIntDouble> msgsReduced =
+            new LabyNode<>("msgsReduced", new GroupBy0ReduceTupleIntDouble() {
+                @Override
+                protected void reduceFunc(TupleIntDouble e, double g) {
+                    hm.replace(e.f0, e.f1 + g);
+                }
+            }, 2, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
+                .addInput(msgs, true, false);
 
 
 
-//        // The inputs of the join have to be the same type (because of the union stuff), so we add a dummy tuple element.
-//        LabyNode<Integer, TupleIntInt> visits_1_tupleized =
-//                new LabyNode<>("visits_1_tupleized", new FlatMap<Integer, TupleIntInt>() {
-//                    @Override
-//                    public void pushInElement(Integer e, int logicalInputId) {
-//                        super.pushInElement(e, logicalInputId);
-//                        out.collectElement(TupleIntInt.of(e, -1));
-//                    }
-//                }, 1, new IntegerBy0(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-//                .addInput(visits_1, true, false);
-//
-//        LabyNode<TupleIntInt, TupleIntInt> joinedWithAttrs =
-//                new LabyNode<>("joinedWithAttrs", new JoinTupleIntInt() {
-//                    @Override
-//                    protected void udf(int b, TupleIntInt p) {
-//                        out.collectElement(TupleIntInt.of(p.f0, b));
-//                    }
-//                }, 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-//                .addInput(pageAttributes, false)
-//                .addInput(visits_1_tupleized, true, false);
-//
-//        LabyNode<TupleIntInt, TupleIntInt> visits_2 =
-//                new LabyNode<>("visits_2", new FlatMap<TupleIntInt, TupleIntInt>() {
-//                    @Override
-//                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-//                        super.pushInElement(e, logicalInputId);
-//                        if (e.f1 == 0) {
-//                            out.collectElement(e);
-//                        }
-//                    }
-//                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-//                .addInput(joinedWithAttrs, true, false);
-//
-//        LabyNode<TupleIntInt, TupleIntInt> clicksMapped =
-//                new LabyNode<>("clicksMapped", new FlatMap<TupleIntInt, TupleIntInt>() {
-//                    @Override
-//                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-//                        super.pushInElement(e, logicalInputId);
-//                        out.collectElement(TupleIntInt.of(e.f0, 1));
-//                    }
-//                }, 1, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-//                .addInput(visits_2, true, false);
-//
-//        LabyNode<TupleIntInt, TupleIntInt> counts =
-//                new LabyNode<>("counts", new GroupBy0Sum1TupleIntInt(), 1, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-//                .addInput(clicksMapped, true, false);
-//
+
 //        LabyNode<Integer, Boolean> notFirstDay =
 //                new LabyNode<>("notFirstDay", new SingletonBagOperator<Integer, Boolean>() {
 //                    @Override

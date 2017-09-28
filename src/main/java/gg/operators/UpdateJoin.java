@@ -9,7 +9,7 @@ import java.util.HashMap;
 
 public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Integer,Integer>> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Join.class);
+    private static final Logger LOG = LoggerFactory.getLogger(UpdateJoin.class);
 
     private HashMap<Integer, Integer> ht;
     private ArrayList<Tuple2<Integer, Integer>> probeBuffered;

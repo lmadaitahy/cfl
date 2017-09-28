@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 
 public abstract class GroupBy0ReduceTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> {
 
-    Int2IntOpenHashMap hm;
+    protected Int2IntOpenHashMap hm;
 
     @Override
     public void openOutBag() {

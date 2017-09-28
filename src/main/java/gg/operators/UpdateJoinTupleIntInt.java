@@ -14,7 +14,7 @@ import java.util.function.Consumer;
 
 public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Join.class);
+    private static final Logger LOG = LoggerFactory.getLogger(UpdateJoinTupleIntInt.class);
 
     private Int2IntOpenHashMap ht; // TODO: use fastutils
     private SerializedBuffer<TupleIntInt> probeBuffered;

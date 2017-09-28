@@ -7,12 +7,12 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public abstract class Join extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Integer,Integer>> {
+public abstract class Join<IN, OUT> extends BagOperator<Tuple2<Integer, IN>, OUT> {
 
     private static final Logger LOG = LoggerFactory.getLogger(Join.class);
 
-    private HashMap<Integer, ArrayList<Tuple2<Integer,Integer>>> ht;
-    private ArrayList<Tuple2<Integer, Integer>> probeBuffered;
+    private HashMap<Integer, ArrayList<Tuple2<Integer,IN>>> ht;
+    private ArrayList<Tuple2<Integer, IN>> probeBuffered;
     private boolean buildDone;
     private boolean probeDone;
 
@@ -26,11 +26,11 @@ public abstract class Join extends BagOperator<Tuple2<Integer,Integer>, Tuple2<I
     }
 
     @Override
-    public void pushInElement(Tuple2<Integer, Integer> e, int logicalInputId) {
+    public void pushInElement(Tuple2<Integer, IN> e, int logicalInputId) {
         super.pushInElement(e, logicalInputId);
         if (logicalInputId == 0) { // build side
             assert !buildDone;
-            ArrayList<Tuple2<Integer,Integer>> l = ht.get(e.f0);
+            ArrayList<Tuple2<Integer,IN>> l = ht.get(e.f0);
             if (l == null) {
                 l = new ArrayList<>();
                 l.add(e);
@@ -54,7 +54,7 @@ public abstract class Join extends BagOperator<Tuple2<Integer,Integer>, Tuple2<I
             assert !buildDone;
             LOG.info("Build side finished");
             buildDone = true;
-            for (Tuple2<Integer, Integer> e: probeBuffered) {
+            for (Tuple2<Integer, IN> e: probeBuffered) {
                 probe(e);
             }
             if (probeDone) {
@@ -71,14 +71,14 @@ public abstract class Join extends BagOperator<Tuple2<Integer,Integer>, Tuple2<I
         }
     }
 
-    private void probe(Tuple2<Integer, Integer> e) {
-        ArrayList<Tuple2<Integer, Integer>> l = ht.get(e.f0);
+    private void probe(Tuple2<Integer, IN> e) {
+        ArrayList<Tuple2<Integer, IN>> l = ht.get(e.f0);
         if (l != null) {
-            for (Tuple2<Integer, Integer> b: l) {
+            for (Tuple2<Integer, IN> b: l) {
                 udf(b, e);
             }
         }
     }
 
-    protected abstract void udf(Tuple2<Integer,Integer> a, Tuple2<Integer,Integer> b); // Uses out
+    protected abstract void udf(Tuple2<Integer,IN> a, Tuple2<Integer,IN> b); // Uses `out`
 }
