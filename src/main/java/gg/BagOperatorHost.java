@@ -786,14 +786,24 @@ public class BagOperatorHost<IN, OUT>
 
 		void sendElement(OUT e) {
 			short part = partitioner.getPart(e, subpartitionId);
-			// (Amugy ez a logika meg van duplazva a Bagify-ban is most)
-			if (!sentStart[part]) {
-				sendStart(part);
+			if (part != -1) {
+				// (Amugy ez a logika meg van duplazva a Bagify-ban is most, de ott nincs berakva a -1 (broadcast) kezelese)
+				if (!sentStart[part]) {
+					sendStart(part);
+				}
+			} else {
+				broadcastStart();
 			}
 			if (CFLConfig.vlog) LOG.info("Out("+ splitId + ") of {" + name + "}[" + BagOperatorHost.this.subpartitionId + "] sending element to " + part + ": " + new ElementOrEvent<>(subpartitionId, e, splitId, part));
 
 			//output.collect(new StreamRecord<>(new ElementOrEvent<>(subpartitionId, e, splitId, part), 0));
 			output.collect(reuseStreamRecord.replace(reuseEleOrEvent.replace(subpartitionId, e, splitId, part), 0));
+		}
+
+		void broadcastStart() {
+			for (short i=0; i<sentStart.length; i++) {
+				sendStart(i);
+			}
 		}
 
 		void startBag() {
