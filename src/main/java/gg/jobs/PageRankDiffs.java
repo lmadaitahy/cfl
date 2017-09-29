@@ -31,6 +31,7 @@ import gg.operators.Sum;
 import gg.operators.SumCombiner;
 import gg.operators.SumCombinerDouble;
 import gg.operators.SumDouble;
+import gg.operators.Union;
 import gg.partitioners.Always0;
 import gg.partitioners.Broadcast;
 import gg.partitioners.Forward;
@@ -270,7 +271,7 @@ public class PageRankDiffs {
                 .addInput(edges, true, false);
 
         LabyNode<Integer, Integer> edgesFromToUnioned =
-                new LabyNode<>("edgesFromToUnioned", new IdMap<>(), 1, new Forward<>(para), integerSer, typeInfoInt)
+                new LabyNode<>("edgesFromToUnioned", new Union<>(), 1, new Forward<>(para), integerSer, typeInfoInt)
                 .addInput(edgesFromMapped, true, false)
                 .addInput(edgesToMapped, true, false);
 
