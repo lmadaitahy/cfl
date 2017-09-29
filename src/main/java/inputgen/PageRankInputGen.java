@@ -63,7 +63,8 @@ public class PageRankInputGen {
             public boolean filter(Tuple2<Integer, Integer> value) throws Exception {
                 return rnd.nextInt(clicksPerDayRatio) == 0;
             }
-        });
+        })
+                .setParallelism(1);
 
         filtered.writeAsCsv(inputPath + "/" + day.toString(), "\n", "\t", FileSystem.WriteMode.OVERWRITE);
     }
