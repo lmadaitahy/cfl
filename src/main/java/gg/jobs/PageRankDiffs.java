@@ -6,6 +6,7 @@ import gg.KickoffSource;
 import gg.LabyNode;
 import gg.LabySource;
 import gg.operators.CFAwareFileSink;
+import gg.operators.CFAwareFileSinkGen;
 import gg.operators.ClickLogReader;
 import gg.operators.ClickLogReader2;
 import gg.operators.ConditionNode;
@@ -219,10 +220,9 @@ public class PageRankDiffs {
                 LabyNode.phi("day_2", 1, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
                 .addInput(day_1, false)
                 .setParallelism(1);
-        //todo: add back edge
 
         LabyNode<Integer, TupleIntInt> edges =
-                new LabyNode<>("edges", new ClickLogReader2(pref + "in/clickLog_"), 1, new RoundRobin<>(para), integerSer, typeInfoTupleIntInt)
+                new LabyNode<>("edges", new ClickLogReader2(pref + "/input/"), 1, new RoundRobin<>(para), integerSer, typeInfoTupleIntInt)
                         .addInput(day_2, true, false);
                         //.setParallelism(1);
 
@@ -337,7 +337,6 @@ public class PageRankDiffs {
         LabyNode<TupleIntDouble, TupleIntDouble> PR_2 =
                 LabyNode.phi("PR_2", 2, new Forward<>(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
                 .addInput(PR_1, false, false);
-        //todo: add back edge
 
         TypeInformation<ElementOrEvent<Tuple2<Integer, Either<Double, TupleIntInt>>>> joinPrepTypeInfo =
                 TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Either<Double, TupleIntInt>>>>(){});
@@ -482,80 +481,94 @@ public class PageRankDiffs {
         // -- then branch   BB 4
 
         // The join of joinedYesterday is merged into this operator
-        LabyNode<TupleIntDouble, TupleIntDouble> diffs =
-            new LabyNode<>("diffs", new OuterJoinTupleIntDouble<TupleIntDouble>() {
+        LabyNode<TupleIntDouble, Double> diffs =
+            new LabyNode<>("diffs", new OuterJoinTupleIntDouble<Double>() {
                 @Override
                 protected void inner(double b, TupleIntDouble p) {
-                    out.collectElement(TupleIntDouble.of(p.f0, Math.abs(b - p.f1)));
+                    out.collectElement(Math.abs(b - p.f1));
                 }
 
                 @Override
                 protected void right(TupleIntDouble p) {
-                    out.collectElement(p);
+                    out.collectElement(p.f1);
                 }
 
                 @Override
                 protected void left(double b) {
-                    out.collectElement(TupleIntDouble.of(-1, b));
+                    out.collectElement(b);
                 }
-            }, 4, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
+            }, 4, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoDouble)
             .addInput(newPR, false, true)
             .addInput(yesterdayPR_2, false, true);
-//
-//        LabyNode<TupleIntInt, Integer> diffsInt =
-//                new LabyNode<>("diffsInt", new FlatMap<TupleIntInt, Integer>() {
-//                    @Override
-//                    public void pushInElement(TupleIntInt e, int logicalInputId) {
-//                        super.pushInElement(e, logicalInputId);
-//                        out.collectElement(e.f1);
-//                    }
-//                }, 2, new Forward<>(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-//                .addInput(diffs, true, false);
-//
-//        LabyNode<Integer, Integer> sumCombiner =
-//                new LabyNode<>("sumCombiner", new SumCombiner(), 2, new Forward<>(para), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-//                .addInput(diffsInt, true, false);
-//
-//        LabyNode<Integer, Integer> sum =
-//                new LabyNode<>("sum", new Sum(), 2, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-//                .addInput(sumCombiner, true, false)
-//                .setParallelism(1);
-//
-//        LabyNode<Integer, Unit> printSum =
-//                new LabyNode<>("printSum", new CFAwareFileSink(pref + "out/diff_"), 2, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
-//                .addInput(day_2, false, true)
-//                .addInput(sum, true, false)
-//                .setParallelism(1);
-//
-//        // -- end of then branch   BB 3
-//
-//        // (We "optimize away" yesterdayCounts_3, since it would be an IdMap)
-//        yesterdayCounts_2.addInput(counts, false, true);
-//
-//        LabyNode<Integer, Integer> day_3 =
-//                new LabyNode<>("day_3", new IncMap(), 3, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}))
-//                .addInput(day_2, false, false)
-//                .setParallelism(1);
-//
-//        day_2.addInput(day_3, false, true);
-//
-//        LabyNode<Integer, Boolean> notLastDay =
-//                new LabyNode<>("notLastDay", new SmallerThan(Integer.parseInt(args[1]) + 1), 3, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
-//                .addInput(day_3, true, false)
-//                .setParallelism(1);
-//
-//        LabyNode<Boolean, Unit> exitCond =
-//                new LabyNode<>("exitCond", new ConditionNode(1, 4), 3, new Always0<>(1), booleanSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
-//                .addInput(notLastDay, true, false)
-//                .setParallelism(1);
-//
-//        // -- Iteration ends here   BB 4
-//
-//        // Itt nincs semmi operator. (A kiirast a BB 4-ben csinaljuk.)
-//
+
+        LabyNode<Double, Double> sumCombiner =
+            new LabyNode<>("sumCombiner", new SumCombinerDouble(), 4, new Forward<>(para), doubleSer, typeInfoDouble)
+                .addInput(diffs, true, false);
+
+        LabyNode<Double, Double> sum =
+            new LabyNode<>("sum", new SumDouble(), 4, new Always0<>(1), doubleSer, typeInfoDouble)
+                .addInput(sumCombiner, true, false)
+                .setParallelism(1);
+
+        TypeInformation<Either<Integer, Double>> typeInfoEitherIntDouble = TypeInformation.of(new TypeHint<Either<Integer, Double>>(){});
+        TypeInformation<ElementOrEvent<Either<Integer, Double>>> typeInfoEoEEitherIntDouble = TypeInformation.of(new TypeHint<ElementOrEvent<Either<Integer, Double>>>(){});
+        TypeSerializer<Either<Integer, Double>> eitherIntDoubleSer = typeInfoEitherIntDouble.createSerializer(new ExecutionConfig());
+
+        LabyNode<Integer, Either<Integer, Double>> day_2_prep =
+                new LabyNode<>("day_2_prep", new FlatMap<Integer, Either<Integer, Double>>() {
+                    @Override
+                    public void pushInElement(Integer e, int logicalInputId) {
+                        super.pushInElement(e, logicalInputId);
+                        out.collectElement(Either.Left(e));
+                    }
+                }, 4, new Forward<>(para), integerSer, typeInfoEoEEitherIntDouble)
+                .addInput(day_2, false, true);
+
+        LabyNode<Double, Either<Integer, Double>> sum_prep =
+            new LabyNode<>("day_2_prep", new FlatMap<Double, Either<Integer, Double>>() {
+                @Override
+                public void pushInElement(Double e, int logicalInputId) {
+                    super.pushInElement(e, logicalInputId);
+                    out.collectElement(Either.Right(e));
+                }
+            }, 4, new Forward<>(para), doubleSer, typeInfoEoEEitherIntDouble)
+                .addInput(sum, true, false);
+
+        LabyNode<Either<Integer, Double>, Unit> printSum =
+                new LabyNode<>("printSum", new CFAwareFileSinkGen<>(pref + "out/diff_", doubleSer), 4, new Always0<>(1), eitherIntDoubleSer, typeInfoUnit)
+                .addInput(day_2_prep, true, false)
+                .addInput(sum_prep, true, false)
+                .setParallelism(1);
+
+        // -- end of then branch   BB 5
+
+        // (We "optimize away" yesterdayCounts_3, since it would be an IdMap)
+        yesterdayPR_2.addInput(PR_2, false, true);
+
+        LabyNode<Integer, Integer> day_3 =
+                new LabyNode<>("day_3", new IncMap(), 5, new Always0<>(1), integerSer, typeInfoInt)
+                .addInput(day_2, false, false)
+                .setParallelism(1);
+
+        day_2.addInput(day_3, false, true);
+
+        LabyNode<Integer, Boolean> outerExitCondBool =
+                new LabyNode<>("outerExitCondBool", new SmallerThan(Integer.parseInt(args[1]) + 1), 5, new Always0<>(1), integerSer, typeInfoBoolean)
+                .addInput(day_3, true, false)
+                .setParallelism(1);
+
+        LabyNode<Boolean, Unit> outerExitCond =
+                new LabyNode<>("outerExitCond", new ConditionNode(1, 6), 5, new Always0<>(1), booleanSer, typeInfoUnit)
+                .addInput(outerExitCondBool, true, false)
+                .setParallelism(1);
+
+        // -- Iteration ends here   BB 6
+
+        // Itt nincs semmi operator. (A kiirast a BB 4-ben csinaljuk.)
+
         LabyNode.translateAll();
 
         System.out.println(env.getExecutionPlan());
-//        env.execute();
+        env.execute();
     }
 }
