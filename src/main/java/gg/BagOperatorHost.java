@@ -4,6 +4,7 @@ package gg;
 import gg.operators.BagOperator;
 import gg.operators.DontThrowAwayInputBufs;
 import gg.operators.ReusingBagOperator;
+import gg.partitioners.Broadcast;
 import gg.partitioners.Partitioner;
 import gg.util.SerializedBuffer;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -317,6 +318,7 @@ public class BagOperatorHost<IN, OUT>
 				// inputBagIDs.size() == 0 esetben azert kell kuldenunk, mert ilyenkor a checkForClosingProduced mindenhonnan var
 				// (az elejen levo (s.inputs.size() == 0) if miatt)
 				if (!(BagOperatorHost.this instanceof MutableBagCC && ((MutableBagCC.MutableBagOperator)op).inpID == 2)) {
+					numElements = correctBroadcast(numElements);
 					cflMan.producedLocal(outBagID, inputBagIDsArr, numElements, getRuntimeContext().getNumberOfParallelSubtasks(), subpartitionId, opID);
 				}
 			}
@@ -341,6 +343,18 @@ public class BagOperatorHost<IN, OUT>
 		@Override
 		public void appendToCfl(int bbId) {
 			cflMan.appendToCFL(bbId);
+		}
+
+		private int correctBroadcast(int numElements) {
+			if (outs.size() > 0 && outs.get(0).partitioner instanceof Broadcast) {
+				for (Out o: outs) {
+					// most van egy ilyen limitation-unk, hogy ha egy output broadcast output, akkor az osszesnek annak kell lennie
+					assert o.partitioner instanceof Broadcast;
+				}
+				return numElements * outs.get(0).partitioner.targetPara;
+			} else {
+				return numElements;
+			}
 		}
 	}
 
