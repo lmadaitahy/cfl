@@ -17,7 +17,9 @@ import gg.operators.GroupBy0Sum1TupleIntInt;
 import gg.operators.IdMap;
 import gg.operators.IncMap;
 import gg.operators.Join;
+import gg.operators.JoinTupleIntDouble;
 import gg.operators.JoinTupleIntInt;
+import gg.operators.LargerThan;
 import gg.operators.OpWithSideInput;
 import gg.operators.OpWithSingletonSide;
 import gg.operators.OuterJoinTupleIntDouble;
@@ -26,6 +28,8 @@ import gg.operators.SingletonBagOperator;
 import gg.operators.SmallerThan;
 import gg.operators.Sum;
 import gg.operators.SumCombiner;
+import gg.operators.SumCombinerDouble;
+import gg.operators.SumDouble;
 import gg.partitioners.Always0;
 import gg.partitioners.Broadcast;
 import gg.partitioners.Forward;
@@ -80,11 +84,12 @@ import java.util.Collections;
  *     newPR =
  *       PR.join(edgesWithDeg).map((from, to, degree, rank) => (to, rank/degree)) // send msgs to neighbors
  *       .reduceByKey(_ + _) // group msgs by their targets and sum them
- *       .rightOuterJoin(PR).map((id, newrank, oldrank) =>
- *          if (newrank == null)
- *            (id, oldrank)
+ *       .map((id, newRank) => (id, d * newrank + (1-d) * initWeight)) // damping
+ *       .rightOuterJoin(PR).map((id, newRank, oldRank) =>
+ *          if (newRank == null)
+ *            (id, oldRank)
  *          else
- *            (id, d * newrank + (1-d) * initWeight)) // apply the received msgs with damping
+ *            (id, newRank)
  *     totalChange = (newPR join PR).map((id, newRank, oldRank) => abs(newRank - oldRank)).sum() // Compute differences and sum them
  *     PR = newPR
  *   While (totalChange > epsilon)
@@ -124,12 +129,13 @@ import java.util.Collections;
  *     PR_2_Joined = PR_2 join edgesWithDeg
  *     msgs = PR_2_Joined.map((from, to, degree, rank) => (to, rank/degree))
  *     msgsReduced = msgs.reduceByKey(_ + _)
- *     msgsJoined = msgsReduced rightOuterJoin PR_2
- *     newPR = msgsJoined.map((id, newrank, oldrank) =>
- *       if (newrank == null)
- *         (id, oldrank)
+ *     msgsDampened = msgsReduced.map((id, newRank) => (id, d * newrank + (1-d) * initWeight))
+ *     msgsJoined = msgsDampened rightOuterJoin PR_2
+ *     newPR = msgsJoined.map((id, newRank, oldRank) =>
+ *       if (newRank == null)
+ *         (id, oldRank)
  *       else
- *         (id, d * newrank + (1-d) * initWeight))
+ *         (id, newRank)
  *     newOldJoin = newPR join PR
  *     changes = newOldJoin.map((id, newRank, oldRank) => abs(newRank - oldRank))
  *     totalChange = changes.sum()
@@ -137,8 +143,8 @@ import java.util.Collections;
  *     innerExitCond = totalChange > epsilon
  *   While innerExitCond
  *   // BB 3
- *   ifCond = day_2 != 1
- *   If (ifCond)
+ *   ifCondBool = day_2 != 1
+ *   If (ifCondBool)
  *     // BB 4
  *     joinedYesterday = PR_3 join yesterdayPR_2
  *     diffs = joinedYesterday.map((id,today,yesterday) => abs(today - yesterday))
@@ -159,6 +165,8 @@ public class PageRankDiffs {
     private static TypeInformation<ElementOrEvent<TupleIntIntInt>> typeInfoTupleIntIntInt = TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntIntInt>>(){});
     private static TypeInformation<ElementOrEvent<Integer>> typeInfoInt = TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){});
     private static TypeInformation<ElementOrEvent<Double>> typeInfoDouble = TypeInformation.of(new TypeHint<ElementOrEvent<Double>>(){});
+    private static TypeInformation<ElementOrEvent<Boolean>> typeInfoBoolean = TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){});
+    private static TypeInformation<ElementOrEvent<Unit>> typeInfoUnit = TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){});
     private static TypeInformation<ElementOrEvent<TupleIntDouble>> typeInfoTupleIntDouble = TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntDouble>>(){});
 
     private static TypeSerializer<Integer> integerSer = TypeInformation.of(Integer.class).createSerializer(new ExecutionConfig());
@@ -326,13 +334,6 @@ public class PageRankDiffs {
 
         // -- Inner iteration starts here --   BB 2
 
-        /*
- *     PR_2 = phi(PR_1, PR_3)
- *     PR_2_Joined = PR_2 join edgesWithDeg
- *     msgs = PR_2_Joined.map((from, to, degree, rank) => (to, rank/degree))
- *     msgsReduced = msgs.reduceByKey(_ + _)
-         */
-
         LabyNode<TupleIntDouble, TupleIntDouble> PR_2 =
                 LabyNode.phi("PR_2", 2, new Forward<>(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
                 .addInput(PR_1, false, false);
@@ -394,77 +395,112 @@ public class PageRankDiffs {
             }, 2, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
                 .addInput(msgs, true, false);
 
-        /*
- *     msgsJoined = msgsReduced rightOuterJoin PR_2
- *     newPR = msgsJoined.map((id, newrank, oldrank) =>
- *       if (newrank == null)
- *         (id, oldrank)
- *       else
- *         (id, d * newrank + (1-d) * initWeight))
-         */
-//        LabyNode<TupleIntDouble, TupleIntDouble> newPR =
-//            new LabyNode<>("newPR", new OuterJoinTupleIntDouble<TupleIntDouble>() {
-//                @Override
-//                protected void inner(double b, TupleIntDouble p) {
-//                    double newRank = p.f1;
-//                    out.collectElement(TupleIntDouble.of(p.f0, d * newRank + (1-d) * initWeight));
-//                }
-//
-//                @Override
-//                protected void right(TupleIntDouble p) {
-//                    out.collectElement(p);
-//                }
-//
-//                @Override
-//                protected void left(double b) {
-//                    assert false;
-//                }
-//            }, 2, new TupleIntDoubleBy0(para), )
-//                .addInput(msgsReduced, true, false)
-//                .addInput(PR_2, true, false);
+        LabyNode<TupleIntDouble, TupleIntDouble> msgsDampened =
+            new LabyNode<>("msgsDampened", new OpWithSingletonSide<TupleIntDouble, TupleIntDouble>(tupleIntDoubleSer) {
+                @Override
+                protected void pushInElementWithSingletonSide(TupleIntDouble e, TupleIntDouble side) {
+                    assert side.f0 == -1;
+                    double initWeight = side.f1;
+                    double newRank = e.f1;
+                    out.collectElement(TupleIntDouble.of(e.f0, d * newRank + (1-d) * initWeight));
+                }
+            }, 2, null, tupleIntDoubleSer, typeInfoTupleIntDouble)
+                .addInput(initWeightTupleIntDouble, false, false, new Forward<>(para))
+                .addInput(msgsReduced, true, false, new Broadcast<>(para));
 
+        LabyNode<TupleIntDouble, TupleIntDouble> newPR =
+            new LabyNode<>("newPR", new OuterJoinTupleIntDouble<TupleIntDouble>() {
+                @Override
+                protected void inner(double b, TupleIntDouble p) {
+                    out.collectElement(p);
+                }
 
+                @Override
+                protected void right(TupleIntDouble p) {
+                    out.collectElement(p);
+                }
 
+                @Override
+                protected void left(double b) {
+                    assert false;
+                }
+            }, 2, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
+                .addInput(msgsDampened, true, false)
+                .addInput(PR_2, true, false);
 
+        LabyNode<TupleIntDouble, Double> changes =
+                new LabyNode<>("changes", new JoinTupleIntDouble<Double>() {
+                    @Override
+                    protected void udf(double b, TupleIntDouble p) {
+                        out.collectElement(Math.abs(b - p.f1));
+                    }
+                }, 2, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoDouble)
+                .addInput(newPR, true, false)
+                .addInput(PR_2, true, false);
 
-//        LabyNode<Integer, Boolean> notFirstDay =
-//                new LabyNode<>("notFirstDay", new SingletonBagOperator<Integer, Boolean>() {
-//                    @Override
-//                    public void pushInElement(Integer e, int logicalInputId) {
-//                        super.pushInElement(e, logicalInputId);
-//                        out.collectElement(!e.equals(1));
-//                    }
-//                }, 1, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
-//                .addInput(day_2, true, false)
-//                .setParallelism(1);
-//
-//        LabyNode<Boolean, Unit> ifCond =
-//                new LabyNode<>("ifCond", new ConditionNode(new int[]{2,3}, new int[]{3}), 1, new Always0<>(1), booleanSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
-//                .addInput(notFirstDay, true, false)
-//                .setParallelism(1);
-//
-//        // -- then branch   BB 2
-//
-//        // The join of joinedYesterday is merged into this operator
-//        LabyNode<TupleIntInt, TupleIntInt> diffs =
-//                new LabyNode<>("diffs", new OuterJoinTupleIntInt() {
-//                    @Override
-//                    protected void inner(int b, TupleIntInt p) {
-//                        out.collectElement(TupleIntInt.of(p.f0, Math.abs(b - p.f1)));
-//                    }
-//
-//                    @Override
-//                    protected void right(TupleIntInt p) {
-//                        out.collectElement(p);
-//                    }
-//
-//                    @Override
-//                    protected void left(int b) {
-//                        out.collectElement(TupleIntInt.of(-1, b));
-//                    }
-//                }, 2, new TupleIntIntBy0(para), tupleIntIntSer, TypeInformation.of(new TypeHint<ElementOrEvent<TupleIntInt>>(){}))
-//                .addInput(yesterdayCounts_2, false, true)
-//                .addInput(counts, false, true);
+        LabyNode<Double, Double> totalChangeCombiner =
+                new LabyNode<>("totalChangeCombiner", new SumCombinerDouble(), 2, new Forward<>(para), doubleSer, typeInfoDouble)
+                .addInput(changes, true, false);
+
+        LabyNode<Double, Double> totalChange =
+                new LabyNode<>("totalChange", new SumDouble(), 2, new Always0<>(1), doubleSer, typeInfoDouble)
+                .addInput(totalChangeCombiner, true, false)
+                .setParallelism(1);
+
+        // PR_3 is "optimized out"
+
+        PR_2.addInput(newPR, false, true);
+
+        LabyNode<Double, Boolean> innerExitCondBool =
+            new LabyNode<>("innerExitCondBool", new LargerThan(epsilon), 2, new Always0<>(1), doubleSer, typeInfoBoolean)
+                .addInput(totalChange, true, false)
+                .setParallelism(1);
+
+        LabyNode<Boolean, Unit> innerExitCond =
+            new LabyNode<>("innerExitCond", new ConditionNode(2, 3), 2, new Always0<>(1), booleanSer, TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>(){}))
+            .addInput(innerExitCondBool, true, false)
+            .setParallelism(1);
+
+        // -- Inner iteration ends here --   BB 3
+
+        LabyNode<Integer, Boolean> notFirstDayBool =
+            new LabyNode<>("notFirstDayBool", new SingletonBagOperator<Integer, Boolean>() {
+                @Override
+                public void pushInElement(Integer e, int logicalInputId) {
+                    super.pushInElement(e, logicalInputId);
+                    out.collectElement(!e.equals(1));
+                }
+            }, 3, new Always0<>(1), integerSer, TypeInformation.of(new TypeHint<ElementOrEvent<Boolean>>(){}))
+            .addInput(day_2, false, false) //todo: remelem jo itt igy a ket boolean
+            .setParallelism(1);
+
+        LabyNode<Boolean, Unit> notFirstDay =
+            new LabyNode<>("notFirstDay", new ConditionNode(new int[]{4,5}, new int[]{5}), 3, new Always0<>(1), booleanSer, typeInfoUnit)
+            .addInput(notFirstDayBool, true, false)
+            .setParallelism(1);
+
+        // -- then branch   BB 4
+
+        // The join of joinedYesterday is merged into this operator
+        LabyNode<TupleIntDouble, TupleIntDouble> diffs =
+            new LabyNode<>("diffs", new OuterJoinTupleIntDouble<TupleIntDouble>() {
+                @Override
+                protected void inner(double b, TupleIntDouble p) {
+                    out.collectElement(TupleIntDouble.of(p.f0, Math.abs(b - p.f1)));
+                }
+
+                @Override
+                protected void right(TupleIntDouble p) {
+                    out.collectElement(p);
+                }
+
+                @Override
+                protected void left(double b) {
+                    out.collectElement(TupleIntDouble.of(-1, b));
+                }
+            }, 4, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
+            .addInput(newPR, false, true)
+            .addInput(yesterdayPR_2, false, true);
 //
 //        LabyNode<TupleIntInt, Integer> diffsInt =
 //                new LabyNode<>("diffsInt", new FlatMap<TupleIntInt, Integer>() {
