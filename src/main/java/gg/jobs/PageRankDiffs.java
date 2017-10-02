@@ -189,6 +189,7 @@ public class PageRankDiffs {
 
         PojoTypeInfo.registerCustomSerializer(ElementOrEvent.class, new ElementOrEvent.ElementOrEventSerializerFactory());
         PojoTypeInfo.registerCustomSerializer(TupleIntInt.class, TupleIntInt.TupleIntIntSerializer.class);
+        PojoTypeInfo.registerCustomSerializer(TupleIntDouble.class, TupleIntDouble.TupleIntDoubleSerializer.class);
 
 
         CFLConfig.getInstance().terminalBBId = 6;

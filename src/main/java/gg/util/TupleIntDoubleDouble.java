@@ -58,6 +58,7 @@ public final class TupleIntDoubleDouble implements Serializable {
 
     // ------------------------- Serializers -------------------------
 
+    // TODO
     public static final class TupleIntIntIntSerializer extends TypeSerializer<TupleIntDoubleDouble> {
 
         @Override
