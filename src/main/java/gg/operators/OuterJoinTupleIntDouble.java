@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Joins (key,b) (build) with (key,c) (probe), giving (b, key, c) to the udf.
  * The first input is the build side.
+ *
+ * Note: In PageRank, we are using UpdateJoinTupleIntDouble instead.
  */
 public abstract class OuterJoinTupleIntDouble<T> extends BagOperator<TupleIntDouble, T> implements ReusingBagOperator {
 

@@ -32,6 +32,7 @@ import gg.operators.SumCombiner;
 import gg.operators.SumCombinerDouble;
 import gg.operators.SumDouble;
 import gg.operators.Union;
+import gg.operators.UpdateJoinTupleIntDouble;
 import gg.partitioners.Always0;
 import gg.partitioners.Broadcast;
 import gg.partitioners.Forward;
@@ -411,24 +412,9 @@ public class PageRankDiffs {
                 .addInput(msgsReduced, true, false, new Forward<>(para));
 
         LabyNode<TupleIntDouble, TupleIntDouble> newPR =
-            new LabyNode<>("newPR", new OuterJoinTupleIntDouble<TupleIntDouble>() {
-                @Override
-                protected void inner(double b, TupleIntDouble p) {
-                    out.collectElement(p);
-                }
-
-                @Override
-                protected void right(TupleIntDouble p) {
-                    out.collectElement(p);
-                }
-
-                @Override
-                protected void left(double b) {
-                    assert false;
-                }
-            }, 2, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
-                .addInput(msgsDampened, true, false)
-                .addInput(PR_2, true, false);
+            new LabyNode<>("newPR", new UpdateJoinTupleIntDouble(), 2, new TupleIntDoubleBy0(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
+                .addInput(PR_2, true, false)
+                .addInput(msgsDampened, true, false);
 
         LabyNode<TupleIntDouble, Double> changes =
                 new LabyNode<>("changes", new JoinTupleIntDouble<Double>() {

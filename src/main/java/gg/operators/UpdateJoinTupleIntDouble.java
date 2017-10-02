@@ -1,26 +1,26 @@
 package gg.operators;
 
 import gg.util.SerializedBuffer;
+import gg.util.TupleIntDouble;
 import gg.util.TupleIntInt;
+import it.unimi.dsi.fastutil.ints.Int2DoubleMap;
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import org.apache.flink.api.java.tuple.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.function.Consumer;
 
 /**
  * The updates are the second input.
  */
-public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt> {
+public class UpdateJoinTupleIntDouble extends BagOperator<TupleIntDouble, TupleIntDouble> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(UpdateJoinTupleIntInt.class);
+    private static final Logger LOG = LoggerFactory.getLogger(UpdateJoinTupleIntDouble.class);
 
-    private Int2IntOpenHashMap ht;
-    private SerializedBuffer<TupleIntInt> probeBuffered;
+    private Int2DoubleOpenHashMap ht;
+    private SerializedBuffer<TupleIntDouble> probeBuffered;
     private boolean buildDone;
     private boolean probeDone;
 
@@ -30,9 +30,9 @@ public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt>
     @Override
     public void openOutBag() {
         super.openOutBag();
-        ht = new Int2IntOpenHashMap(4096);
-        ht.defaultReturnValue(Integer.MIN_VALUE);
-        probeBuffered = new SerializedBuffer<>(new TupleIntInt.TupleIntIntSerializer());
+        ht = new Int2DoubleOpenHashMap(4096);
+        ht.defaultReturnValue(Double.MIN_VALUE);
+        probeBuffered = new SerializedBuffer<>(new TupleIntDouble.TupleIntDoubleSerializer());
         buildDone = false;
         probeDone = false;
         buildCnt = 0;
@@ -40,7 +40,7 @@ public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt>
     }
 
     @Override
-    public void pushInElement(TupleIntInt e, int logicalInputId) {
+    public void pushInElement(TupleIntDouble e, int logicalInputId) {
         super.pushInElement(e, logicalInputId);
         if (logicalInputId == 0) { // build side
             buildCnt++;
@@ -64,7 +64,7 @@ public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt>
             assert !buildDone;
             LOG.info("Build side finished");
             buildDone = true;
-            for (TupleIntInt e: probeBuffered) {
+            for (TupleIntDouble e: probeBuffered) {
                 probe(e);
             }
             if (probeDone) {
@@ -81,16 +81,16 @@ public class UpdateJoinTupleIntInt extends BagOperator<TupleIntInt, TupleIntInt>
         }
     }
 
-    private void probe(TupleIntInt e) {
-        int r = ht.replace(e.f0, e.f1);
+    private void probe(TupleIntDouble e) {
+        double r = ht.replace(e.f0, e.f1);
         assert r != ht.defaultReturnValue(); // Let's not allow for insertions for the moment.
     }
 
     private void emitAndClose() {
-        ht.int2IntEntrySet().fastForEach(new Consumer<Int2IntMap.Entry>() {
+        ht.int2DoubleEntrySet().fastForEach(new Consumer<Int2DoubleMap.Entry>() {
             @Override
-            public void accept(Int2IntMap.Entry e) {
-                out.collectElement(TupleIntInt.of(e.getIntKey(), e.getIntValue()));
+            public void accept(Int2DoubleMap.Entry e) {
+                out.collectElement(TupleIntDouble.of(e.getIntKey(), e.getDoubleValue()));
             }
         });
         LOG.info("buildCnt: " + buildCnt + ", probeCnt: " + probeCnt);
