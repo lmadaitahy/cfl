@@ -145,8 +145,8 @@ import java.util.Collections;
  *     innerExitCond = totalChange > epsilon
  *   While innerExitCond
  *   // BB 3
- *   ifCondBool = day_2 != 1
- *   If (ifCondBool)
+ *   notFirstDayBool = day_2 != 1
+ *   If (notFirstDayBool)
  *     // BB 4
  *     joinedYesterday = PR_3 join yesterdayPR_2
  *     diffs = joinedYesterday.map((id,today,yesterday) => abs(today - yesterday))
@@ -181,7 +181,7 @@ public class PageRankDiffs {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        env.setParallelism(1);
+        //env.setParallelism(1);
 
 
         final String pref = args[0] + "/";
@@ -560,7 +560,7 @@ public class PageRankDiffs {
                 .setParallelism(1);
 
         LabyNode<Boolean, Unit> outerExitCond =
-                new LabyNode<>("outerExitCond", new ConditionNode(1, 6), 5, new Always0<>(1), booleanSer, typeInfoUnit)
+                new LabyNode<>("outerExitCond", new ConditionNode(new int[]{1,2}, new int[]{6}), 5, new Always0<>(1), booleanSer, typeInfoUnit)
                 .addInput(outerExitCondBool, true, false)
                 .setParallelism(1);
 

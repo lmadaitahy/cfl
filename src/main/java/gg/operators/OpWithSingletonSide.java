@@ -19,7 +19,6 @@ abstract public class OpWithSingletonSide<IN, OUT> extends OpWithSideInput<IN, O
 
     @Override
     public void closeInBag(int inputId) {
-        super.closeInBag(inputId);
         if (inputId == 0) {
             // side
             for (IN e: sideBuffered) {
@@ -27,11 +26,12 @@ abstract public class OpWithSingletonSide<IN, OUT> extends OpWithSideInput<IN, O
                 sideSing = e;
             }
         }
+        super.closeInBag(inputId);
     }
 
     @Override
     protected void pushInElementWithSide(IN e, SerializedBuffer<IN> side) {
-        assert side != null;
+        assert this.sideSing != null;
         pushInElementWithSingletonSide(e, this.sideSing);
     }
 
