@@ -181,7 +181,8 @@ public class PageRankDiffs {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        //env.setParallelism(1);
+        env.setParallelism(1);
+
 
         final String pref = args[0] + "/";
 
@@ -405,8 +406,8 @@ public class PageRankDiffs {
                     out.collectElement(TupleIntDouble.of(e.f0, d * newRank + (1-d) * initWeight));
                 }
             }, 2, null, tupleIntDoubleSer, typeInfoTupleIntDouble)
-                .addInput(initWeightTupleIntDouble, false, false, new Forward<>(para))
-                .addInput(msgsReduced, true, false, new Broadcast<>(para));
+                .addInput(initWeightTupleIntDouble, false, false, new Broadcast<>(para))
+                .addInput(msgsReduced, true, false, new Forward<>(para));
 
         LabyNode<TupleIntDouble, TupleIntDouble> newPR =
             new LabyNode<>("newPR", new OuterJoinTupleIntDouble<TupleIntDouble>() {
@@ -566,6 +567,8 @@ public class PageRankDiffs {
         // -- Iteration ends here   BB 6
 
         // Itt nincs semmi operator. (A kiirast a BB 4-ben csinaljuk.)
+
+        LabyNode.printOperatorIDNameMapping();
 
         LabyNode.translateAll();
 

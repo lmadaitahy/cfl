@@ -207,7 +207,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
             inputStream = inputStream
                     .map(new LogicalInputIdFiller<>(forward.index))
-                    .iterate(1000000000l);
+                    .iterate(1000000000L);
             iterativeStream = (IterativeStream)inputStream;
 
             assert bagOpHost instanceof PhiNode;
@@ -298,6 +298,16 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
             this.iterativeStream = iterativeStream;
             this.splitID = splitID;
             this.index = index;
+        }
+    }
+
+
+    public static void printOperatorIDNameMapping() {
+        for (AbstractLabyNode<?, ?> ln: labyNodes) {
+            if (ln instanceof LabyNode) {
+                BagOperatorHost<?, ?> boh = ((LabyNode) ln).bagOpHost;
+                System.out.println(boh.opID + " " + boh.name);
+            }
         }
     }
 }

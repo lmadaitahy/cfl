@@ -17,6 +17,7 @@ import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.runtime.gg.NoAutoClose;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
+import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -379,6 +380,8 @@ public class BagOperatorHost<IN, OUT>
 
 	synchronized private void startOutBagCheckBarrier() {
 		if(!CFLManager.barrier) {
+			if (CFLConfig.vlog)
+				LOG.info("[" + name + "] CFLCallback.notify starting an out bag");
 			startOutBag();
 		} else {
 			assert !outCFLSizes.isEmpty();
@@ -520,26 +523,32 @@ public class BagOperatorHost<IN, OUT>
 				es.submit(new Runnable() {
 					@Override
 					public void run() {
-						synchronized (BagOperatorHost.this) {
-							latestCFL = cfl;
+						try {
+							synchronized (BagOperatorHost.this) {
+								latestCFL = cfl;
 
-							if (CFLConfig.vlog) LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
+								if (CFLConfig.vlog) LOG.info("CFL notification: " + latestCFL + " {" + name + "}");
 
-							// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
-							// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
+								// Note: figyelni kell, hogy itt hamarabb legyen az out-ok kezelese, mint a startOutBag hivas, mert az el fogja dobni a buffereket,
+								// es van olyan, hogy ugyanannak a BB-nek az elerese mindket dolgot kivaltja
 
-							for (Out o : outs) {
-								o.notifyAppendToCFL(cfl);
+								for (Out o : outs) {
+									o.notifyAppendToCFL(cfl);
+								}
+
+								//boolean workInProgress = outCFLSizes.size() > 0;
+								boolean hasAdded = updateOutCFLSizes(cfl);
+								if (!workInProgress && hasAdded) {
+									startOutBagCheckBarrier();
+								} else {
+									if (CFLConfig.vlog)
+										LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because workInProgress=" + workInProgress + ", hasAdded=" + hasAdded + ", outCFLSizes.size()=" + outCFLSizes.size());
+								}
 							}
-
-							//boolean workInProgress = outCFLSizes.size() > 0;
-							boolean hasAdded = updateOutCFLSizes(cfl);
-							if (!workInProgress && hasAdded) {
-								startOutBagCheckBarrier();
-							} else {
-								if (CFLConfig.vlog)
-									LOG.info("[" + name + "] CFLCallback.notify not starting an out bag, because workInProgress=" + workInProgress + ", hasAdded=" + hasAdded + ", outCFLSizes.size()=" + outCFLSizes.size());
-							}
+						} catch (Throwable t) {
+							LOG.error("Unhandled exception in MyCFLCallback.notify: " + ExceptionUtils.stringifyException(t));
+							System.err.println(ExceptionUtils.stringifyException(t));
+							System.exit(8);
 						}
 					}
 				});
@@ -554,18 +563,22 @@ public class BagOperatorHost<IN, OUT>
 				es.submit(new Runnable() {
 					@Override
 					public void run() {
-
-						LOG.info("CFL notifyTerminalBB {" + name + "}");
-						synchronized (BagOperatorHost.this) {
-							terminalBBReached = true;
-							if (outCFLSizes.isEmpty()) {
-								// azert kell elobb unsubscribe-olni, mint shutdown-olni, mert a olyankor is kapunk mindenfele
-								// broadcast jellegu notificationoket, amikor mi mar vegeztunk, de a tobbiek meg dolgoznak.
-								cflMan.unsubscribe(cb);
-								es.shutdown();
+						try {
+							LOG.info("CFL notifyTerminalBB {" + name + "}");
+							synchronized (BagOperatorHost.this) {
+								terminalBBReached = true;
+								if (outCFLSizes.isEmpty()) {
+									// azert kell elobb unsubscribe-olni, mint shutdown-olni, mert a olyankor is kapunk mindenfele
+									// broadcast jellegu notificationoket, amikor mi mar vegeztunk, de a tobbiek meg dolgoznak.
+									cflMan.unsubscribe(cb);
+									es.shutdown();
+								}
 							}
+						} catch (Throwable t) {
+							LOG.error("Unhandled exception in MyCFLCallback.notifyTerminalBB: " + ExceptionUtils.stringifyException(t));
+							System.err.println(ExceptionUtils.stringifyException(t));
+							System.exit(8);
 						}
-
 					}
 				});
 			}
@@ -578,27 +591,33 @@ public class BagOperatorHost<IN, OUT>
 					es.submit(new Runnable() {
 						@Override
 						public void run() {
-							synchronized (BagOperatorHost.this) {
-								assert !notifyCloseInputs.contains(bagID);
-								notifyCloseInputs.add(bagID);
+							try {
+								synchronized (BagOperatorHost.this) {
+									assert !notifyCloseInputs.contains(bagID);
+									notifyCloseInputs.add(bagID);
 
-								if (opID == CFLManager.CloseInputBag.emptyBag) {
-									notifyCloseInputEmpties.add(bagID);
-								}
+									if (opID == CFLManager.CloseInputBag.emptyBag) {
+										notifyCloseInputEmpties.add(bagID);
+									}
 
-								for (Input inp : inputs) {
-									//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
-									if (bagID.equals(inp.currentBagID)) {
+									for (Input inp : inputs) {
+										//assert inp.currentBagID != null; // Ez kozben megsem lesz igaz, mert mostmar broadcastoljuk a closeInput-ot
+										if (bagID.equals(inp.currentBagID)) {
 
-										if (opID == CFLManager.CloseInputBag.emptyBag) {
-											// Itt az EmptyFromEmpty marker interface azert nem kell, mert nem rontja ez el a dolgokat a consumed = true
-											// akkor sem, ha nem empty lesz az eredmeny bag.
-											consumed = true;
+											if (opID == CFLManager.CloseInputBag.emptyBag) {
+												// Itt az EmptyFromEmpty marker interface azert nem kell, mert nem rontja ez el a dolgokat a consumed = true
+												// akkor sem, ha nem empty lesz az eredmeny bag.
+												consumed = true;
+											}
+
+											inp.closeCurrentInBag();
 										}
-
-										inp.closeCurrentInBag();
 									}
 								}
+							} catch (Throwable t) {
+								LOG.error("Unhandled exception in MyCFLCallback.notifyCloseInput: " + ExceptionUtils.stringifyException(t));
+								System.err.println(ExceptionUtils.stringifyException(t));
+								System.exit(8);
 							}
 						}
 					});
