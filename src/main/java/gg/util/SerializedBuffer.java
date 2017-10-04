@@ -21,6 +21,11 @@ public class SerializedBuffer<T> implements Iterable<T> {
 
     private final SimpleCollectingOutputView outView = new SimpleCollectingOutputView(segs, new ConjuringSegmentSource(), segSize);
 
+    // Vigyazat, ez mar nem teljesen azt jelenti, mint amit eredetileg akartam, hogy meghivtak az iteratorat. Mostmar
+    // olyankor is true-ra allitodik, ha nem  volt dammelve egyaltalan a subpartition. (Mivelhogy ilyenkor is lenyegeben
+    // consume-olta az operator az elemeit, csak nem az iteratoron keresztul, hanem a processElement kozvetlenul
+    // beadta az operatornak. (Ez ugyebar azert kell, mert attol, hogy nem dammelt egyaltalan, meg elofordulhat, hogy
+    // kesobb is szukseg lesz az inputra)
     public boolean consumeStarted = false;
 
     private int numWritten = 0;
@@ -30,7 +35,7 @@ public class SerializedBuffer<T> implements Iterable<T> {
     }
 
     public void add(T e) {
-        ///////////////assert !consumeStarted;  //todo: ez miert nem igaz?
+        //assert !consumeStarted; //ez ugyebar azert nem igaz, mert a processElement meg siman pakol bele, miutan consumoltunk
         numWritten++;
         try {
             ser.serialize(e, outView);

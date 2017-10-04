@@ -224,6 +224,7 @@ public class BagOperatorHost<IN, OUT>
 				consumed = true;
 				notifyLogStart();
 				op.pushInElement(ele, eleOrEvent.logicalInputId);
+				sp.buffers.get(sp.buffers.size()-1).elements.consumeStarted = true;
 			}
 		} else {
 
@@ -452,7 +453,6 @@ public class BagOperatorHost<IN, OUT>
 		}
 	}
 
-	// Note: inputCFLSize should be set before this
 	// Note: Also called from PhiNode
 	void activateLogicalInput(int id, int outCFLSize, int inputCFLSize) {
 		//  - For each subpartition, we tell it what to do:
@@ -929,8 +929,10 @@ public class BagOperatorHost<IN, OUT>
 		void addNewBuffer(BagID bagID) {
 
 			if (throwAwayOldBufs) {
-				// Old buffers are hopefully not needed. (Ideally, we would actually check some complicated condition in the control flow graph.)
+				// Old buffers are hopefully not needed. (Ideally, we would actually check some complicated condition on the control flow graph.)
 				// Setting elements to null instead of throwing the buffer away ensures that we easily notice if this assumption is violated.
+				// Note: We set up the conditional outputs in such a way that we never send a buffer that won't be ever be used,
+				// so the consumeStarted condition shouldn't pin stuff forever.
 				for (int i = 0; i < buffers.size() - 2; i++) {
 					Buffer bufI = buffers.get(i);
 					if (bufI.elements != null && bufI.elements.consumeStarted) { // throw away only if it was already used

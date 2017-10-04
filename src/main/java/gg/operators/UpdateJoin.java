@@ -53,7 +53,7 @@ public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Inte
         super.closeInBag(inputId);
         if (inputId == 0) { // build side
             assert !buildDone;
-            LOG.info("Build side finished");
+            //LOG.info("Build side finished");
             buildDone = true;
             for (Tuple2<Integer, Integer> e: probeBuffered) {
                 probe(e);
@@ -64,7 +64,7 @@ public class UpdateJoin extends BagOperator<Tuple2<Integer,Integer>, Tuple2<Inte
         } else { // probe side
             assert inputId == 1;
             assert !probeDone;
-            LOG.info("Probe side finished");
+            //LOG.info("Probe side finished");
             probeDone = true;
             if (buildDone) {
                 emitAndClose();

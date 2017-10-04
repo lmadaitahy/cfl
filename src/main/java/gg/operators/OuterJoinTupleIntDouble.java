@@ -79,7 +79,7 @@ public abstract class OuterJoinTupleIntDouble<T> extends BagOperator<TupleIntDou
         super.closeInBag(inputId);
         if (inputId == 0) { // build side
             assert !buildDone;
-            LOG.info("Build side finished");
+            //LOG.info("Build side finished");
             buildDone = true;
             for (TupleIntDouble e: probeBuffered) {
                 probe(e);
@@ -91,7 +91,7 @@ public abstract class OuterJoinTupleIntDouble<T> extends BagOperator<TupleIntDou
         } else { // probe side
             assert inputId == 1;
             assert !probeDone;
-            LOG.info("Probe side finished");
+            //LOG.info("Probe side finished");
             probeDone = true;
             if (buildDone) {
                 doRight();
