@@ -377,7 +377,8 @@ public class PageRankDiffs {
         LabyNode<Tuple2<Integer, Either<Double, TupleIntInt>>, TupleIntDouble> msgs =
             new LabyNode<>("msgs", new Join<Either<Double, TupleIntInt>, TupleIntDouble>() {
                 @Override
-                protected void udf(Tuple2<Integer, Either<Double, TupleIntInt>> a, Tuple2<Integer, Either<Double, TupleIntInt>> b) {
+                protected void udf(Tuple2<Integer, Either<Double, TupleIntInt>> b, Tuple2<Integer, Either<Double, TupleIntInt>> a) {
+                    // vigyazat, meg van cserelve az a es a b
                     assert a.f1.isLeft();
                     assert b.f1.isRight();
                     int to = b.f1.right().f0;
@@ -386,8 +387,8 @@ public class PageRankDiffs {
                     out.collectElement(TupleIntDouble.of(to, rank/degree));
                 }
             }, 2, new Tuple2by0<>(para), joinPrepSerializer, typeInfoTupleIntDouble)
-                .addInput(PR_2_prep, true, false)
-                .addInput(edgesWithDeg_prep, false, false);
+                .addInput(edgesWithDeg_prep, false, false)
+                .addInput(PR_2_prep, true, false);
 
         LabyNode<TupleIntDouble, TupleIntDouble> msgsReduced =
             new LabyNode<>("msgsReduced", new GroupBy0ReduceTupleIntDouble() {

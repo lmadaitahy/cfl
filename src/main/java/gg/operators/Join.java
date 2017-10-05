@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public abstract class Join<IN, OUT> extends BagOperator<Tuple2<Integer, IN>, OUT> {
+public abstract class Join<IN, OUT> extends BagOperator<Tuple2<Integer, IN>, OUT> implements ReusingBagOperator {
 
     private static final Logger LOG = LoggerFactory.getLogger(Join.class);
 
@@ -16,13 +16,32 @@ public abstract class Join<IN, OUT> extends BagOperator<Tuple2<Integer, IN>, OUT
     private boolean buildDone;
     private boolean probeDone;
 
+    private boolean reuse = false;
+
     @Override
     public void openOutBag() {
         super.openOutBag();
-        ht = new HashMap<>();
         probeBuffered = new ArrayList<>();
         buildDone = false;
         probeDone = false;
+        reuse = false;
+    }
+
+    @Override
+    public void signalReuse() {
+        reuse = true;
+    }
+
+    @Override
+    public void openInBag(int logicalInputId) {
+        super.openInBag(logicalInputId);
+
+        if (logicalInputId == 0) {
+            // build side
+            if (!reuse) {
+                ht = new HashMap<>(8192);
+            }
+        }
     }
 
     @Override
