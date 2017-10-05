@@ -15,7 +15,9 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.datastream.SplitStream;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 
 /**
@@ -74,7 +76,16 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     public LabyNode<IN, OUT> addInput(LabyNode<?, IN> inputLabyNode, boolean insideBlock, boolean condOut) {
         assert !(insideBlock && condOut); // This case is impossible, right?
         bagOpHost.addInput(inputs.size(), inputLabyNode.bagOpHost.bbId, insideBlock, inputLabyNode.bagOpHost.opID);
-        int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, inputPartitioner);
+        int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, inputPartitioner, Collections.emptySet());
+        inputs.add(new Input(inputLabyNode, splitID, inputs.size()));
+        return this;
+    }
+
+    public LabyNode<IN, OUT> addInput(LabyNode<?, IN> inputLabyNode, boolean insideBlock, boolean condOut, Set<Integer> overwriters) {
+        assert condOut;
+        assert !(insideBlock && condOut); // This case is impossible, right?
+        bagOpHost.addInput(inputs.size(), inputLabyNode.bagOpHost.bbId, insideBlock, inputLabyNode.bagOpHost.opID);
+        int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, inputPartitioner, overwriters);
         inputs.add(new Input(inputLabyNode, splitID, inputs.size()));
         return this;
     }
@@ -84,7 +95,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
         assert inputPartitioner == null;
         assert !(insideBlock && condOut); // This case is impossible, right?
         bagOpHost.addInput(inputs.size(), inputLabyNode.bagOpHost.bbId, insideBlock, inputLabyNode.bagOpHost.opID);
-        int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, partitioner);
+        int splitID = inputLabyNode.bagOpHost.out(bagOpHost.bbId, !condOut, partitioner, Collections.emptySet());
         inputs.add(new Input(inputLabyNode, splitID, inputs.size()));
         return this;
     }

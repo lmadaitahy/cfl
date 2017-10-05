@@ -62,7 +62,10 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 import org.apache.flink.types.Either;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * This is similar to ClickCountDiffs, in that we compute differences between datasets computed in consecutive iterations.
@@ -438,7 +441,7 @@ public class PageRankDiffs {
 
         // PR_3 is "optimized out"
 
-        PR_2.addInput(newPR, false, true);
+        PR_2.addInput(newPR, false, true, Collections.singleton(1));
 
         LabyNode<Double, Boolean> innerExitCondBool =
             new LabyNode<>("innerExitCondBool", new LargerThan(epsilon), 2, new Always0<>(1), doubleSer, typeInfoBoolean)

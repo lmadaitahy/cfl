@@ -649,16 +649,16 @@ public class BagOperatorHost<IN, OUT>
 	// This overload is for manual job building. The auto builder uses the other one.
 	public BagOperatorHost<IN, OUT> out(int splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
 		assert splitId == outs.size();
-		outs.add(new Out((byte)splitId, targetBbId, normal, partitioner));
+		outs.add(new Out((byte)splitId, targetBbId, normal, partitioner, Collections.emptySet()));
 		return this;
 	}
 
 	// `normal` means not conditional.
 	// If `normal` is false, then we set to damming until we reach its BB.
 	// (This means that for example if targetBbId is the same as the operator's BbId, then we wait for the next iteration step.)
-	public int out(int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
+	public int out(int targetBbId, boolean normal, Partitioner<OUT> partitioner, Set<Integer> overwriters) {
 		int splitId = outs.size();
-		outs.add(new Out((byte)splitId, targetBbId, normal, partitioner));
+		outs.add(new Out((byte)splitId, targetBbId, normal, partitioner, overwriters));
 		return splitId;
 	}
 
@@ -698,13 +698,16 @@ public class BagOperatorHost<IN, OUT>
 
 		boolean active;
 
-		Out(byte splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner) {
+		private final Set<Integer> overwriters;
+
+		Out(byte splitId, int targetBbId, boolean normal, Partitioner<OUT> partitioner, Set<Integer> overwriters) {
 			this.splitId = splitId;
 			this.targetBbId = targetBbId;
 			this.normal = normal;
 			this.partitioner = partitioner;
 			this.sentStart = new boolean[partitioner.targetPara];
 			this.active = false;
+			this.overwriters = overwriters;
 		}
 
 		void collectElement(OUT e) {
@@ -751,10 +754,11 @@ public class BagOperatorHost<IN, OUT>
 				} else {
 					// Azert nem kell +1 az outCFLSize-nak, mert ugye az outCFL _utani_ elem igy is
 					for (int i = outCFLSize; i < latestCFL.size(); i++) {
-						if (latestCFL.get(i).equals(targetBbId)) {
+						int cfli = latestCFL.get(i);
+						if (cfli == targetBbId) {
 							targetReached = true;
 						}
-						if (latestCFL.get(i).equals(bbId)) {
+						if (cfli == bbId || overwriters.contains(cfli)) {
 							break; // Merthogy akkor egy kesobbi bag folul fogja irni a mostanit.
 						}
 					}
@@ -778,7 +782,8 @@ public class BagOperatorHost<IN, OUT>
 					// Leellenorizzuk, hogy nem irodik-e felul, mielott meg a jelenleg hozzaadottat elerne
 					boolean overwritten = false;
 					for (int i = outCFLSize; i < cfl.size() - 1; i++) {
-						if (cfl.get(i).equals(bbId)) {
+						int cfli = cfl.get(i);
+						if (cfli == bbId || overwriters.contains(cfli)) {
 							overwritten = true;
 						}
 					}
@@ -937,6 +942,10 @@ public class BagOperatorHost<IN, OUT>
 					Buffer bufI = buffers.get(i);
 					if (bufI.elements != null && bufI.elements.consumeStarted) { // throw away only if it was already used
 						bufI.elements = null;
+					} else {
+						if (bufI.elements != null) {
+							int a = 52;
+						}
 					}
 				}
 			}
