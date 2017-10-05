@@ -229,10 +229,13 @@ public class PageRankDiffs {
                 .addInput(day_1, false)
                 .setParallelism(1);
 
-        LabyNode<Integer, TupleIntInt> edges =
-                new LabyNode<>("edges", new ClickLogReader2(pref + "/input/"), 1, new RoundRobin<>(para), integerSer, typeInfoTupleIntInt)
+        LabyNode<Integer, TupleIntInt> edges_read =
+                new LabyNode<>("edges_read", new ClickLogReader2(pref + "/input/"), 1, new RoundRobin<>(para), integerSer, typeInfoTupleIntInt)
                         .addInput(day_2, true, false);
-                        //.setParallelism(1);
+
+        LabyNode<TupleIntInt, TupleIntInt> edges =
+                new LabyNode<>("edges", new IdMap<>(), 1, new RoundRobin<>(para), tupleIntIntSer, typeInfoTupleIntInt)
+                .addInput(edges_read, true, false);
 
         LabyNode<TupleIntInt, TupleIntInt> edgesMapped =
                 new LabyNode<>("edgesMapped", new FlatMap<TupleIntInt, TupleIntInt>() {
