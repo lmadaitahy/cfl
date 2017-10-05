@@ -942,10 +942,6 @@ public class BagOperatorHost<IN, OUT>
 					Buffer bufI = buffers.get(i);
 					if (bufI.elements != null && bufI.elements.consumeStarted) { // throw away only if it was already used
 						bufI.elements = null;
-					} else {
-						if (bufI.elements != null) {
-							int a = 52;
-						}
 					}
 				}
 			}
