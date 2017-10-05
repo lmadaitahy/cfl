@@ -259,6 +259,19 @@ public class PageRankDiffs {
                 .addInput(edges, true, false)
                 .addInput(edgesMappedReduced, true, false);
 
+        TypeInformation<ElementOrEvent<Tuple2<Integer, Either<Double, TupleIntInt>>>> joinPrepTypeInfo =
+                TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Either<Double, TupleIntInt>>>>(){});
+
+        LabyNode<TupleIntIntInt, Tuple2<Integer, Either<Double, TupleIntInt>>> edgesWithDeg_prep =
+            new LabyNode<>("edgesWithDeg_prep", new FlatMap<TupleIntIntInt, Tuple2<Integer, Either<Double, TupleIntInt>>>() {
+                @Override
+                public void pushInElement(TupleIntIntInt e, int logicalInputId) {
+                    super.pushInElement(e, logicalInputId);
+                    out.collectElement(Tuple2.of(e.f0, Either.Right(TupleIntInt.of(e.f1, e.f2))));
+                }
+            }, 1, new Forward<>(para), tupleIntIntIntSer, joinPrepTypeInfo)
+                .addInput(edgesWithDeg, true, false);
+
         LabyNode<TupleIntInt, Integer> edgesFromMapped = new LabyNode<>("edgesFromMapped", new FlatMap<TupleIntInt, Integer>() {
             @Override
             public void pushInElement(TupleIntInt e, int logicalInputId) {
@@ -346,15 +359,8 @@ public class PageRankDiffs {
                 LabyNode.phi("PR_2", 2, new Forward<>(para), tupleIntDoubleSer, typeInfoTupleIntDouble)
                 .addInput(PR_1, false, false);
 
-        TypeInformation<ElementOrEvent<Tuple2<Integer, Either<Double, TupleIntInt>>>> joinPrepTypeInfo =
-                TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<Integer, Either<Double, TupleIntInt>>>>(){});
-
         TypeSerializer<Tuple2<Integer, Either<Double, TupleIntInt>>> joinPrepSerializer =
                 TypeInformation.of(new TypeHint<Tuple2<Integer, Either<Double, TupleIntInt>>>(){}).createSerializer(new ExecutionConfig());
-
-        //TODO: majd leellenorizni, hogy a megfelelo serializerek jonnek elo:
-        // - nincs Kryo
-        // - az Either a sajat spec serializerevel van serializalva
 
         LabyNode<TupleIntDouble, Tuple2<Integer, Either<Double, TupleIntInt>>> PR_2_prep =
             new LabyNode<>("PR_2_prep", new FlatMap<TupleIntDouble, Tuple2<Integer, Either<Double, TupleIntInt>>>() {
@@ -365,16 +371,6 @@ public class PageRankDiffs {
                 }
             }, 2, new Forward<>(para), tupleIntDoubleSer, joinPrepTypeInfo)
                 .addInput(PR_2, true, false);
-
-        LabyNode<TupleIntIntInt, Tuple2<Integer, Either<Double, TupleIntInt>>> edgesWithDeg_prep =
-            new LabyNode<>("edgesWithDeg_prep", new FlatMap<TupleIntIntInt, Tuple2<Integer, Either<Double, TupleIntInt>>>() {
-                @Override
-                public void pushInElement(TupleIntIntInt e, int logicalInputId) {
-                    super.pushInElement(e, logicalInputId);
-                    out.collectElement(Tuple2.of(e.f0, Either.Right(TupleIntInt.of(e.f1, e.f2))));
-                }
-            }, 2, new Forward<>(para), tupleIntIntIntSer, joinPrepTypeInfo)
-            .addInput(edgesWithDeg, false, false);
 
         // PR_2_Joined = PR_2 join edgesWithDeg
         // msgs = PR_2_Joined.map((from, to, degree, rank) => (to, rank/degree))
@@ -391,7 +387,7 @@ public class PageRankDiffs {
                 }
             }, 2, new Tuple2by0<>(para), joinPrepSerializer, typeInfoTupleIntDouble)
                 .addInput(PR_2_prep, true, false)
-                .addInput(edgesWithDeg_prep, true, false);
+                .addInput(edgesWithDeg_prep, false, false);
 
         LabyNode<TupleIntDouble, TupleIntDouble> msgsReduced =
             new LabyNode<>("msgsReduced", new GroupBy0ReduceTupleIntDouble() {
