@@ -32,7 +32,7 @@ public class PageRankInputGen {
                 .lineDelimiter("\n")
                 .types(Integer.class, Integer.class);
 
-        int day = 0;
+        int day = 1;
         final int blockSize = 63;
         for (int i = 0; i < numDays / blockSize; i++) {
             for (int j = 0; j < blockSize; j++) {
