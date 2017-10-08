@@ -27,6 +27,11 @@ import java.util.Arrays;
 import java.util.List;
 
 
+/**
+ * args: path, numDays
+ *
+ * The input is at path/input in tab-separated edge-list files named 1, 2, ..., numDays
+ */
 
 public class PageRankDiffs {
 
