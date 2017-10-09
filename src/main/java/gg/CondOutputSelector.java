@@ -7,7 +7,7 @@ import java.util.List;
 
 public class CondOutputSelector<T> implements OutputSelector<ElementOrEvent<T>> {
 
-	private static final int maxSplit = 4;
+	private static final int maxSplit = 5;
 	private static final List<String>[] cache = new List[maxSplit];
 
 	static {

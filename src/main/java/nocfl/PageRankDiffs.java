@@ -45,7 +45,7 @@ public class PageRankDiffs {
 		env.getConfig().enableObjectReuse();
 
 		final double d = 0.85;
-		final double epsilon = 0.001;
+		final double epsilon = 0.00001;
 
 		String pref = args[0] + "/";
 		final String yesterdayPRTmpFilename = pref + "tmp/yesterdayCounts";
@@ -200,6 +200,8 @@ public class PageRankDiffs {
 			DataSet<Tuple2<IntValue, DoubleValue>> finalPR = PR.closeWith(newPR, termCrit);
 
 			// --- End of PageRank Iteration ---
+
+			finalPR.writeAsText(pref + "allPRs/noCFL/" + day, FileSystem.WriteMode.OVERWRITE); // debugging
 
 			if (day != 1) {
 

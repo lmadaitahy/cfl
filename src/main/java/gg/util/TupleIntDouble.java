@@ -43,12 +43,17 @@ public final class TupleIntDouble implements Serializable {
         return result;
     }
 
+//    @Override
+//    public String toString() {
+//        return "TupleIntDouble{" +
+//                "f0=" + f0 +
+//                ", f1=" + f1 +
+//                '}';
+//    }
+
     @Override
     public String toString() {
-        return "TupleIntDouble{" +
-                "f0=" + f0 +
-                ", f1=" + f1 +
-                '}';
+        return "(" + f0 + ',' + f1 + ')';
     }
 
     public static TupleIntDouble of(int f0, double f1) {
