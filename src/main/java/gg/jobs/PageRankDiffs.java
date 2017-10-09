@@ -216,7 +216,7 @@ public class PageRankDiffs {
 
         double d = 0.85;
 
-        double epsilon = 0.00001;
+        double epsilon = 0.0000000001;
 
         // -- Outer iteration starts here --   BB 1
 
