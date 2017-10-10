@@ -176,16 +176,20 @@ public class ElementOrEvent<T> implements Serializable, CanForceFlush {
 			target.writeShort(r.subPartitionId);
 			target.writeShort(r.targetPart);
 			if (r.event != null) {
-				target.writeBoolean(true); // mark that it's an Event
-				target.writeInt(r.event.type.ordinal());
-				target.writeShort(r.event.assumedTargetPara);
-				target.writeInt(r.event.bagID.cflSize);
-				target.writeInt(r.event.bagID.opID);
+				serializeEvent(r, target);
 			} else {
 				assert r.element != null;
 				target.writeBoolean(false); // mark that it's an Element
 				elementSerializer.serialize(r.element, target);
 			}
+		}
+
+		private void serializeEvent(ElementOrEvent<T> r, DataOutputView target) throws IOException {
+			target.writeBoolean(true); // mark that it's an Event
+			target.writeInt(r.event.type.ordinal());
+			target.writeShort(r.event.assumedTargetPara);
+			target.writeInt(r.event.bagID.cflSize);
+			target.writeInt(r.event.bagID.opID);
 		}
 
 		@Override
@@ -203,16 +207,20 @@ public class ElementOrEvent<T> implements Serializable, CanForceFlush {
 			r.targetPart = s.readShort();
 			boolean isEvent = s.readBoolean();
 			if (isEvent) {
-				r.event = new Event();
-				r.event.type = Event.enumConsts[s.readInt()];
-				r.event.assumedTargetPara = s.readShort();
-				r.event.bagID = new BagID();
-				r.event.bagID.cflSize = s.readInt();
-				r.event.bagID.opID = s.readInt();
+				deserializeEvent(r, s);
 			} else {
 				r.element = elementSerializer.deserialize(s);
 			}
 			return r;
+		}
+
+		private void deserializeEvent(ElementOrEvent<T> r, DataInputView s) throws IOException {
+			r.event = new Event();
+			r.event.type = Event.enumConsts[s.readInt()];
+			r.event.assumedTargetPara = s.readShort();
+			r.event.bagID = new BagID();
+			r.event.bagID.cflSize = s.readInt();
+			r.event.bagID.opID = s.readInt();
 		}
 
 		@Override
