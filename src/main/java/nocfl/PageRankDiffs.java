@@ -17,12 +17,14 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.core.fs.Path;
 import org.apache.flink.types.DoubleValue;
 import org.apache.flink.types.IntValue;
 import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 
@@ -49,6 +51,8 @@ public class PageRankDiffs {
 
 		String pref = args[0] + "/";
 		final String yesterdayPRTmpFilename = pref + "tmp/yesterdayCounts";
+		final String todayPRTmpFilename = pref + "tmp/todayCounts";
+		FileSystem fs = FileSystem.get(new URI(pref));
 
 		final int days = Integer.parseInt(args[1]);
 		for (int day = 1; day <= days; day++) {
@@ -201,7 +205,7 @@ public class PageRankDiffs {
 
 			// --- End of PageRank Iteration ---
 
-			finalPR.writeAsText(pref + "allPRs/noCFL/" + day, FileSystem.WriteMode.OVERWRITE); // debugging
+			//finalPR.writeAsText(pref + "allPRs/noCFL/" + day, FileSystem.WriteMode.OVERWRITE); //.setParallelism(1); // debugging
 
 			if (day != 1) {
 
@@ -234,10 +238,17 @@ public class PageRankDiffs {
 				}).setParallelism(1).writeAsText(pref + "out/expected/diff_" + day, FileSystem.WriteMode.OVERWRITE);
 			}
 
-			finalPR.writeAsCsv(yesterdayPRTmpFilename, FileSystem.WriteMode.OVERWRITE);
+			// Workaround for https://issues.apache.org/jira/browse/FLINK-1268
+			fs.delete(new Path(todayPRTmpFilename), true);
+
+			finalPR.writeAsCsv(todayPRTmpFilename, FileSystem.WriteMode.OVERWRITE);
 
 			//System.out.println(env.getExecutionPlan());
 			env.execute();
+
+			// yesterdayPRTmpFilename and todayPRTmpFilename has to be different, because the reading and writing can overlap
+			fs.delete(new Path(yesterdayPRTmpFilename), true);
+			fs.rename(new Path(todayPRTmpFilename), new Path(yesterdayPRTmpFilename));
 		}
 	}
 }

@@ -456,38 +456,39 @@ public class PageRankDiffs {
         // -- Inner iteration ends here --   BB 3
 
 
+        // Debug print all PRs:
 
-        TypeInformation<Either<Integer, TupleIntDouble>> typeInfoEitherIntTupleIntDouble = TypeInformation.of(new TypeHint<Either<Integer, TupleIntDouble>>(){});
-        TypeInformation<ElementOrEvent<Either<Integer, TupleIntDouble>>> typeInfoEoEEitherIntTupleIntDouble = TypeInformation.of(new TypeHint<ElementOrEvent<Either<Integer, TupleIntDouble>>>(){});
-        TypeSerializer<Either<Integer, TupleIntDouble>> eitherIntTupleIntDoubleSer = typeInfoEitherIntTupleIntDouble.createSerializer(new ExecutionConfig());
-        TypeInformation<ElementOrEvent<Either<Integer, Double>>> typeInfoEoEEitherIntDouble = TypeInformation.of(new TypeHint<ElementOrEvent<Either<Integer, Double>>>(){});
-
-        LabyNode<Integer, Either<Integer, TupleIntDouble>> day_2_prepXXX =
-                new LabyNode<>("day_2_prep", new FlatMap<Integer, Either<Integer, TupleIntDouble>>() {
-                    @Override
-                    public void pushInElement(Integer e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        out.collectElement(Either.Left(e));
-                    }
-                }, 3, new Forward<>(para), integerSer, typeInfoEoEEitherIntTupleIntDouble)
-                        .addInput(day_2, false, false);
-
-        LabyNode<TupleIntDouble, Either<Integer, TupleIntDouble>> PR_2_prepXXX =
-                new LabyNode<>("PR_2_prep", new FlatMap<TupleIntDouble, Either<Integer, TupleIntDouble>>() {
-                    @Override
-                    public void pushInElement(TupleIntDouble e, int logicalInputId) {
-                        super.pushInElement(e, logicalInputId);
-                        out.collectElement(Either.Right(e));
-                    }
-                }, 3, new Forward<>(para), tupleIntDoubleSer, typeInfoEoEEitherIntTupleIntDouble)
-                .addInput(PR_2, false, true);
-
-        LabyNode<Either<Integer, TupleIntDouble>, Unit> printPR =
-                new LabyNode<Either<Integer, TupleIntDouble>, Unit>("printPR", new CFAwareFileSinkGen<TupleIntDouble>(pref + "allPRs/", tupleIntDoubleSer),
-                        3, new Always0<>(1), eitherIntTupleIntDoubleSer, typeInfoUnit)
-                .addInput(day_2_prepXXX, true, false)
-                .addInput(PR_2_prepXXX, true, false)
-                .setParallelism(1);
+//        TypeInformation<Either<Integer, TupleIntDouble>> typeInfoEitherIntTupleIntDouble = TypeInformation.of(new TypeHint<Either<Integer, TupleIntDouble>>(){});
+//        TypeInformation<ElementOrEvent<Either<Integer, TupleIntDouble>>> typeInfoEoEEitherIntTupleIntDouble = TypeInformation.of(new TypeHint<ElementOrEvent<Either<Integer, TupleIntDouble>>>(){});
+//        TypeSerializer<Either<Integer, TupleIntDouble>> eitherIntTupleIntDoubleSer = typeInfoEitherIntTupleIntDouble.createSerializer(new ExecutionConfig());
+//        TypeInformation<ElementOrEvent<Either<Integer, Double>>> typeInfoEoEEitherIntDouble = TypeInformation.of(new TypeHint<ElementOrEvent<Either<Integer, Double>>>(){});
+//
+//        LabyNode<Integer, Either<Integer, TupleIntDouble>> day_2_prepXXX =
+//                new LabyNode<>("day_2_prep", new FlatMap<Integer, Either<Integer, TupleIntDouble>>() {
+//                    @Override
+//                    public void pushInElement(Integer e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        out.collectElement(Either.Left(e));
+//                    }
+//                }, 3, new Forward<>(para), integerSer, typeInfoEoEEitherIntTupleIntDouble)
+//                        .addInput(day_2, false, false);
+//
+//        LabyNode<TupleIntDouble, Either<Integer, TupleIntDouble>> PR_2_prepXXX =
+//                new LabyNode<>("PR_2_prep", new FlatMap<TupleIntDouble, Either<Integer, TupleIntDouble>>() {
+//                    @Override
+//                    public void pushInElement(TupleIntDouble e, int logicalInputId) {
+//                        super.pushInElement(e, logicalInputId);
+//                        out.collectElement(Either.Right(e));
+//                    }
+//                }, 3, new Forward<>(para), tupleIntDoubleSer, typeInfoEoEEitherIntTupleIntDouble)
+//                .addInput(PR_2, false, true);
+//
+//        LabyNode<Either<Integer, TupleIntDouble>, Unit> printPR =
+//                new LabyNode<Either<Integer, TupleIntDouble>, Unit>("printPR", new CFAwareFileSinkGen<TupleIntDouble>(pref + "allPRs/", tupleIntDoubleSer),
+//                        3, new Always0<>(1), eitherIntTupleIntDoubleSer, typeInfoUnit)
+//                .addInput(day_2_prepXXX, true, false)
+//                .addInput(PR_2_prepXXX, true, false)
+//                .setParallelism(1);
 
 
 
@@ -540,7 +541,7 @@ public class PageRankDiffs {
                 .setParallelism(1);
 
         TypeInformation<Either<Integer, Double>> typeInfoEitherIntDouble = TypeInformation.of(new TypeHint<Either<Integer, Double>>(){});
-        //TypeInformation<ElementOrEvent<Either<Integer, Double>>> typeInfoEoEEitherIntDouble = TypeInformation.of(new TypeHint<ElementOrEvent<Either<Integer, Double>>>(){});
+        TypeInformation<ElementOrEvent<Either<Integer, Double>>> typeInfoEoEEitherIntDouble = TypeInformation.of(new TypeHint<ElementOrEvent<Either<Integer, Double>>>(){});
         TypeSerializer<Either<Integer, Double>> eitherIntDoubleSer = typeInfoEitherIntDouble.createSerializer(new ExecutionConfig());
 
         LabyNode<Integer, Either<Integer, Double>> day_2_prep =
