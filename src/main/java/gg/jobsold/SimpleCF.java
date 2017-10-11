@@ -8,6 +8,7 @@ import gg.util.Unit;
 import gg.util.Util;
 import gg.partitioners.Random;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -18,6 +19,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 /**
  * // BB 0
@@ -69,9 +71,25 @@ public class SimpleCF {
 
 		DataStream<ElementOrEvent<Integer>> inputBag = inputBag0.map(new LogicalInputIdFiller<>(0));
 
-		IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(1000000000);
+		//IterativeStream<ElementOrEvent<Integer>> it = inputBag.iterate(1000000000);
 
-		DataStream<ElementOrEvent<Integer>> phi = it
+		DataStream<ElementOrEvent<Integer>> dummy = env.fromCollection(Collections.emptyList(), TypeInformation.of(new TypeHint<ElementOrEvent<Integer>>(){}));
+		IterativeStream<ElementOrEvent<Integer>> it = dummy.iterate(1000000000);
+
+		DataStream<ElementOrEvent<Integer>> dummyMap = it.map(new MapFunction<ElementOrEvent<Integer>, ElementOrEvent<Integer>>() {
+			@Override
+			public ElementOrEvent<Integer> map(ElementOrEvent<Integer> value) throws Exception {
+				return value; // identity
+			}
+		});
+
+		////
+		it.setParallelism(1);
+		////
+
+		DataStream<ElementOrEvent<Integer>> aaaa = dummyMap.broadcast().union(inputBag);
+
+		DataStream<ElementOrEvent<Integer>> phi = aaaa //it//.broadcast()
 				//.setConnectionType(new gg.partitioners.Random<>())
 				.bt("phi",inputBag.getType(),
 						new PhiNode<Integer>(1, 1, integerSer)
@@ -93,7 +111,7 @@ public class SimpleCF {
 				.setConnectionType(new gg.partitioners.FlinkPartitioner<>())
 				.split(new CondOutputSelector<>());
 
-		DataStream<ElementOrEvent<Integer>> incedSplitL = incedSplit.select("0").map(new LogicalInputIdFiller<>(1));
+		DataStream<ElementOrEvent<Integer>> incedSplitL = incedSplit.select("0").map(new LogicalInputIdFiller<>(1)).setParallelism(1).broadcast();
 
 		it.closeWith(incedSplitL);
 
