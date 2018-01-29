@@ -20,7 +20,7 @@ public class KickoffSource implements SourceFunction<Unit> {
 		this.kickoffBBs = kickoffBBs;
 		this.terminalBBId = CFLConfig.getInstance().terminalBBId;
 		this.cflConfig = CFLConfig.getInstance();
-		assert this.terminalBBId >= 0;
+		assert this.terminalBBId >= 0 : "CFLConfig has to be set before creating KickoffSource";
 	}
 
 	@Override
