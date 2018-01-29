@@ -14,10 +14,9 @@ public class CFLConfig implements Serializable {
 
     private CFLConfig() {}
 
-
-    // Ezt be kell allitani meg a KickoffSource letrehozasa elott, mert az elrakja a ctorban.
-    // Tovabba a job elindulasakor mar ennek be kell lennie allitva (vagyis nem lehetne a KickoffSource setupjaban bealltani ezt itt),
-    // mert a BagOperatorHost setupjaban szukseg van ra, es a setupok sorrendje nem determinisztikus.
+    // This has to be set before creating the KickoffSource, which takes and stores it in the constructor.
+    // Furthermore it has to be set when the job starts (i.e. it can't be set during KickoffSource setup)
+    // because it is needed during BagOperatorHost setup and the order of the setups is not deterministic.
     public int terminalBBId = -1;
 
     public int numToSubscribe = -1;
