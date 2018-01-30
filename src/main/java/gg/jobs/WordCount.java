@@ -7,25 +7,25 @@ import gg.operators.SplitLineAtSpaceMap;
 import gg.operators.WordToWord1TupleMap;
 import gg.partitioners.Always0;
 import gg.partitioners.RoundRobin;
-import gg.partitioners.Tuple2by0;
-import gg.util.Nothing;
-import gg.util.TupleIntInt;
 import gg.util.Unit;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
-import scala.Int;
 
 import java.util.Arrays;
 
 public class WordCount {
 
-	private static TypeSerializer<String> stringSerializer = TypeInformation.of(String.class)
+	private static TypeSerializer<String> stringSerializer = TypeInformation
+			.of(String.class)
+			.createSerializer(new ExecutionConfig());
+
+	private static TypeSerializer<Tuple2<String, Integer>> tuple2StringIntegerSerializer = TypeInformation
+			.of(new TypeHint<Tuple2<String, Integer>>() {})
 			.createSerializer(new ExecutionConfig());
 
 	public static void main(String[] args) throws Exception {
@@ -61,12 +61,12 @@ public class WordCount {
 				.setParallelism(para);
 
 		// map phase
-		LabyNode<String, Tuple2<String, Integer>> mapnode = new LabyNode<String, Tuple2<String, Integer>>(
+		LabyNode<String, Tuple2<String, Integer>> mapnode = new LabyNode<>(
 				"map-phase",
 				new WordToWord1TupleMap(),
 				0,
 				new RoundRobin<>(para),
-				TypeInformation.of(new TypeHint<String>(){}).createSerializer(new ExecutionConfig()),
+				stringSerializer,
 				TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<String, Integer>>>(){})
 		)
 				.addInput(split, true, false)
@@ -78,7 +78,7 @@ public class WordCount {
 				new GroupByString0Count1(),
 				0,
 				new Always0<>(para),
-				TypeInformation.of(new TypeHint<Tuple2<String, Integer>>(){}).createSerializer(new ExecutionConfig()),
+				tuple2StringIntegerSerializer,
 				TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<String, Integer>>>(){})
 		)
 				.addInput(mapnode, true, false)
@@ -89,7 +89,7 @@ public class WordCount {
 				new Print<>("printcount"),
 				0,
 				new Always0<>(1),
-				TypeInformation.of(new TypeHint<Tuple2<String, Integer>>(){}).createSerializer(new ExecutionConfig()),
+				tuple2StringIntegerSerializer,
 				TypeInformation.of(new TypeHint<ElementOrEvent<Unit>>() {})
 		)
 				.addInput(reduceNode, true, false)
