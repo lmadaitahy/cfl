@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This is for SimpleCF.
-# gg.jobs.SimpleCF
+# SimpleCF
 
 
 # Strict mode, see http://redsymbol.net/articles/unofficial-bash-strict-mode/

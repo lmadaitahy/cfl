@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# gg.jobs.ClickCountDiffs
+# ClickCountDiffs
 
 
 

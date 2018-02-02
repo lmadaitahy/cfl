@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# gg.jobs.ClickCountDiffs
+# ClickCountDiffs
 
 # $1 specifies whether we reuse inputs (true or false)
 
