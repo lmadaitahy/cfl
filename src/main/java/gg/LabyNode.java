@@ -31,7 +31,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
     private final BagOperatorHost<IN, OUT> bagOpHost; // This is null in LabySource
 
-    private final Partitioner<IN> inputPartitioner;
+    private final Partitioner<IN> inputPartitioner; // null when the operator needs different partitioners on different inputs
 
     private final TypeInformation<ElementOrEvent<OUT>> typeInfo;
 
@@ -118,6 +118,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
         return ret;
     }
 
+    // Not null only after translate
     @Override
     public DataStream<ElementOrEvent<OUT>> getFlinkStream() {
         return flinkStream;

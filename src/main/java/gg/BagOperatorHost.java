@@ -133,7 +133,7 @@ public class BagOperatorHost<IN, OUT>
 		//LOG.info("subpartitionId [" + name + "]: " + subpartitionId);
 
 		if (inputParallelism == -1) {
-			throw new RuntimeException("inputParallelism is not set. Use bt instead of transform!");
+			throw new RuntimeException("inputParallelism is not set. Use either the LabyNode API or .bt instead of .transform!");
 		}
 
 		for(Input inp: inputs) {
@@ -306,7 +306,7 @@ public class BagOperatorHost<IN, OUT>
 					inputBagIDs.add(inp.currentBagID);
 				}
 
-				// Ez megint csak elvileg elromolhat olyan short-circuit-es operatornal, ami nem varja meg, hogy minden inputja lezaraodjon, mielott lezarna az out-ot.
+				// Ez megint csak elvileg elromolhat olyan short-circuit-es operatornal, ami nem varja meg, hogy minden inputja lezarodjon, mielott lezarna az out-ot.
 				assert inp.inputCFLSize == -1;
 			}
 			BagID[] inputBagIDsArr = new BagID[inputBagIDs.size()];
