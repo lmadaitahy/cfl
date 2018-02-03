@@ -295,7 +295,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<OUT> {
         }
     }
 
-    private class Close {
+    private static class Close {
 
         IterativeStream iterativeStream;
         int splitID;
