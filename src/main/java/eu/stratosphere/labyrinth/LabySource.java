@@ -42,11 +42,6 @@ public class LabySource<T> extends AbstractLabyNode<T> {
     }
 
     @Override
-    protected List<AbstractLabyNode<?>> getInputNodes() {
-        return new ArrayList<>();
-    }
-
-    @Override
     public DataStream<ElementOrEvent<T>> getFlinkStream() {
         return flinkStream;
     }

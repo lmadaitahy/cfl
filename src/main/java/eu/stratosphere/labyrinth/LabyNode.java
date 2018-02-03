@@ -109,15 +109,6 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<OUT> {
         return this;
     }
 
-    @Override
-    protected List<AbstractLabyNode<?>> getInputNodes() {
-        List<AbstractLabyNode<?>> ret = new ArrayList<>();
-        for (Input in: inputs) {
-            ret.add(in.node);
-        }
-        return ret;
-    }
-
     // Not null only after translate
     @Override
     public DataStream<ElementOrEvent<OUT>> getFlinkStream() {
@@ -148,9 +139,14 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<OUT> {
     @SuppressWarnings("unchecked")
     protected void translate() {
 
+        List<AbstractLabyNode<?>> inpNodes = new ArrayList<>();
+        for (Input in: inputs) {
+            inpNodes.add(in.node);
+        }
+
         // We need an iteration if we have at least one such input that hasn't been translated yet
         boolean needIter = false;
-        for (AbstractLabyNode<?> inp: getInputNodes()) {
+        for (AbstractLabyNode<?> inp: inpNodes) {
             if (inp.getFlinkStream() == null) {
                 needIter = true;
             }
@@ -158,7 +154,6 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<OUT> {
 
         // Determine input parallelism (and make sure all inputs have the same para)
         Integer inputPara = null;
-        List<AbstractLabyNode<?>> inpNodes = getInputNodes();
         assert !inpNodes.isEmpty();
         for (AbstractLabyNode<?> inp : inpNodes) {
             if (inp.getFlinkStream() != null) {
