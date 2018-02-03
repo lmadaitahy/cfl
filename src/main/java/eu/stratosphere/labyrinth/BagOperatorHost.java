@@ -2,9 +2,6 @@ package eu.stratosphere.labyrinth;
 
 
 import eu.stratosphere.labyrinth.operators.ReusingBagOperator;
-import eu.stratosphere.labyrinth.BagID;
-import eu.stratosphere.labyrinth.CFLCallback;
-import eu.stratosphere.labyrinth.CFLManager;
 import eu.stratosphere.labyrinth.operators.BagOperator;
 import eu.stratosphere.labyrinth.operators.DontThrowAwayInputBufs;
 import eu.stratosphere.labyrinth.partitioners.Broadcast;

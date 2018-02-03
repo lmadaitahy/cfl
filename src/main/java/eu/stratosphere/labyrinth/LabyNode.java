@@ -25,7 +25,7 @@ import java.util.Set;
  * @param <IN>
  * @param <OUT>
  */
-public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
+public class LabyNode<IN, OUT> extends AbstractLabyNode<OUT> {
 
     // --- Initialized in ctor ---
 
@@ -110,8 +110,8 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     }
 
     @Override
-    protected List<AbstractLabyNode<?, IN>> getInputNodes() {
-        List<AbstractLabyNode<?, IN>> ret = new ArrayList<>();
+    protected List<AbstractLabyNode<?>> getInputNodes() {
+        List<AbstractLabyNode<?>> ret = new ArrayList<>();
         for (Input in: inputs) {
             ret.add(in.node);
         }
@@ -131,12 +131,12 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
     }
 
     public static void translateAll() {
-        for (AbstractLabyNode<?, ?> ln: labyNodes) {
+        for (AbstractLabyNode<?> ln: labyNodes) {
             ln.translate();
         }
 
         int totalPara = 0;
-        for (AbstractLabyNode<?, ?> ln: labyNodes) {
+        for (AbstractLabyNode<?> ln: labyNodes) {
             if (ln instanceof LabyNode) {
                 totalPara += ln.getFlinkStream().getParallelism();
             }
@@ -150,7 +150,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
         // We need an iteration if we have at least one such input that hasn't been translated yet
         boolean needIter = false;
-        for (AbstractLabyNode<?, ?> inp: getInputNodes()) {
+        for (AbstractLabyNode<?> inp: getInputNodes()) {
             if (inp.getFlinkStream() == null) {
                 needIter = true;
             }
@@ -158,9 +158,9 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
         // Determine input parallelism (and make sure all inputs have the same para)
         Integer inputPara = null;
-        List<AbstractLabyNode<?, IN>> inpNodes = getInputNodes();
+        List<AbstractLabyNode<?>> inpNodes = getInputNodes();
         assert !inpNodes.isEmpty();
-        for (AbstractLabyNode<?, IN> inp : inpNodes) {
+        for (AbstractLabyNode<?> inp : inpNodes) {
             if (inp.getFlinkStream() != null) {
                 assert inputPara == null || inputPara.equals(inp.getFlinkStream().getParallelism());
                 inputPara = inp.getFlinkStream().getParallelism();
@@ -287,12 +287,12 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
     private class Input {
 
-        public AbstractLabyNode<?, IN> node;
+        public AbstractLabyNode<IN> node;
         public int splitID;
         public int index;
         public boolean backEdge;
 
-        public Input(AbstractLabyNode<?, IN> node, int splitID, int index) {
+        public Input(AbstractLabyNode<IN> node, int splitID, int index) {
             this.node = node;
             this.splitID = splitID;
             this.index = index;
@@ -315,7 +315,7 @@ public class LabyNode<IN, OUT> extends AbstractLabyNode<IN, OUT> {
 
 
     public static void printOperatorIDNameMapping() {
-        for (AbstractLabyNode<?, ?> ln: labyNodes) {
+        for (AbstractLabyNode<?> ln: labyNodes) {
             if (ln instanceof LabyNode) {
                 BagOperatorHost<?, ?> boh = ((LabyNode) ln).bagOpHost;
                 System.out.println(boh.opID + " " + boh.name);

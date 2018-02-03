@@ -11,7 +11,7 @@ import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
+public class LabySource<T> extends AbstractLabyNode<T> {
 
     public final int bbId;
     public final int opID;
@@ -42,7 +42,7 @@ public class LabySource<T> extends AbstractLabyNode<Nothing, T> {
     }
 
     @Override
-    protected List<AbstractLabyNode<?, Nothing>> getInputNodes() {
+    protected List<AbstractLabyNode<?>> getInputNodes() {
         return new ArrayList<>();
     }
 
