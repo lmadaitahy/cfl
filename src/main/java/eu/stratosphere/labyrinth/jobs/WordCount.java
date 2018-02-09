@@ -1,10 +1,10 @@
-package gg.jobs;
+package eu.stratosphere.labyrinth.jobs;
 
-import gg.*;
-import gg.operators.GroupByString0Count1;
+import eu.stratosphere.labyrinth.*;
+import eu.stratosphere.labyrinth.operators.GroupByString0Count1;
 import gg.operators.Print;
-import gg.operators.SplitLineAtSpaceMap;
-import gg.operators.WordToWord1TupleMap;
+import eu.stratosphere.labyrinth.operators.SplitLineAtSpaceMap;
+import eu.stratosphere.labyrinth.operators.WordToWord1TupleMap;
 import gg.partitioners.Always0;
 import gg.partitioners.RoundRobin;
 import gg.util.Unit;

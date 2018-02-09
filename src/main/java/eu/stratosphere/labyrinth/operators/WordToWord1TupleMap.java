@@ -1,4 +1,4 @@
-package gg.operators;
+package eu.stratosphere.labyrinth.operators;
 
 import org.apache.flink.api.java.tuple.Tuple2;
 
