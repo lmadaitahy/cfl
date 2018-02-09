@@ -1,20 +1,19 @@
 package eu.stratosphere.labyrinth.jobs;
 
 import eu.stratosphere.labyrinth.*;
-import eu.stratosphere.labyrinth.operators.GroupByString0Count1;
-import gg.operators.Print;
-import eu.stratosphere.labyrinth.operators.SplitLineAtSpaceMap;
-import eu.stratosphere.labyrinth.operators.WordToWord1TupleMap;
-import gg.partitioners.Always0;
-import gg.partitioners.RoundRobin;
-import gg.util.Unit;
+import eu.stratosphere.labyrinth.operators.*;
+import eu.stratosphere.labyrinth.partitioners.Always0;
+import eu.stratosphere.labyrinth.partitioners.RoundRobin;
+import eu.stratosphere.labyrinth.util.Unit;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.DiscardingSink;
+import org.apache.flink.util.Collector;
 
 import java.util.Arrays;
 
@@ -49,9 +48,21 @@ public class WordCount {
 				TypeInformation.of(new TypeHint<ElementOrEvent<String>>() {}));
 
 		// split lines
-		LabyNode<String, String> split = new LabyNode<>(
-				"split-map",
-				new SplitLineAtSpaceMap(),
+//		LabyNode<String, String> split = new LabyNode<>(
+//				"split-map",
+//				new SplitLineAtSpaceMap(),
+//				0,
+//				new RoundRobin<>(para),
+//				stringSerializer,
+//				TypeInformation.of(new TypeHint<ElementOrEvent<String>>(){})
+//		)
+//				.addInput(input, true)
+//				.setParallelism(para);
+
+		LabyNode<String, String> split =  new LabyNode<>(
+				"split2",
+				FlatMap.create((String s, Collector<String> col) -> {
+					for (String elem : s.split(" ")) { col.collect(elem); } }),
 				0,
 				new RoundRobin<>(para),
 				stringSerializer,
@@ -61,9 +72,21 @@ public class WordCount {
 				.setParallelism(para);
 
 		// map phase
+//		LabyNode<String, Tuple2<String, Integer>> mapnode = new LabyNode<>(
+//				"map-phase",
+//				new WordToWord1TupleMap(),
+//				0,
+//				new RoundRobin<>(para),
+//				stringSerializer,
+//				TypeInformation.of(new TypeHint<ElementOrEvent<Tuple2<String, Integer>>>(){})
+//		)
+//				.addInput(split, true, false)
+//				.setParallelism(para);
+
 		LabyNode<String, Tuple2<String, Integer>> mapnode = new LabyNode<>(
 				"map-phase",
-				new WordToWord1TupleMap(),
+				FlatMap.create((String s, Collector<Tuple2<String, Integer>> col) ->
+						col.collect(new Tuple2<String, Integer>(s, 1))),
 				0,
 				new RoundRobin<>(para),
 				stringSerializer,
