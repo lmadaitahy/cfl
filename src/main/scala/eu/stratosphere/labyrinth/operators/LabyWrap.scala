@@ -29,21 +29,22 @@ object LabyWrap {
 		}
 	}
 
-	def groupBy[LEFT,RIGHT](f: (RIGHT, RIGHT) => RIGHT): GroupBy[LEFT,RIGHT] = {
+	def foldGroup[K,A,B](i: A => B, f: (B, B) => B): FoldGroup[K,A,B] = {
 
-		new GroupBy[LEFT,RIGHT]() {
+		new FoldGroup[K, A, B]() {
+
 			override def openOutBag(): Unit = {
 				super.openOutBag()
-				hm = new util.HashMap[LEFT, RIGHT]
+				hm = new util.HashMap[K, B]
 			}
 
-			override def pushInElement(e: tuple.Tuple2[LEFT, RIGHT], logicalInputId: Int): Unit = {
+			override def pushInElement(e: tuple.Tuple2[K, A], logicalInputId: Int): Unit = {
 				super.pushInElement(e, logicalInputId)
 				val g = hm.get(e.f0)
 				if (g == null) {
-					hm.put(e.f0, e.f1)
+					hm.put(e.f0, i(e.f1))
 				} else {
-					hm.replace(e.f0, f(g, e.f1))
+					hm.replace(e.f0, f(g, i(e.f1)))
 				}
 			}
 
@@ -59,5 +60,13 @@ object LabyWrap {
 				hm = null
 			}
 		}
+	}
+
+	def reduceGroup[K,A](f: (A, A) => A): FoldGroup[K, A, A] = {
+		foldGroup((x:A) => x, f)
+	}
+
+	def union[T](): Union[T] = {
+		new Union[T]
 	}
 }
