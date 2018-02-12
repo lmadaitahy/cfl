@@ -28,7 +28,7 @@ object WordCountScala {
 		val para = env.getParallelism
 		val lines = List("foo bar foo foo bar lol lol lol foo rofl",
 			" lol foo lol bar lol bar bar foo foo rofl foo",
-			"foo bar foo foo bar lol lol lol foo rofl lasagne")
+			"foo bar foo foo bar lol lol lol foo rofl lasagna")
 
 		// source to read line by line
 		val input = new LabySource[String](env.fromCollection(lines).javaStream, 0, TypeInformation.of(new TypeHint[ElementOrEvent[String]]() {}))
@@ -58,7 +58,7 @@ object WordCountScala {
 		// count phase
 		val reduceNode = new LabyNode[Tuple2[String, Integer], Tuple2[String, Integer]](
 			"reduce-phase",
-			LabyWrap.groupBy((old: Integer, current: Integer) => old + current),
+			LabyWrap.reduceGroup((old: Integer, current: Integer) => old + current),
 			0,
 			new Always0[Tuple2[String, Integer]](para),
 			tuple2StringIntegerSerializer,
