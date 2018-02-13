@@ -1,6 +1,7 @@
 package eu.stratosphere.labyrinth;
 
 import eu.stratosphere.labyrinth.jobs.ClickCountDiffs;
+import eu.stratosphere.labyrinth.jobs.ClickCountDiffsScala;
 import eu.stratosphere.labyrinth.jobsold.NoCF;
 import eu.stratosphere.labyrinth.jobsold.SimpleCF;
 import inputgen.ClickCountDiffsInputGen;
@@ -73,7 +74,7 @@ public class CFLITCase {
 
         boolean exceptionReceived = false;
         try {
-            ClickCountDiffs.main(new String[]{path, Integer.toString(numDays), "true"});
+            ClickCountDiffsScala.main(new String[]{path, Integer.toString(numDays), "true"});
         } catch (JobCancellationException ex) {
             exceptionReceived = true;
         }
