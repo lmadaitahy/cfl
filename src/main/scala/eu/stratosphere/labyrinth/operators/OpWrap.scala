@@ -4,10 +4,11 @@ import java.util
 import java.util.HashMap
 
 import eu.stratosphere.labyrinth.BagOperatorOutputCollector
+import eu.stratosphere.labyrinth.partitioners.Forward
 import org.apache.flink.api.java.tuple
 import org.apache.flink.api.java.tuple.Tuple2
 
-object LabyWrap {
+object OpWrap {
 
 	def map[IN, OUT](f: (IN => OUT)): FlatMap[IN, OUT] = {
 
