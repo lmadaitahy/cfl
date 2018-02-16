@@ -8,21 +8,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.Function;
 
-public abstract class JoinGeneric<IN, K, OUT> extends BagOperator<IN, OUT> implements ReusingBagOperator {
-
-	private static final Logger LOG = LoggerFactory.getLogger(JoinGeneric.class);
+public abstract class JoinGeneric<IN, K> extends BagOperator<IN, Tuple2<IN, IN>> implements ReusingBagOperator {
 
 	private HashMap<K, ArrayList<IN>> ht;
 	private ArrayList<IN> probeBuffered;
-	private Function<IN, K> keyExtr;
 	private boolean buildDone;
 	private boolean probeDone;
 
 	private boolean reuse = false;
-
-	public JoinGeneric(Function<IN, K> keyExtr) {
-		this.keyExtr = keyExtr;
-	}
 
 	@Override
 	public void openOutBag() {
@@ -32,16 +25,6 @@ public abstract class JoinGeneric<IN, K, OUT> extends BagOperator<IN, OUT> imple
 		probeDone = false;
 		reuse = false;
 	}
-
-	// test
-	private void tt(Function<Integer, Integer> f) {
-		f.apply(4);
-	}
-
-	public void ttt() {
-		tt( x -> x+1 );
-	}
-	// tset
 
 	@Override
 	public void signalReuse() {
@@ -65,11 +48,12 @@ public abstract class JoinGeneric<IN, K, OUT> extends BagOperator<IN, OUT> imple
 		super.pushInElement(e, logicalInputId);
 		if (logicalInputId == 0) { // build side
 			assert !buildDone;
-			ArrayList<Tuple2<Integer,IN>> l = ht.get(e.f0);
+			K key = keyExtr(e);
+			ArrayList<IN> l = ht.get(key);
 			if (l == null) {
 				l = new ArrayList<>();
 				l.add(e);
-				ht.put(e.f0,l);
+				ht.put(key,l);
 			} else {
 				l.add(e);
 			}
@@ -89,7 +73,7 @@ public abstract class JoinGeneric<IN, K, OUT> extends BagOperator<IN, OUT> imple
 			assert !buildDone;
 			//LOG.info("Build side finished");
 			buildDone = true;
-			for (Tuple2<Integer, IN> e: probeBuffered) {
+			for (IN e: probeBuffered) {
 				probe(e);
 			}
 			if (probeDone) {
@@ -106,14 +90,14 @@ public abstract class JoinGeneric<IN, K, OUT> extends BagOperator<IN, OUT> imple
 		}
 	}
 
-	private void probe(Tuple2<Integer, IN> e) {
-		ArrayList<Tuple2<Integer, IN>> l = ht.get(e.f0);
+	private void probe(IN e) {
+		ArrayList<IN> l = ht.get(keyExtr(e));
 		if (l != null) {
-			for (Tuple2<Integer, IN> b: l) {
-				udf(b, e);
+			for (IN b: l) {
+				out.collectElement(Tuple2.of(b, e));
 			}
 		}
 	}
 
-	protected abstract void udf(Tuple2<Integer,IN> a, Tuple2<Integer,IN> b); // Uses `out`
+	protected abstract K keyExtr(IN e);
 }

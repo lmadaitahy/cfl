@@ -118,17 +118,35 @@ object ClickCountDiffsScala {
 		)
 		  .addInput(visits_1, true, false)
 
-		val clicksMapped = new LabyNode[TupleIntInt, TupleIntInt](
-			"joinedWithAttrs",
-			new JoinTupleIntInt[TupleIntInt]() {
-				override protected def udf(b: Int, p: TupleIntInt): scala.Unit = if (b == 0) out.collectElement(TupleIntInt.of(p.f0, 1))},
+		val clicksJoined = new LabyNode[TupleIntInt, Tuple2[TupleIntInt, TupleIntInt]](
+			"preJoinedWithAttrs",
+			new JoinGeneric[TupleIntInt, Int]() {
+				override protected def keyExtr(e: TupleIntInt): Int = e.f0
+			},
 			1,
 			new TupleIntIntBy0(para),
 			tupleIntIntSer,
-			TypeInformation.of(new TypeHint[ElementOrEvent[TupleIntInt]]() {})
+			TypeInformation.of(new TypeHint[ElementOrEvent[Tuple2[TupleIntInt, TupleIntInt]]]() {})
 		)
 		  .addInput(pageAttributes, false)
 		  .addInput(visits_1_tupleized, true, false)
+
+		val clicksMapped = new LabyNode[Tuple2[TupleIntInt, TupleIntInt], TupleIntInt] (
+		  "joinedWithAttrs",
+		  OpWrap.flatMap[Tuple2[TupleIntInt, TupleIntInt], TupleIntInt] (
+			  (t, out) => {
+				  if (t.f0.f1 == 0) { out.collectElement(new TupleIntInt(t.f1.f0, 1)) }
+			  }
+		  ),
+		  1,
+			// TODO
+		  new TupleIntIntBy0(para),
+		  tupleIntIntSer,
+		  TypeInformation.of(new TypeHint[ElementOrEvent[TupleIntInt]]() {})
+		)
+//		override protected def udf(b: Int, p: TupleIntInt): scala.Unit = {
+//			if (b == 0) out.collectElement(TupleIntInt.of(p.f0, 1))
+//		}
 
 		val counts = new LabyNode[TupleIntInt, TupleIntInt](
 			"counts",
