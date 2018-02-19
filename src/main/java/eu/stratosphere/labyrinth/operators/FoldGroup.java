@@ -1,10 +1,10 @@
 package eu.stratosphere.labyrinth.operators;
 
-import org.apache.flink.api.java.tuple.Tuple2;
-
 import java.util.HashMap;
 
-public abstract class FoldGroup<K, A, B> extends BagOperator<Tuple2<K, A>, Tuple2<K, B>> {
+public abstract class FoldGroup<K, IN, OUT> extends BagOperator<IN, OUT> {
 
-	protected HashMap<K, B> hm;
+	protected HashMap<K, OUT> hm;
+
+	protected abstract K keyExtr(IN e);
 }

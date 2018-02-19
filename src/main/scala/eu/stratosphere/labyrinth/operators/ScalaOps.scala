@@ -30,22 +30,30 @@ object ScalaOps {
 		}
 	}
 
-	def foldGroup[K,A,B](i: A => B, f: (B, B) => B): FoldGroup[K,A,B] = {
+	def foldGroup[K,IN,OUT](keyExtractor: IN => K, i: IN => OUT, f: (OUT, OUT) => OUT): FoldGroup[K,IN,OUT] = {
 
-		new FoldGroup[K, A, B]() {
+		new FoldGroup[K, IN, OUT]() {
+
+			override protected def keyExtr(e: IN): K = keyExtractor(e)
 
 			override def openOutBag(): Unit = {
 				super.openOutBag()
-				hm = new util.HashMap[K, B]
+				hm = new util.HashMap[K, OUT]
 			}
 
-			override def pushInElement(e: tuple.Tuple2[K, A], logicalInputId: Int): Unit = {
+			// TODO check crash in clickcountdiffsscala
+			override def pushInElement(e: IN, logicalInputId: Int): Unit = {
 				super.pushInElement(e, logicalInputId)
-				val g = hm.get(e.f0)
+				assert(e != null)
+				assert(hm != null)
+				assert(keyExtractor != null)
+				val key = keyExtr(e)
+				assert(key != null)
+				val g = hm.get(key)
 				if (g == null) {
-					hm.put(e.f0, i(e.f1))
+					hm.put(key, i(e))
 				} else {
-					hm.replace(e.f0, f(g, i(e.f1)))
+					hm.replace(key, f(g, i(e)))
 				}
 			}
 
@@ -55,7 +63,7 @@ object ScalaOps {
 				import scala.collection.JavaConversions._
 
 				for (e <- hm.entrySet) {
-					out.collectElement(Tuple2.of(e.getKey, e.getValue))
+					out.collectElement(e.getValue)
 				}
 				out.closeBag()
 				hm = null
@@ -63,13 +71,13 @@ object ScalaOps {
 		}
 	}
 
-	def reduceGroup[K,A](f: (A, A) => A): FoldGroup[K, A, A] = {
-		foldGroup((x:A) => x, f)
+	def reduceGroup[K,A](keyExtractor: A => K, f: (A, A) => A): FoldGroup[K, A, A] = {
+		foldGroup(keyExtractor, (x:A) => x, f)
 	}
 
-	def joinGeneric[IN, K](kexExtractor: IN => K): JoinGeneric[IN, K] = {
+	def joinGeneric[IN, K](keyExtractor: IN => K): JoinGeneric[IN, K] = {
 		new JoinGeneric[IN, K] {
-			override protected def keyExtr(e: IN): K = kexExtractor(e)
+			override protected def keyExtr(e: IN): K = keyExtractor(e)
 		}
 	}
 

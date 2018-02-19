@@ -3,6 +3,7 @@ package eu.stratosphere.labyrinth.operators;
 import eu.stratosphere.labyrinth.BagOperatorHost;
 import eu.stratosphere.labyrinth.BagOperatorOutputCollector;
 import eu.stratosphere.labyrinth.CFLConfig;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +14,8 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 	private static final Logger LOG = LoggerFactory.getLogger(BagOperator.class);
 
 	protected BagOperatorOutputCollector<OUT> out;
+
+	protected TypeSerializer<IN> inSer;
 
 	private boolean[] open = new boolean[]{false, false, false};
 
@@ -38,6 +41,7 @@ public abstract class BagOperator<IN, OUT> implements Serializable {
 		this.out = out;
 	}
 
+	public final void giveInputSerializer(TypeSerializer<IN> serializer) { this.inSer = serializer; }
 
 	public void openOutBag() {
 		if (CFLConfig.vlog) LOG.info("openOutBag[" + name + "]");

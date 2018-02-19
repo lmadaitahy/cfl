@@ -140,7 +140,8 @@ object ClickCountDiffsScala {
 
 		val counts = new LabyNode[TupleIntInt, TupleIntInt](
 			"counts",
-			new GroupBy0Sum1TupleIntInt,
+//			new GroupBy0Sum1TupleIntInt,
+			ScalaOps.reduceGroup( (t:TupleIntInt) => t.f0, (a,b) => new TupleIntInt(a.f0, a.f1 + b.f1) ),
 			1,
 			new TupleIntIntBy0(para),
 			tupleIntIntSer,
@@ -170,6 +171,8 @@ object ClickCountDiffsScala {
 		  .addInput(notFirstDay, true, false)
 		  .setParallelism(1)
 
+
+		// TODO
 		// -- then branch   BB 2
 		// The join of joinedYesterday is merged into this operator
 		val diffs = new LabyNode[TupleIntInt, Integer](
@@ -177,13 +180,9 @@ object ClickCountDiffsScala {
 			new OuterJoinTupleIntInt[Integer]() {
 				override protected def inner(b: Int, p: TupleIntInt): scala.Unit = out.collectElement(Math.abs(b - p.f1))
 
-				override
+				override protected def right(p: TupleIntInt): scala.Unit = out.collectElement(p.f1)
 
-				protected def right(p: TupleIntInt): scala.Unit = out.collectElement(p.f1)
-
-				override
-
-				protected def left(b: Int): scala.Unit = out.collectElement(b)},
+				override protected def left(b: Int): scala.Unit = out.collectElement(b)},
 			2,
 			new TupleIntIntBy0(para),
 			tupleIntIntSer,

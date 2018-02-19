@@ -58,7 +58,10 @@ object WordCountScala {
 		// count phase
 		val reduceNode = new LabyNode[Tuple2[String, Integer], Tuple2[String, Integer]](
 			"reduce-phase",
-			ScalaOps.reduceGroup((old: Integer, current: Integer) => old + current),
+			ScalaOps.reduceGroup(
+				t => t.f0,
+				(old, current) => new Tuple2[String, Integer](old.f0, old.f1 + current.f1)
+			),
 			0,
 			new Always0[Tuple2[String, Integer]](para),
 			tuple2StringIntegerSerializer,

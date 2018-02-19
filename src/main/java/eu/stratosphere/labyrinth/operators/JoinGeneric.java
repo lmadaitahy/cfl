@@ -1,5 +1,6 @@
 package eu.stratosphere.labyrinth.operators;
 
+import eu.stratosphere.labyrinth.util.SerializedBuffer;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +12,7 @@ import java.util.function.Function;
 public abstract class JoinGeneric<IN, K> extends BagOperator<IN, Tuple2<IN, IN>> implements ReusingBagOperator {
 
 	private HashMap<K, ArrayList<IN>> ht;
-	private ArrayList<IN> probeBuffered;
+	private SerializedBuffer<IN> probeBuffered;
 	private boolean buildDone;
 	private boolean probeDone;
 
@@ -20,7 +21,7 @@ public abstract class JoinGeneric<IN, K> extends BagOperator<IN, Tuple2<IN, IN>>
 	@Override
 	public void openOutBag() {
 		super.openOutBag();
-		probeBuffered = new ArrayList<>();
+		probeBuffered = new SerializedBuffer<>(inSer);
 		buildDone = false;
 		probeDone = false;
 		reuse = false;

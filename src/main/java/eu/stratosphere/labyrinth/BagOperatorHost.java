@@ -151,6 +151,8 @@ public class BagOperatorHost<IN, OUT>
 
 		op.giveHost(this);
 
+		op.giveInputSerializer(inSer);
+
 		es = Executors.newSingleThreadExecutor();
 
 		cflMan = CFLManager.getSing();
