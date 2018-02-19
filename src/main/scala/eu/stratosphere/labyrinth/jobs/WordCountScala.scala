@@ -35,7 +35,7 @@ object WordCountScala {
 
 		val split = new LabyNode[String, String](
 			"split2",
-			OpWrap.flatMap((s: String, coll: BagOperatorOutputCollector[String]) => for(elem <- s.split(" ")) { coll.collectElement(elem) }),
+			ScalaOps.flatMap((s: String, coll: BagOperatorOutputCollector[String]) => for(elem <- s.split(" ")) { coll.collectElement(elem) }),
 			0,
 			new RoundRobin[String](para),
 			stringSerializer,
@@ -46,7 +46,7 @@ object WordCountScala {
 
 		val mapnode = new LabyNode[String, Tuple2[String, Integer]](
 			"map-phase",
-			OpWrap.map((s: String) => new Tuple2[String, Integer](s, 1)),
+			ScalaOps.map((s: String) => new Tuple2[String, Integer](s, 1)),
 			0,
 			new RoundRobin[String](para),
 			stringSerializer,
@@ -58,7 +58,7 @@ object WordCountScala {
 		// count phase
 		val reduceNode = new LabyNode[Tuple2[String, Integer], Tuple2[String, Integer]](
 			"reduce-phase",
-			OpWrap.reduceGroup((old: Integer, current: Integer) => old + current),
+			ScalaOps.reduceGroup((old: Integer, current: Integer) => old + current),
 			0,
 			new Always0[Tuple2[String, Integer]](para),
 			tuple2StringIntegerSerializer,

@@ -8,7 +8,7 @@ import eu.stratosphere.labyrinth.partitioners.Forward
 import org.apache.flink.api.java.tuple
 import org.apache.flink.api.java.tuple.Tuple2
 
-object OpWrap {
+object ScalaOps {
 
 	def map[IN, OUT](f: (IN => OUT)): FlatMap[IN, OUT] = {
 
@@ -65,6 +65,21 @@ object OpWrap {
 
 	def reduceGroup[K,A](f: (A, A) => A): FoldGroup[K, A, A] = {
 		foldGroup((x:A) => x, f)
+	}
+
+	def joinGeneric[IN, K](kexExtractor: IN => K): JoinGeneric[IN, K] = {
+		new JoinGeneric[IN, K] {
+			override protected def keyExtr(e: IN): K = kexExtractor(e)
+		}
+	}
+
+	def singletonBagOperator[IN, OUT](f: IN => OUT): SingletonBagOperator[IN, OUT] = {
+		new SingletonBagOperator[IN, OUT] {
+			override def pushInElement(e: IN, logicalInputId: Int): Unit = {
+				super.pushInElement(e, logicalInputId)
+				out.collectElement(f(e))
+			}
+		}
 	}
 
 	def union[T](): Union[T] = {

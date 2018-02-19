@@ -25,6 +25,7 @@ object ClickCountDiffsScala {
 	private val integerSer = TypeInformation.of(classOf[Integer]).createSerializer(new ExecutionConfig)
 	private val booleanSer = TypeInformation.of(classOf[java.lang.Boolean]).createSerializer(new ExecutionConfig)
 	private val tupleIntIntSer = new TupleIntInt.TupleIntIntSerializer
+	private val tuple2IntIntSerializer = TypeInformation.of(new TypeHint[Tuple2[TupleIntInt, TupleIntInt]]() {}).createSerializer(new ExecutionConfig)
 
 	@throws[Exception]
 	def main(args: Array[String]): scala.Unit = {
@@ -46,13 +47,13 @@ object ClickCountDiffsScala {
 		// BB 0
 		val pageAttributesStream = env.createInput[Tuple2[Integer, Integer]](
 			new TupleCsvInputFormat[Tuple2[Integer, Integer]](new Path(pref + "in/pageAttributes.tsv"),
-			"\n",
-			"\t", typeInfoTupleIntInt)
+				"\n",
+				"\t", typeInfoTupleIntInt)
 		)
 		  .map(new MapFunction[Tuple2[Integer, Integer], TupleIntInt]() {
-			@throws[Exception]
-			override def map(value: Tuple2[Integer, Integer]): TupleIntInt = TupleIntInt.of(value.f0, value.f1)
-		}).javaStream
+			  @throws[Exception]
+			  override def map(value: Tuple2[Integer, Integer]): TupleIntInt = TupleIntInt.of(value.f0, value.f1)
+		  }).javaStream
 
 		val pageAttributes = new LabySource[TupleIntInt](pageAttributesStream,
 			0,
@@ -60,10 +61,10 @@ object ClickCountDiffsScala {
 		)
 
 		@SuppressWarnings(Array("unchecked")) val yesterdayCounts_1 = new LabySource[TupleIntInt](
-				env.fromCollection[TupleIntInt](Seq()).javaStream,
-				0,
-				TypeInformation.of(new TypeHint[ElementOrEvent[TupleIntInt]]() {})
-			)
+			env.fromCollection[TupleIntInt](Seq()).javaStream,
+			0,
+			TypeInformation.of(new TypeHint[ElementOrEvent[TupleIntInt]]() {})
+		)
 
 		val day_1 = new LabySource[Integer](
 			env.fromCollection(List[Integer](1)).javaStream,
@@ -106,11 +107,7 @@ object ClickCountDiffsScala {
 		// The inputs of the join have to be the same type (because of the union stuff), so we add a dummy tuple element.
 		val visits_1_tupleized = new LabyNode[Integer, TupleIntInt](
 			"visits_1_tupleized",
-//			new FlatMap[Integer, TupleIntInt]() {
-//			override def pushInElement(e: Integer, logicalInputId: Int): scala.Unit = {
-//				super.pushInElement(e, logicalInputId)
-//				out.collectElement(TupleIntInt.of(e, -1))}},
-			OpWrap.map((e: Integer) => new TupleIntInt(e, -1)),
+			ScalaOps.map((e: Integer) => new TupleIntInt(e, -1)),
 			1,
 			new IntegerBy0(para),
 			integerSer,
@@ -120,9 +117,7 @@ object ClickCountDiffsScala {
 
 		val clicksJoined = new LabyNode[TupleIntInt, Tuple2[TupleIntInt, TupleIntInt]](
 			"preJoinedWithAttrs",
-			new JoinGeneric[TupleIntInt, Int]() {
-				override protected def keyExtr(e: TupleIntInt): Int = e.f0
-			},
+			ScalaOps.joinGeneric(e => e.f0),
 			1,
 			new TupleIntIntBy0(para),
 			tupleIntIntSer,
@@ -132,21 +127,16 @@ object ClickCountDiffsScala {
 		  .addInput(visits_1_tupleized, true, false)
 
 		val clicksMapped = new LabyNode[Tuple2[TupleIntInt, TupleIntInt], TupleIntInt] (
-		  "joinedWithAttrs",
-		  OpWrap.flatMap[Tuple2[TupleIntInt, TupleIntInt], TupleIntInt] (
-			  (t, out) => {
-				  if (t.f0.f1 == 0) { out.collectElement(new TupleIntInt(t.f1.f0, 1)) }
-			  }
-		  ),
-		  1,
-			// TODO
-		  new TupleIntIntBy0(para),
-		  tupleIntIntSer,
-		  TypeInformation.of(new TypeHint[ElementOrEvent[TupleIntInt]]() {})
+			"joinedWithAttrs",
+			ScalaOps.flatMap[Tuple2[TupleIntInt, TupleIntInt], TupleIntInt] (
+				(t, out) => { if (t.f0.f1 == 0) { out.collectElement(new TupleIntInt(t.f1.f0, 1)) } }
+			),
+			1,
+			new Always0[Tuple2[TupleIntInt, TupleIntInt]](para),
+			tuple2IntIntSerializer,
+			TypeInformation.of(new TypeHint[ElementOrEvent[TupleIntInt]]() {})
 		)
-//		override protected def udf(b: Int, p: TupleIntInt): scala.Unit = {
-//			if (b == 0) out.collectElement(TupleIntInt.of(p.f0, 1))
-//		}
+		  .addInput(clicksJoined, true, false)
 
 		val counts = new LabyNode[TupleIntInt, TupleIntInt](
 			"counts",
@@ -160,11 +150,7 @@ object ClickCountDiffsScala {
 
 		val notFirstDay = new LabyNode[Integer, java.lang.Boolean](
 			"notFirstDay",
-			new SingletonBagOperator[Integer, java.lang.Boolean]() {
-			override def pushInElement(e: Integer, logicalInputId: Int): scala.Unit = {
-				super.pushInElement(e, logicalInputId)
-				out.collectElement(!(e == 1))
-			}},
+			ScalaOps.singletonBagOperator(e => !(e==1)),
 			1,
 			new Always0[Integer](1),
 			integerSer,
