@@ -37,7 +37,7 @@ public class GroupBy0Min1 extends BagOperator<Tuple2<Integer, Integer>, Tuple2<I
         for (HashMap.Entry e: hm.entrySet()) {
             out.collectElement(Tuple2.of((Integer)e.getKey(), (Integer)e.getValue()));
         }
-        out.closeBag();
         hm = null;
+        out.closeBag();
     }
 }

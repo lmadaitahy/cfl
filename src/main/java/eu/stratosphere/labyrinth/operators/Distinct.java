@@ -23,7 +23,7 @@ public class Distinct<T> extends BagOperator<T,T> {
     @Override
     public void closeInBag(int inputId) {
         super.closeInBag(inputId);
-        out.closeBag();
         set = null;
+        out.closeBag();
     }
 }

@@ -40,6 +40,8 @@ public abstract class GroupBy0ReduceTupleIntDouble extends BagOperator<TupleIntD
             }
         });
 
+        hm = null;
+
         out.closeBag();
     }
 }
