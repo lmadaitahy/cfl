@@ -1,6 +1,6 @@
 package eu.stratosphere.labyrinth.partitioners
 
-object PartWrap {
+object ScalaParts {
 
 	def forward[T](targetPara: Int): Forward[T] = {
 		new Forward[T](targetPara)

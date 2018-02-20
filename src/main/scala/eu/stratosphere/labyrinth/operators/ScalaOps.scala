@@ -44,11 +44,7 @@ object ScalaOps {
 			// TODO check crash in clickcountdiffsscala
 			override def pushInElement(e: IN, logicalInputId: Int): Unit = {
 				super.pushInElement(e, logicalInputId)
-				assert(e != null)
-				assert(hm != null)
-				assert(keyExtractor != null)
 				val key = keyExtr(e)
-				assert(key != null)
 				val g = hm.get(key)
 				if (g == null) {
 					hm.put(key, i(e))
@@ -65,8 +61,8 @@ object ScalaOps {
 				for (e <- hm.entrySet) {
 					out.collectElement(e.getValue)
 				}
-				out.closeBag()
 				hm = null
+				out.closeBag()
 			}
 		}
 	}

@@ -140,7 +140,6 @@ object ClickCountDiffsScala {
 
 		val counts = new LabyNode[TupleIntInt, TupleIntInt](
 			"counts",
-//			new GroupBy0Sum1TupleIntInt,
 			ScalaOps.reduceGroup( (t:TupleIntInt) => t.f0, (a,b) => new TupleIntInt(a.f0, a.f1 + b.f1) ),
 			1,
 			new TupleIntIntBy0(para),
